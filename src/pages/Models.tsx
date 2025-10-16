@@ -8,6 +8,7 @@ type Model = {
   family_id: number | null;
   family_name?: string | null;
   manufacturer?: string | null;
+  bond_value?: number | null;
 };
 
 export default function Models() {
@@ -41,7 +42,8 @@ export default function Models() {
     name: string;
     family_id: string; // guardamos como string para fácil binding
     manufacturer: string;
-  }>({ name: "", family_id: "", manufacturer: "" });
+    bond_value: number;
+  }>({ name: "", family_id: "", manufacturer: "", bond_value: 0 });
 
   const onCreate = () => {
     const name = form.name.trim();
@@ -53,11 +55,12 @@ export default function Models() {
           name,
           family_id: form.family_id ? Number(form.family_id) : null,
           manufacturer: form.manufacturer.trim() || null,
+          bond_value: Number(form.bond_value) || null
         },
       },
       {
         onSuccess: () => {
-          setForm({ name: "", family_id: familyFilter === "" ? "" : String(familyFilter), manufacturer: "" });
+          setForm({ name: "", family_id: familyFilter === "" ? "" : String(familyFilter), manufacturer: "", bond_value: 0 });
           refetch();
         },
       }
@@ -67,7 +70,7 @@ export default function Models() {
   // Edición inline
   const [editing, setEditing] = React.useState<Record<
     number,
-    { name: string; family_id: string; manufacturer: string }
+    { name: string; family_id: string; manufacturer: string; bond_value: number;}
   >>({});
 
   const startEdit = (m: Model) => {
@@ -77,6 +80,7 @@ export default function Models() {
         name: m.name,
         family_id: m.family_id ? String(m.family_id) : "",
         manufacturer: m.manufacturer ?? "",
+        bond_value: m.bond_value ? Number(m.bond_value) : 0
       },
     }));
   };
@@ -101,6 +105,7 @@ export default function Models() {
           name,
           family_id: draft.family_id ? Number(draft.family_id) : null,
           manufacturer: draft.manufacturer.trim() || null,
+          bond_value: draft.bond_value !== undefined ? Number(draft.bond_value) : null, 
         },
       },
       {
@@ -121,7 +126,7 @@ export default function Models() {
 
   return (
     <div className="card">
-      <h2>Machine Models</h2>
+      <h2>Modelos de máquina</h2>
       <p style={{ color: "var(--muted)" }}>Crea y administra modelos de máquina.</p>
 
       {/* Filtro por familia */}
@@ -140,7 +145,7 @@ export default function Models() {
             ))}
           </select>
         </div>
-        <div style={{marginTop: 16}}>
+        <div style={{ marginTop: 16 }}>
           <button onClick={() => refetch()}>Aplicar</button>
         </div>
       </div>
@@ -178,7 +183,15 @@ export default function Models() {
             placeholder="Ej. Acme"
           />
         </div>
-        <div style={{marginTop: 16}}>
+        <label>Valor en bono de la máquina (opcional)</label>
+        <input
+          type="number"
+          value={form.bond_value}
+          onChange={(e) => setForm((x) => ({ ...x, bond_value: Number(e.target.value) }))}
+          placeholder="Ej. Acme"
+        />
+
+        <div style={{ marginTop: 16 }}>
           <button onClick={onCreate} disabled={creating}>
             {creating ? "Creando…" : "Crear modelo"}
           </button>
@@ -254,6 +267,17 @@ export default function Models() {
                           }))
                         }
                         placeholder="Fabricante (opcional)"
+                      />
+                      <input
+                        style={{maxWidth: 100}}
+                        value={edit.bond_value}
+                        onChange={(e) =>
+                          setEditing((prev) => ({
+                            ...prev,
+                            [m.id]: { ...prev[m.id], bond_value: Number(e.target.value) },
+                          }))
+                        }
+                        placeholder="Valor en bono"
                       />
                       <div className="list-tile__edit-actions">
                         <button className="btn btn--ok" onClick={() => saveEdit(m.id)} disabled={updating}>

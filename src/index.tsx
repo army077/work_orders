@@ -13,6 +13,7 @@ import Templates from "./pages/Templates";
 import Families from "./pages/Families";
 import Models from "./pages/Models";
 import WorkOrdersList from "./pages/WorkOrdersList";
+import PlantelProduccion from "./pages/Plantel Producción";
 
 function App() {
   return (
@@ -32,24 +33,25 @@ function App() {
           {/* Sidebar (solo desktop/tablet) */}
           <aside className="sidebar nav-desktop">
             <div style={{ padding: 10 }}>
-              <img src="/logo_asiarob.jpg" alt="Asia Robótica" style={{ height: 50, borderRadius: 2 }} />
+              <img src="/AR LOGO.png" alt="Asia Robótica" style={{ height: 50, borderRadius: 2 }} />
             </div>
             <nav className="nav">
-              <Link to="/families">Machine Families</Link>
-              <Link to="/models">Machine Models</Link>
-              <Link to="/templates">Templates</Link>
-              <Link to="/sections-builder">Sections Builder</Link>
-              <Link to="/tasks-builder">Template Tasks Builder</Link>
-              <Link to="/create-work-order">Create Work Order</Link>
-              <Link to="/work-orders">Work Orders</Link>
-              <Link to="/run-work-order/1">Run Work Order</Link>
+              <Link to="/families">Familia de Equipos</Link>
+              <Link to="/models">Modelos de máquina</Link>
+              <Link to="/templates">Crea tus Plantillas</Link>
+              <Link to="/sections-builder">Constructor secciones</Link>
+              <Link to="/tasks-builder">Constructor de tareas</Link>
+              <Link to="/create-work-order">Crear orden de trabajo</Link>
+              <Link to="/work-orders">Todas las ordenes</Link>
+              <Link to="/run-work-order/1">Panel de control de orden</Link>
+              <Link to="/plantel-produccion">Panel de Producción</Link>
             </nav>
           </aside>
 
           {/* Topbar (solo móvil) */}
           <header className="topbar nav-mobile">
             <div className="brand">
-              <img src="/logo_asiarob.jpg" alt="Asia Robótica" style={{ height: 36, borderRadius: 2 }} />
+              <img src="/AR LOGO.png" alt="Asia Robótica" style={{ height: 36, borderRadius: 2 }} />
             </div>
             <nav className="nav-horizontal">
               <Link to="/families">Families</Link>
@@ -73,6 +75,7 @@ function App() {
               <Route path="/create-work-order" element={<CreateWorkOrderFromTemplate />} />
               <Route path="/work-orders" element={<WorkOrdersList />} />
               <Route path="/run-work-order/:id" element={<WorkOrderRun />} />
+              <Route path="/plantel-produccion" element={<PlantelProduccion />} />
             </Routes>
           </main>
         </div>

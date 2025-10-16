@@ -65,9 +65,9 @@ export default function Families() {
 
     return (
         <div className="card">
-            <h2>Machine Families</h2>
+            <h2>Familias de equipo</h2>
             <p style={{ color: "var(--muted)" }}>
-                Crea y administra familias de máquinas.
+                Crea y administra las familias de los equipos de las máquinas.
             </p>
 
             {/* Crear */}

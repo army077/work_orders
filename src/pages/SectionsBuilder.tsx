@@ -146,11 +146,11 @@ export default function SectionsBuilder() {
         <div className="row" style={{ gap: 16 }}>
             <div className="card">
                 <h2>Sections Builder</h2>
-                <p style={{ color: "var(--muted)" }}>Elige plantilla y organiza secciones por drag & drop.</p>
+                <p style={{ color: "var(--muted)" }}>Elige una plantilla previamente creada y seccionala en orden a tus necesidades. </p>
 
                 <div className="row cols-2">
                     <div>
-                        <label>Template</label>
+                        <label>Elegir plantilla</label>
                         <select value={selectedTemplate ?? ""} onChange={(e) => setSelectedTemplate(Number(e.target.value) || null)}>
                             <option value="">— seleccionar —</option>
                             {(tpls?.data ?? []).map((t) => (
@@ -163,7 +163,7 @@ export default function SectionsBuilder() {
                     <div>
                         <label>Acciones</label>
                         <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={onAddSection}>+ Add Section</button>
+                            <button onClick={onAddSection} style={{backgroundColor:"#8B0000"}}>+ Añadir sección</button>
                             {savingOrder ? <span className="badge">Guardando orden…</span> : null}
                         </div>
                     </div>

@@ -7,6 +7,7 @@ import type {
 } from "@refinedev/core";
 
 const API_URL = "https://desarrollotecnologicoar.com/api10";
+const API_URL2 = "https://desarrollotecnologicoar.com/api7";
 
 /** Busca recursivamente el valor de un filtro por 'field' */
 function getFilterValue(filters: CrudFilters | undefined, targetField: string) {
@@ -76,7 +77,7 @@ export const dataProvider: DataProvider = {
                 body: JSON.stringify(body),
             });
             const data = await res.json();
-            return { data };
+            return { data: data.data ? data.data : data };
         }
 
         const res = await fetch(`${API_URL}/${resource}`, {
@@ -110,8 +111,28 @@ export const dataProvider: DataProvider = {
     },
 
     // ------ NOT USED IN STARTER ------
-    deleteOne: async () => {
-        throw new Error("Not implemented");
+    deleteOne: async ({ resource, id }) => {
+        // Construye la URL según el recurso
+        const url = `${API_URL}/${resource}/${id}`;
+        const res = await fetch(url, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+        });
+
+        // Si la respuesta no es exitosa, lanza un error
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(errorText || `Error eliminando ${resource} con id ${id}`);
+        }
+
+        // Si la API responde con datos, los retorna; si no, retorna null
+        let data = null;
+        try {
+            data = await res.json();
+        } catch {
+            // Si no hay JSON, ignora
+        }
+        return { data };
     },
     getMany: async () => {
         throw new Error("Not implemented");

@@ -291,6 +291,7 @@ export default function WorkOrderRun() {
                           <option value="SEGUIMIENTO">SEGUIMIENTO</option>
                           <option value="CRITICO">CRITICO</option>
                           <option value="NA">NA</option>
+                          <option value="PENDIENTE">PENDIENTE</option>
                         </select>
                       </div>
 

@@ -16,7 +16,7 @@ export const asiaRoboticaTheme = createTheme({
     },
     text: {
       primary: "#1A1A1A",
-      secondary: "#333333",
+      secondary: "#333333ff",
     },
   },
   components: {

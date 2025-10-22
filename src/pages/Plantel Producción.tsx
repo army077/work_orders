@@ -6,7 +6,9 @@ import { FaEye } from 'react-icons/fa6';
 import { IoBuildOutline } from 'react-icons/io5';
 import { BsClockHistory } from 'react-icons/bs';
 import Bonds from "./Bonds";
-
+import { MdOutlineDashboardCustomize } from 'react-icons/md';
+import LocalAtmOutlinedIcon from '@mui/icons-material/LocalAtmOutlined';
+import ProductionHistory from "./ProductionHistory";
 const COLORS = {
     red: "#8B0000",
     redSoft: "#B22222",
@@ -120,6 +122,8 @@ export default function PlantelProduccion() {
     const [filterMenuOpen, setFilterMenuOpen] = useState(false);
     const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
     const [customs, setCustoms] = useState<any[]>([]);
+    const [view, setView] = useState<"plantel" | "historial" | "bonos">("plantel");
+
 
 
     const handleOpenDialog = (id: number) => {
@@ -285,6 +289,7 @@ export default function PlantelProduccion() {
                     Plantel de Producción
                 </Typography>
                 <Box sx={{ position: "relative" }}>
+                    {/* Botón filtro (igual que antes) */}
                     <IconButton
                         sx={{
                             color: COLORS.white,
@@ -298,30 +303,44 @@ export default function PlantelProduccion() {
                     >
                         <MdFilterList />
                     </IconButton>
-                    <Menu
-                        anchorEl={filterAnchorEl}
-                        open={filterMenuOpen}
-                        onClose={() => setFilterMenuOpen(false)}
-                        defaultValue={"OPEN"}
-                    >
-                        <MenuItem onClick={() => { setSt(""); setFilterMenuOpen(false); }}>Todos los estados</MenuItem>
-                        <MenuItem onClick={() => { setSt("OPEN"); setFilterMenuOpen(false); }}>Abierta</MenuItem>
-                        <MenuItem onClick={() => { setSt("FINISHED"); setFilterMenuOpen(false); }}>Cerrada</MenuItem>
-                    </Menu>
 
+                    {/* DASHBOARD → PLANTEL */}
                     <IconButton
                         sx={{
                             color: COLORS.white,
                             transition: 'color 0.3s, transform 0.3s',
                             "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
                         }}
-                        onClick={() => setBondSee(prev => !prev)}
+                        onClick={() => setView("plantel")}
                     >
-                        <BsClockHistory></BsClockHistory>
-
+                        <MdOutlineDashboardCustomize />
                     </IconButton>
 
+                    {/* HISTORIAL → WorkOrdersHistory */}
+                    <IconButton
+                        sx={{
+                            color: COLORS.white,
+                            transition: 'color 0.3s, transform 0.3s',
+                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
+                        }}
+                        onClick={() => setView("historial")}
+                    >
+                        <BsClockHistory />
+                    </IconButton>
+
+                    {/* BONOS → Bonds */}
+                    <IconButton
+                        sx={{
+                            color: COLORS.white,
+                            transition: 'color 0.3s, transform 0.3s',
+                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
+                        }}
+                        onClick={() => setView("bonos")}
+                    >
+                        <LocalAtmOutlinedIcon />
+                    </IconButton>
                 </Box>
+
                 <TextField
                     size="small"
                     placeholder="Buscar orden..."
@@ -331,7 +350,7 @@ export default function PlantelProduccion() {
                 />
             </Box>
 
-            {!bondsSee ? (
+            {view === "plantel" && (
                 <Box>
                     <Grid container spacing={2}>
                         {items.map((wo) => {
@@ -861,9 +880,16 @@ export default function PlantelProduccion() {
                     </Dialog>
 
                 </Box>
-            ) : (
-                <Bonds></Bonds>
             )}
+            {view === "bonos" && (
+                <Box>
+                    <Bonds />
+                </Box>)}
+            {view === "historial" && (
+                <Box>
+                    <ProductionHistory />
+                </Box>)}
+
 
 
         </Box>

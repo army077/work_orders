@@ -27,6 +27,8 @@ type BonoResumen = {
     conteo_ordenes: number;
     suma_puntos_maquina: number;
     suma_puntos_customs: number;
+    puntos_secundario: number;
+    puntos_extra: number;
 };
 
 const COLORS = {
@@ -63,7 +65,7 @@ export default function BondsDashboard() {
 
     const totalBonos = useMemo(() => {
         return data.reduce(
-            (acc, t) => acc + Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs),
+            (acc, t) => acc + Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario),
             0
         );
     }, [data]);
@@ -72,7 +74,7 @@ export default function BondsDashboard() {
         () =>
             data.map((t) => ({
                 name: t.nombre_tecnico,
-                Bono: (Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs)) * 100,
+                Bono: (Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario)) * 100,
             })),
         [data]
     );
@@ -91,7 +93,8 @@ export default function BondsDashboard() {
             "Órdenes Completadas": t.conteo_ordenes,
             "Puntos Máquina": Number(t.suma_puntos_maquina).toFixed(2),
             "Puntos Custom": Number(t.suma_puntos_customs).toFixed(2),
-            "Total Bono ($)": ((Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs)) * 100).toFixed(2),
+            "Puntos Op. Secundario": Number(t.puntos_secundario).toFixed(2),
+            "Total Bono ($)": ((Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario)) * 100).toFixed(2),
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(sheetData);
@@ -234,6 +237,8 @@ export default function BondsDashboard() {
                                         <TableCell><b>Órdenes</b></TableCell>
                                         <TableCell><b>Puntos Máquina</b></TableCell>
                                         <TableCell><b>Puntos Custom</b></TableCell>
+                                        <TableCell><b>Puntos Operador Secundario</b></TableCell>
+                                        <TableCell><b>Puntos Extra</b></TableCell>
                                         <TableCell><b>Total Bono ($)</b></TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -250,9 +255,17 @@ export default function BondsDashboard() {
                                                 {Number(t.suma_puntos_customs).toFixed(2)}
                                             </TableCell>
                                             <TableCell align="center">
+                                                {Number(t.puntos_secundario).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                {Number(t.puntos_extra).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell align="center">
                                                 {(
                                                     (Number(t.suma_puntos_maquina) +
-                                                        Number(t.suma_puntos_customs)) *
+                                                        Number(t.suma_puntos_customs) +
+                                                           Number(t.puntos_secundario) +
+                                                              Number(t.puntos_extra)) *
                                                     100
                                                 ).toFixed(2)}{" "}
                                                 $

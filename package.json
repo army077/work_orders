@@ -31,6 +31,7 @@
     "@mui/lab": "^6.0.0-beta.14",
     "@mui/material": "^6.1.7",
     "@mui/x-data-grid": "^7.23.5",
+    "@mui/x-date-pickers": "^8.14.1",
     "@refinedev/antd": "^5.46.3",
     "@refinedev/cli": "^2.16.46",
     "@refinedev/core": "^4.57.9",

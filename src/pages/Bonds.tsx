@@ -74,7 +74,7 @@ export default function BondsDashboard() {
         () =>
             data.map((t) => ({
                 name: t.nombre_tecnico,
-                Bono: (Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario)) * 100,
+                Bono: (Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario) + Number(t.puntos_extra)) * 100,
             })),
         [data]
     );
@@ -199,7 +199,7 @@ export default function BondsDashboard() {
             {/* GRÁFICA */}
             <Card sx={{ mb: 3, p: 2 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                    Puntos por Técnico
+                    Bono por Técnico
                 </Typography>
                 {loading ? (
                     <Box display="flex" justifyContent="center" alignItems="center" height={200}>

@@ -65,6 +65,8 @@ export interface DetalleBonoRow {
     eficiencia_laboral: number; // 7.0000, etc.
     suma_puntos_customs: number; // promedio por tu query: SUM(...) / COUNT(wo.id)
     extra_points: number;
+    folio_sai: Nullable<string>;
+    
 }
 
 interface ApiDetalleResponse {
@@ -264,8 +266,11 @@ export default function ProductionHistory() {
                     <Table>
                         <TableHead>
                             <TableRow sx={{ bgcolor: COLORS.red }}>
+                                <TableCell sx={{ color: COLORS.white }}>Fecha Final</TableCell>
                                 <TableCell sx={{ color: COLORS.white }}>Técnico Principal</TableCell>
                                 <TableCell sx={{ color: COLORS.white }}>Técnico Soporte</TableCell>
+                                <TableCell sx={{ color: COLORS.white }}>Folio SAI</TableCell>
+                                <TableCell sx={{ color: COLORS.white }}>Numero de serie</TableCell>
                                 <TableCell sx={{ color: COLORS.white }}>Modelo</TableCell>
                                 <TableCell sx={{ color: COLORS.white }}>Título</TableCell>
                                 <TableCell sx={{ color: COLORS.white }} align="right">
@@ -312,9 +317,12 @@ export default function ProductionHistory() {
                                         sx={{
                                             "&:hover": { bgcolor: COLORS.gray500 },
                                         }}
-                                    >
+                                    > 
+                                        <TableCell>{row.finished_at ? dayjs(row.finished_at).format("DD/MM/YYYY") : "-"}</TableCell>
                                         <TableCell>{row.assigned_tech_email || "-"}</TableCell>
                                         <TableCell>{row.tech_support || "-"}</TableCell>
+                                        <TableCell>{row.folio_sai || "-"}</TableCell>
+                                        <TableCell>{row.machine_serial || "-"}</TableCell>
                                         <TableCell>{row.modelo || "-"}</TableCell>
                                         <TableCell>{row.titulo || "-"}</TableCell>
                                         <TableCell align="right">{row.bono_equipo ?? 0}</TableCell>

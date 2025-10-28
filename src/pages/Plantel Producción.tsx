@@ -568,6 +568,13 @@ export default function PlantelProduccion() {
                                             <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
                                                 {woID.folio_sai || "—"}
                                             </Typography>
+
+                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}>
+                                                <b> Numero de serie:</b>
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                                {woID.machine_serial || "—"}
+                                            </Typography>
                                             {
                                                 woID.comments && (
                                                     <Box>
@@ -673,6 +680,13 @@ export default function PlantelProduccion() {
                                                 size="small"
                                                 value={editForm.folio_sai || ""}
                                                 onChange={e => setEditForm(f => ({ ...f, folio_sai: e.target.value }))}
+                                                fullWidth
+                                            />
+                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Numero de serie:</b></Typography>
+                                            <TextField
+                                                size="small"
+                                                value={editForm.machine_serial || ""}
+                                                onChange={e => setEditForm(f => ({ ...f, machine_serial: e.target.value }))}
                                                 fullWidth
                                             />
                                             <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Comentarios:</b></Typography>

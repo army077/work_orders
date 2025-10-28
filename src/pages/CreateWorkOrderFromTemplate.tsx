@@ -356,7 +356,7 @@ export default function CreateWorkOrderFromTemplate() {
           body: JSON.stringify({
             email: newTecForm.correo_tecnico,
             password: contraseña, // Usamos el token como contraseña
-            returnSecureToken: newTecForm.nombre_tecnico, // No autenticar automáticamente
+            returnSecureToken: true // No autenticar automáticamente
           }),
         });
 

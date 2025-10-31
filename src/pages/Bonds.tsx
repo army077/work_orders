@@ -29,6 +29,8 @@ type BonoResumen = {
     suma_puntos_customs: number;
     puntos_secundario: number;
     puntos_extra: number;
+    puntos_eficiencia: number;
+    numero_empleado: number;
 };
 
 const COLORS = {
@@ -88,14 +90,31 @@ export default function BondsDashboard() {
 
         // Formatear datos para Excel
         const sheetData = data.map((t) => ({
+            "Numero de empleado": t.numero_empleado,
             "Nombre Técnico": t.nombre_tecnico,
             "Correo Técnico": t.correo_tecnico,
             "Órdenes Completadas": t.conteo_ordenes,
             "Puntos Máquina": Number(t.suma_puntos_maquina).toFixed(2),
             "Puntos Custom": Number(t.suma_puntos_customs).toFixed(2),
             "Puntos Op. Secundario": Number(t.puntos_secundario).toFixed(2),
-            "Total Bono ($)": ((Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario)) * 100).toFixed(2),
+            "Total Bono ($)": ((Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario) + Number(t.puntos_extra) + Number(t.puntos_eficiencia)) * 100).toFixed(2),
+            
         }));
+
+        sheetData.push(
+            {
+                "Numero de empleado": 64,
+                "Nombre Técnico": "Saúl Sandoval",
+                "Correo Técnico": "saul.sandoval@asiarobotica.com",
+                "Órdenes Completadas": 0,
+                "Puntos Máquina": "",
+                "Puntos Custom": "",
+                "Puntos Op. Secundario": "",
+                "Total Bono ($)": data.map((t) => ({
+                    bono: (Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario) + Number(t.puntos_extra) + Number(t.puntos_eficiencia)) * 100 * 0.1,
+                })).reduce((acc, curr) => acc + curr.bono, 0).toFixed(2) ,
+            }
+        )
 
         const worksheet = XLSX.utils.json_to_sheet(sheetData);
         const workbook = XLSX.utils.book_new();
@@ -232,6 +251,7 @@ export default function BondsDashboard() {
                             <Table>
                                 <TableHead sx={{ bgcolor: "#eee" }}>
                                     <TableRow>
+                                
                                         <TableCell><b>Técnico</b></TableCell>
                                         <TableCell><b>Correo</b></TableCell>
                                         <TableCell><b>Órdenes</b></TableCell>
@@ -239,6 +259,7 @@ export default function BondsDashboard() {
                                         <TableCell><b>Puntos Custom</b></TableCell>
                                         <TableCell><b>Puntos Operador Secundario</b></TableCell>
                                         <TableCell><b>Puntos Extra</b></TableCell>
+                                        <TableCell><b>Puntos por eficiencia</b></TableCell>
                                         <TableCell><b>Total Bono ($)</b></TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -261,11 +282,16 @@ export default function BondsDashboard() {
                                                 {Number(t.puntos_extra).toFixed(2)}
                                             </TableCell>
                                             <TableCell align="center">
+                                                {Number(t.puntos_eficiencia).toFixed(2)}
+                                            </TableCell>
+
+                                            <TableCell align="center">
                                                 {(
                                                     (Number(t.suma_puntos_maquina) +
                                                         Number(t.suma_puntos_customs) +
-                                                           Number(t.puntos_secundario) +
-                                                              Number(t.puntos_extra)) *
+                                                        Number(t.puntos_secundario) +
+                                                        Number(t.puntos_extra) +
+                                                        Number(t.puntos_eficiencia)) *
                                                     100
                                                 ).toFixed(2)}{" "}
                                                 $

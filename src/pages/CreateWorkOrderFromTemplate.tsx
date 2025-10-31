@@ -68,6 +68,7 @@ export default function CreateWorkOrderFromTemplate() {
     telefono: "",
     puesto: "",
     nombre_bonos: "",
+    numero_empleado: 0
   });
   // --- técnicos (API externa) ---
   const [techs, setTechs] = useState<Technician[]>([]);
@@ -87,7 +88,9 @@ export default function CreateWorkOrderFromTemplate() {
       correo_tecnico: "",
       telefono: "",
       puesto: "",
-      nombre_bonos: ""
+      nombre_bonos: "",
+      numero_empleado: 0
+
     });
     setOpenDialogNewTec(false);
   };
@@ -282,6 +285,7 @@ export default function CreateWorkOrderFromTemplate() {
         telefono: "",
         puesto: "",
         nombre_bonos: "",
+        numero_empleado: 0
       });
       setManualEmail(false);
       await handleAddOperador();
@@ -611,7 +615,9 @@ export default function CreateWorkOrderFromTemplate() {
                 style={{ width: "100%", marginBottom: 12 }}
               />
 
-            </div>)}
+            </div>
+
+          )}
 
           <label style={{ fontWeight: 500 }}>Teléfono (opcional)</label>
           <input
@@ -619,6 +625,15 @@ export default function CreateWorkOrderFromTemplate() {
             placeholder="Teléfono (opcional)"
             value={newTecForm.telefono}
             onChange={onChangeNewTec("telefono")}
+            style={{ width: "100%", marginBottom: 12 }}
+          />
+
+          <label style={{ fontWeight: 500 }}>Número de empleado (opcional)</label>
+          <input
+            type="text"
+            placeholder="Numéro de empleado (opcional)"
+            value={newTecForm.numero_empleado}
+            onChange={onChangeNewTec("numero_empleado")}
             style={{ width: "100%", marginBottom: 12 }}
           />
 

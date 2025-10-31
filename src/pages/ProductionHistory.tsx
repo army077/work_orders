@@ -52,7 +52,7 @@ export interface DetalleBonoRow {
     assigned_tech_email: Nullable<string>;
     tech_support: Nullable<string>;
     status: Nullable<string>;
-    finished_at: Nullable<string>;
+    finished_local: Nullable<string>;
     machine_serial: Nullable<string>;
     customer_name: Nullable<string>;
     site_address: Nullable<string>;
@@ -62,11 +62,12 @@ export interface DetalleBonoRow {
     bono_operador_2: number;
     dias_estandar: number;
     dias_usados_laborales: number;
-    eficiencia_laboral: number; // 7.0000, etc.
+    eficiencia: number; // 7.0000, etc.
     suma_puntos_customs: number; // promedio por tu query: SUM(...) / COUNT(wo.id)
-    extra_points: number;
+    suma_puntos_extra: number;
     folio_sai: Nullable<string>;
-    
+    suma_puntos_eficiencia: number;
+    status_inicial: Nullable<string>;
 }
 
 interface ApiDetalleResponse {
@@ -289,6 +290,9 @@ export default function ProductionHistory() {
                                     Eficiencia
                                 </TableCell>
                                 <TableCell sx={{ color: COLORS.white }} align="right">
+                                    Bono Eficiencia
+                                </TableCell>
+                                <TableCell sx={{ color: COLORS.white }} align="right">
                                     Bono Total
                                 </TableCell>
                                 <TableCell sx={{ color: COLORS.white }} align="center">
@@ -312,49 +316,102 @@ export default function ProductionHistory() {
                                 </TableRow>
                             ) : (
                                 filteredRows.map((row) => (
-                                    <TableRow
-                                        key={row.id}
-                                        sx={{
-                                            "&:hover": { bgcolor: COLORS.gray500 },
-                                        }}
-                                    > 
-                                        <TableCell>{row.finished_at ? dayjs(row.finished_at).format("DD/MM/YYYY") : "-"}</TableCell>
-                                        <TableCell>{row.assigned_tech_email || "-"}</TableCell>
-                                        <TableCell>{row.tech_support || "-"}</TableCell>
-                                        <TableCell>{row.folio_sai || "-"}</TableCell>
-                                        <TableCell>{row.machine_serial || "-"}</TableCell>
-                                        <TableCell>{row.modelo || "-"}</TableCell>
-                                        <TableCell>{row.titulo || "-"}</TableCell>
-                                        <TableCell align="right">{row.bono_equipo ?? 0}</TableCell>
-                                        <TableCell align="right">{row.bono_operador_2 ?? 0}</TableCell>
-                                        <TableCell align="right">{Number(row.suma_puntos_customs).toFixed() ?? 0}</TableCell>
-                                        <TableCell align="right">{row.extra_points ?? 0} </TableCell>
-                                        <TableCell align="right">{`${row.eficiencia_laboral > 1 ? (100) : (row.eficiencia_laboral * 100)}%`}</TableCell>
-                                        <TableCell align="right">
-                                            {(Number(row.bono_equipo ?? 0) + Number(row.bono_operador_2 ?? 0) + Number(row.suma_puntos_customs) + Number(row.extra_points)).toFixed(0)}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <IconButton
-                                                sx={{ color: COLORS.redSoft }}
-                                                onClick={() => {
-                                                    setSelectedRow(row);
-                                                    setExtraModalOpen(true);
-                                                }}
-                                            >
-                                                <AddCircle />
-                                            </IconButton>
-                                            <IconButton
-                                                sx={{ color: COLORS.black }}
-                                                onClick={() => {
-                                                    setSelectedRow(row);
-                                                    fetchCustoms(row.id);
-                                                    setCustomModalOpen(true);
-                                                }}
-                                            >
-                                                <Visibility />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
+                                    row.status_inicial === "New Product" || row.status_inicial === null ? (
+                                        <TableRow
+                                            key={row.id}
+                                            sx={{
+                                                "&:hover": { bgcolor: COLORS.gray500 },
+                                            }}
+                                        >
+                                            <TableCell>{row.finished_local ? dayjs(row.finished_local).format("DD/MM/YYYY") : "-"}</TableCell>
+                                            <TableCell>{row.assigned_tech_email || "-"}</TableCell>
+                                            <TableCell>{row.tech_support || "-"}</TableCell>
+                                            <TableCell>{row.folio_sai || "-"}</TableCell>
+                                            <TableCell>{row.machine_serial || "-"}</TableCell>
+                                            <TableCell>{row.modelo || "-"}</TableCell>
+                                            <TableCell>{row.titulo || "-"}</TableCell>
+                                            <TableCell align="right">{row.bono_equipo ?? 0}</TableCell>
+                                            <TableCell align="right">{row.bono_operador_2 ?? 0}</TableCell>
+                                            <TableCell align="right">{Number(row.suma_puntos_customs).toFixed(2) ?? 0}</TableCell>
+                                            <TableCell align="right">{row.suma_puntos_extra ?? 0} </TableCell>
+                                            <TableCell align="right">{`${row.eficiencia > 1 ? (100) : (row.eficiencia * 100).toFixed(2)}%`}</TableCell>
+                                            <TableCell align="right">{Number(row.suma_puntos_eficiencia).toFixed(2) ?? 0}</TableCell>
+                                            <TableCell align="right">
+                                                {(Number(row.bono_equipo ?? 0) + Number(row.bono_operador_2 ?? 0) + Number(row.suma_puntos_customs) + Number(row.suma_puntos_extra) + Number(row.suma_puntos_eficiencia)).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <IconButton
+                                                    sx={{ color: COLORS.redSoft }}
+                                                    onClick={() => {
+                                                        setSelectedRow(row);
+                                                        setExtraModalOpen(true);
+                                                    }}
+                                                >
+                                                    <AddCircle />
+                                                </IconButton>
+                                                <IconButton
+                                                    sx={{ color: COLORS.black }}
+                                                    onClick={() => {
+                                                        setSelectedRow(row);
+                                                        fetchCustoms(row.id);
+                                                        setCustomModalOpen(true);
+                                                    }}
+                                                >
+                                                    <Visibility />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+
+                                    ) : (
+                                        <TableRow
+                                            key={row.id}
+                                            sx={{
+                                                "&:hover": { bgcolor: COLORS.gray500 },
+                                                bgcolor: "#ffe6e6", // fondo diferente
+                                                borderLeft: `6px solid ${COLORS.redSoft}`, // acento lateral   
+                                            }}
+                                        >
+                                            <TableCell>{row.finished_local ? dayjs(row.finished_local).format("DD/MM/YYYY") : "-"}</TableCell>
+                                            <TableCell>{row.assigned_tech_email || "-"}</TableCell>
+                                            <TableCell>{row.tech_support || "-"}</TableCell>
+                                            <TableCell>{row.folio_sai || "-"}</TableCell>
+                                            <TableCell>{row.machine_serial || "-"}</TableCell>
+                                            <TableCell>{row.modelo || "-"}</TableCell>
+                                            <TableCell>{row.titulo || "-"}</TableCell>
+                                            <TableCell align="right">{row.bono_equipo ?? 0}</TableCell>
+                                            <TableCell align="right">{row.bono_operador_2 ?? 0}</TableCell>
+                                            <TableCell align="right">{Number(row.suma_puntos_customs).toFixed(2) ?? 0}</TableCell>
+                                            <TableCell align="right">{row.suma_puntos_extra ?? 0} </TableCell>
+                                            <TableCell align="right">{`${row.eficiencia > 1 ? (100) : (row.eficiencia * 100).toFixed(2)}%`}</TableCell>
+                                            <TableCell align="right">{Number(row.suma_puntos_eficiencia).toFixed(2) ?? 0}</TableCell>
+                                            <TableCell align="right">
+                                                {(Number(row.bono_equipo ?? 0) + Number(row.bono_operador_2 ?? 0) + Number(row.suma_puntos_customs) + Number(row.suma_puntos_extra) + Number(row.suma_puntos_eficiencia)).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <IconButton
+                                                    sx={{ color: COLORS.redSoft }}
+                                                    onClick={() => {
+                                                        setSelectedRow(row);
+                                                        setExtraModalOpen(true);
+                                                    }}
+                                                >
+                                                    <AddCircle />
+                                                </IconButton>
+                                                <IconButton
+                                                    sx={{ color: COLORS.black }}
+                                                    onClick={() => {
+                                                        setSelectedRow(row);
+                                                        fetchCustoms(row.id);
+                                                        setCustomModalOpen(true);
+                                                    }}
+                                                >
+                                                    <Visibility />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+
+                                    )
+
                                 ))
                             )}
                         </TableBody>
@@ -377,8 +434,8 @@ export default function ProductionHistory() {
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart
                                 data={rows.reduce((acc: any[], row) => {
-                                    if (!row.finished_at) return acc;
-                                    const week = dayjs(row.finished_at).week();
+                                    if (!row.finished_local) return acc;
+                                    const week = dayjs(row.finished_local).week();
                                     const existing = acc.find((a) => a.week === week);
                                     if (existing) existing.count += 1;
                                     else acc.push({ week, count: 1 });
@@ -447,8 +504,8 @@ export default function ProductionHistory() {
                                     // Conteo de órdenes por técnico (barras)
                                     acc[tech].count += 1;
 
-                                    // Eficiencia: convierte a número y limita a 1 (100%)
-                                    const num = Number((row as any).eficiencia_laboral);
+                                    // Eficiencia: usa la propiedad correcta 'eficiencia' y limita a 1 (100%)
+                                    const num = Number(row.eficiencia);
                                     if (Number.isFinite(num)) {
                                         const capped = Math.min(num, 1);
                                         acc[tech].eficienciaSum += capped;
@@ -548,43 +605,153 @@ export default function ProductionHistory() {
                 </Modal>
 
                 {/* MODAL: Ver customizaciones */}
-                <Modal open={customModalOpen} onClose={() => setCustomModalOpen(false)}>
+                {/* MODAL: Ver customizaciones */}
+                <Modal
+                    open={customModalOpen}
+                    onClose={() => setCustomModalOpen(false)}
+                    aria-labelledby="modal-title"
+                >
                     <Box
                         sx={{
-                            bgcolor: COLORS.gray500,
+                            bgcolor: COLORS.gray900,
                             color: COLORS.white,
                             p: 4,
-                            borderRadius: 3,
-                            width: 520,
+                            borderRadius: 4,
+                            width: "90%",
+                            maxWidth: 700,
                             mx: "auto",
-                            mt: "10%",
-                            boxShadow: 24,
+                            mt: "6%",
+                            boxShadow: "0 0 40px rgba(0,0,0,0.6)",
+                            maxHeight: "80vh",
+                            overflowY: "auto",
+                            position: "relative",
                         }}
                     >
-                        <Typography variant="h6" sx={{ mb: 2, color: COLORS.redSoft }}>
-                            Listado de customizaciones
+                        <Typography
+                            id="modal-title"
+                            variant="h5"
+                            sx={{ mb: 3, color: COLORS.redSoft, fontWeight: 700 }}
+                        >
+                            🧩 Detalles de Customizaciones
                         </Typography>
-                        {selectedRow ? (
-                            <Box sx={{ display: "grid", rowGap: 1 }}>
-                                <Typography variant="body2">ID Orden: {selectedRow.id}</Typography>
-                                {/* Si luego traes el detalle línea a línea desde otra API, lo pintas aquí */}
-                                <Card sx={{ bgcolor: COLORS.gray200 }}>
-                                    {(customs ?? []).map((custom: any, idx: number) => (
-                                        <Box key={custom.id || idx} sx={{ mb: 1, p: 1 }}>
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}>
-                                                <IoBuildOutline style={{ marginRight: 1 }} />
-                                                <b>{custom.custom_title || `Custom ${idx + 1}`}</b>
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Card>
-                                <Divider sx={{ my: 1.5 }} />
+
+                        {selectedRow && (
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="body2" sx={{ color: COLORS.gray200 }}>
+                                    <b>Orden:</b> {selectedRow.id} &nbsp; | &nbsp;
+                                    <b>Modelo:</b> {selectedRow.modelo ?? "—"} &nbsp; | &nbsp;
+                                    <b>Técnico:</b> {selectedRow.assigned_tech_email ?? "—"}
+                                </Typography>
                             </Box>
-                        ) : (
-                            <Typography variant="body2">Sin datos disponibles</Typography>
                         )}
+
+                        {customs && customs.length > 0 ? (
+                            customs.map((custom: any, idx: number) => (
+                                <Card
+                                    key={custom.id || idx}
+                                    sx={{
+                                        bgcolor: COLORS.gray700,
+                                        mb: 2,
+                                        borderRadius: 3,
+                                        p: 2,
+                                        boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+                                        transition: "transform 0.2s ease",
+                                        "&:hover": { transform: "scale(1.01)" },
+                                    }}
+                                >
+                                    <Typography variant="h6" sx={{ color: COLORS.redSoft, mb: 1 }}>
+                                        <IoBuildOutline
+                                            style={{ marginRight: 6, verticalAlign: "middle" }}
+                                        />
+                                        {custom.custom_title || `Customización #${idx + 1}`}
+                                    </Typography>
+
+                                    <Typography
+                                        variant="body2"
+                                        sx={{ color: COLORS.gray200, lineHeight: 1.6 }}
+                                    >
+                                        {custom.descripcion
+                                            ? custom.descripcion
+                                            : "Sin descripción disponible."}
+                                    </Typography>
+
+                                    <Divider sx={{ my: 1.5, borderColor: COLORS.gray500 }} />
+
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            flexWrap: "wrap",
+                                            gap: 2,
+                                            justifyContent: "space-between",
+                                        }}
+                                    >
+                                        {custom.autor && (
+                                            <Typography variant="body2">
+                                                👷 <b>Autor:</b> {custom.autor}
+                                            </Typography>
+                                        )}
+                                        {custom.horas && (
+                                            <Typography variant="body2">
+                                                ⏱️ <b>Horas:</b> {custom.horas}
+                                            </Typography>
+                                        )}
+                                        {custom.fecha && (
+                                            <Typography variant="body2">
+                                                📅 <b>Fecha:</b>{" "}
+                                                {dayjs(custom.fecha).format("DD/MM/YYYY HH:mm")}
+                                            </Typography>
+                                        )}
+                                        {custom.status && (
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    color:
+                                                        custom.status === "Completado"
+                                                            ? "lightgreen"
+                                                            : custom.status === "En proceso"
+                                                                ? "#FFD700"
+                                                                : COLORS.gray200,
+                                                }}
+                                            >
+                                                ⚙️ <b>Status:</b> {custom.status}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                </Card>
+                            ))
+                        ) : (
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    textAlign: "center",
+                                    mt: 4,
+                                    color: COLORS.gray200,
+                                    fontStyle: "italic",
+                                }}
+                            >
+                                No se encontraron customizaciones registradas.
+                            </Typography>
+                        )}
+
+                        <Box textAlign="center" mt={4}>
+                            <Button
+                                variant="contained"
+                                onClick={() => setCustomModalOpen(false)}
+                                sx={{
+                                    bgcolor: COLORS.redSoft,
+                                    "&:hover": { bgcolor: COLORS.red },
+                                    borderRadius: 2,
+                                    px: 4,
+                                    py: 1,
+                                    fontWeight: 600,
+                                }}
+                            >
+                                Cerrar
+                            </Button>
+                        </Box>
                     </Box>
                 </Modal>
+
 
                 <Snackbar
                     open={!!error}

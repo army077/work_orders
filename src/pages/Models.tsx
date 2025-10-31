@@ -9,6 +9,7 @@ type Model = {
   family_name?: string | null;
   manufacturer?: string | null;
   bond_value?: number | null;
+  standard_days?: number | null;
 };
 
 export default function Models() {
@@ -43,7 +44,8 @@ export default function Models() {
     family_id: string; // guardamos como string para fácil binding
     manufacturer: string;
     bond_value: number;
-  }>({ name: "", family_id: "", manufacturer: "", bond_value: 0 });
+    standard_days: number;
+  }>({ name: "", family_id: "", manufacturer: "", bond_value: 0, standard_days: 0 });
 
   const onCreate = () => {
     const name = form.name.trim();
@@ -55,12 +57,14 @@ export default function Models() {
           name,
           family_id: form.family_id ? Number(form.family_id) : null,
           manufacturer: form.manufacturer.trim() || null,
-          bond_value: Number(form.bond_value) || null
+          bond_value: Number(form.bond_value) || null,
+          standard_days: Number(form.standard_days) || null,
+
         },
       },
       {
         onSuccess: () => {
-          setForm({ name: "", family_id: familyFilter === "" ? "" : String(familyFilter), manufacturer: "", bond_value: 0 });
+          setForm({ name: "", family_id: familyFilter === "" ? "" : String(familyFilter), manufacturer: "", bond_value: 0, standard_days: 0 });
           refetch();
         },
       }
@@ -70,7 +74,7 @@ export default function Models() {
   // Edición inline
   const [editing, setEditing] = React.useState<Record<
     number,
-    { name: string; family_id: string; manufacturer: string; bond_value: number;}
+    { name: string; family_id: string; manufacturer: string; bond_value: number; standard_days: number }
   >>({});
 
   const startEdit = (m: Model) => {
@@ -80,7 +84,8 @@ export default function Models() {
         name: m.name,
         family_id: m.family_id ? String(m.family_id) : "",
         manufacturer: m.manufacturer ?? "",
-        bond_value: m.bond_value ? Number(m.bond_value) : 0
+        bond_value: m.bond_value ? Number(m.bond_value) : 0,
+        standard_days: m.standard_days ? Number(m.standard_days) : 0,
       },
     }));
   };
@@ -105,7 +110,8 @@ export default function Models() {
           name,
           family_id: draft.family_id ? Number(draft.family_id) : null,
           manufacturer: draft.manufacturer.trim() || null,
-          bond_value: draft.bond_value !== undefined ? Number(draft.bond_value) : null, 
+          bond_value: draft.bond_value !== undefined ? Number(draft.bond_value) : null,
+          standard_days: draft.standard_days !== undefined ? Number(draft.standard_days) : null,
         },
       },
       {
@@ -190,6 +196,13 @@ export default function Models() {
           onChange={(e) => setForm((x) => ({ ...x, bond_value: Number(e.target.value) }))}
           placeholder="Ej. Acme"
         />
+        <label>Días estándar de la máquina (opcional)</label>
+        <input
+          type="number"
+          value={form.standard_days}
+          onChange={(e) => setForm((x) => ({ ...x, standard_days: Number(e.target.value) }))}
+          placeholder="Ej. Acme"
+        />
 
         <div style={{ marginTop: 16 }}>
           <button onClick={onCreate} disabled={creating}>
@@ -269,12 +282,23 @@ export default function Models() {
                         placeholder="Fabricante (opcional)"
                       />
                       <input
-                        style={{maxWidth: 100}}
+                        style={{ maxWidth: 100 }}
                         value={edit.bond_value}
                         onChange={(e) =>
                           setEditing((prev) => ({
                             ...prev,
                             [m.id]: { ...prev[m.id], bond_value: Number(e.target.value) },
+                          }))
+                        }
+                        placeholder="Valor en bono"
+                      />
+                      <input
+                        style={{ maxWidth: 100 }}
+                        value={edit.standard_days}
+                        onChange={(e) =>
+                          setEditing((prev) => ({
+                            ...prev,
+                            [m.id]: { ...prev[m.id], standard_days: Number(e.target.value) },
                           }))
                         }
                         placeholder="Valor en bono"

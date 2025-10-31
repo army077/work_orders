@@ -858,7 +858,7 @@ export default function PlantelProduccion() {
                                                                                 primary={task.task_title || task.title || "Actividad"}
                                                                                 secondary={
                                                                                     task.status === "DONE"
-                                                                                        ? `Finalizado el: ${fdt(task.finished_at)}`
+                                                                                        ? `Finalizado el: ${task.finished_at.replace("T", " ").slice(0, 16).replaceAll("-", "/")}`
                                                                                         : "En proceso"
                                                                                 }
                                                                             />

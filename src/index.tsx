@@ -14,6 +14,7 @@ import Families from "./pages/Families";
 import Models from "./pages/Models";
 import WorkOrdersList from "./pages/WorkOrdersList";
 import PlantelProduccion from "./pages/Plantel Producción";
+import { PlantelInspeccion } from "./pages/Plantel Inspeccion";
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
               <Link to="/work-orders">Todas las ordenes</Link>
               <Link to="/run-work-order/1">Panel de control de orden</Link>
               <Link to="/plantel-produccion">Panel de Producción</Link>
+              <Link to="/plantel-inspeccion">Panel de Inspección</Link>
             </nav>
           </aside>
 
@@ -61,6 +63,8 @@ function App() {
               <Link to="/tasks-builder">Tasks</Link>
               <Link to="/create-work-order">Create WO</Link>
               <Link to="/work-orders">Work Orders</Link>
+              <Link to="/plantel-produccion">Producción</Link>
+              <Link to="/plantel-inspeccion">Inspección</Link>
             </nav>
           </header>
 
@@ -76,6 +80,7 @@ function App() {
               <Route path="/work-orders" element={<WorkOrdersList />} />
               <Route path="/run-work-order/:id" element={<WorkOrderRun />} />
               <Route path="/plantel-produccion" element={<PlantelProduccion />} />
+              <Route path="/plantel-inspeccion" element={<PlantelInspeccion />} />
             </Routes>
           </main>
         </div>

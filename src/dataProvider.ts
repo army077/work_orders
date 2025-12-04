@@ -41,12 +41,26 @@ export const dataProvider: DataProvider = {
             return { data, total: data.length ?? 0 };
         }
 
+        if (resource === "inspection") {
+            const res = await fetch(`${API_URL}/quality/inspection/orders_all?include=tasks`);
+            const data = await res.json();
+            return { data, total: data.length ?? 0 };
+        }
+
         if (resource === "tasks") {
             const sectionId = qp?.section_id ?? getFilterValue(filters, "section_id");
             const res = await fetch(`${API_URL}/tasks?section_id=${sectionId}`);
             const data = await res.json();
             return { data, total: data.length ?? 0 };
         }
+        if (resource === "quality/template_task_inspection") {
+            const sectionId = qp?.section_id ?? getFilterValue(filters, "section_id");
+            const res = await fetch(`${API_URL}/quality/template_task_inspection?section_id=${sectionId}`);
+            const data = await res.json();
+            return { data, total: data.length ?? 0 };
+        }
+
+
 
         const res = await fetch(`${API_URL}/${resource}`);
         const data = await res.json();

@@ -29,6 +29,7 @@ export default function Templates() {
     const [editingId, setEditingId] = React.useState<number | null>(null);
   const [editedName, setEditedName] = React.useState<string>("");
   const dataProvider = useDataProvider();
+  const { mutate: createSection } = useCreate();
 
   // Templates
   const { data, refetch, isLoading } = useList<Template>({
@@ -127,6 +128,55 @@ export default function Templates() {
   const [infoTemplate, setInfoTemplate] = React.useState<Template | null>(null);
 
   // ...
+const onCreateInspeccion = () => {
+  const name = form.name.trim();
+  if (!name) return alert("Falta el nombre");
+  if (!form.template_type) return alert("Selecciona un tipo de plantilla");
+  if (form.model_id && isNaN(Number(form.model_id))) return alert("Modelo inválido");
+
+  createMutate(
+    {
+      resource: "templates",
+      values: {
+        name,
+        template_type: form.template_type,
+        model_id: form.model_id ? Number(form.model_id) : null,
+      },
+    },
+    {
+      onSuccess: async ({ data: created }) => {
+        if (form.template_type !== "INSPECCION") {
+          alert(`Plantilla "${created.name}" creada`);
+          setForm({ name: "", template_type: "MANTENIMIENTO", model_id: "" });
+          refetch();
+          return;
+        }
+
+        const sections = [
+          { template_id: created.id, title: "Inspección de ensamble", position: 1 },
+          { template_id: created.id, title: "Inspección de pintura", position: 2 },
+        ];
+
+        for (const section of sections) {
+          await createSection(
+            {
+              resource: "sections",
+              values: section,
+            }
+          );
+        }
+
+        alert(`Plantilla "${created.name}" creada con secciones de inspección`);
+        setForm({ name: "", template_type: "MANTENIMIENTO", model_id: "" });
+        refetch();
+      },
+      onError: (err) => {
+        alert(`Error creando plantilla: ${String(err?.message || err)}`);
+      },
+    }
+  );
+};
+
 
 
 
@@ -187,6 +237,8 @@ export default function Templates() {
   };
 
 
+
+
   const onPublish = (id: number) => {
     publishMutate(
       {
@@ -242,6 +294,7 @@ export default function Templates() {
             <option value="DIAGNOSTICO">DIAGNOSTICO</option>
             <option value="REPARACION">REPARACION</option>
             <option value="ENSAMBLE">ENSAMBLE</option>
+            <option value="INSPECCION">INSPECCIÓN</option>
           </select>
         </div>
         <div>
@@ -261,7 +314,7 @@ export default function Templates() {
           {loadingModels && <div className="muted" style={{ marginTop: 6 }}>Cargando modelos…</div>}
         </div>
         <div style={{ marginTop: 16 }}>
-          <button onClick={onCreateEnsamble} disabled={creating || loadingModels}>
+          <button onClick={form.template_type === 'INSPECCION' ? onCreateInspeccion : onCreateEnsamble} disabled={creating || loadingModels}>
             {creating ? "Creando…" : "Crear plantilla"}
           </button>
           <button onClick={() => {

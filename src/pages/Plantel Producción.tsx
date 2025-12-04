@@ -118,7 +118,6 @@ export default function PlantelProduccion() {
         initial_status: "",
     });
     const [customSee, setCustomSee] = useState(false);
-    const [bondsSee, setBondSee] = useState(false);
     const [filterMenuOpen, setFilterMenuOpen] = useState(false);
     const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
     const [customs, setCustoms] = useState<any[]>([]);
@@ -171,9 +170,9 @@ export default function PlantelProduccion() {
     });
     const items = React.useMemo(() => {
         const arr = (data?.data ?? []).slice().sort((a, b) => {
-            const ad = a.scheduled_at || "";
-            const bd = b.scheduled_at || "";
-            return ad.localeCompare(bd); // orden por fecha programada
+            const ad = a.created_at || "";
+            const bd = b.created_at || "";
+            return ad.localeCompare(bd); 
         });
 
         const needle = q.trim().toLowerCase();
@@ -429,7 +428,7 @@ export default function PlantelProduccion() {
                     <Dialog
                         open={open}
                         onClose={handleCloseDialog}
-                        maxWidth="md"
+                        maxWidth="lg"
                         fullWidth
                         PaperProps={{
                             sx: {

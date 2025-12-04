@@ -279,7 +279,7 @@ export default function BondsDashboard() {
                                                 {Number(t.puntos_secundario).toFixed(2)}
                                             </TableCell>
                                             <TableCell align="center">
-                                                {Number(t.puntos_extra).toFixed(2)}
+                                                {t.puntos_extra}
                                             </TableCell>
                                             <TableCell align="center">
                                                 {Number(t.puntos_eficiencia).toFixed(2)}

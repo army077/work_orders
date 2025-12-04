@@ -9,13 +9,15 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Dialog } from "@mui/material"
+import { Dialog, Box, Typography, Button } from "@mui/material"
 import axios from 'axios'
+import * as XLSX from 'xlsx';
 
-type Template = { id: number; name: string; };
+type Template = { id: number; name: string; template_type: string; };
 type Section = { id: number; template_id: number; title: string; position: number; };
-type Task = { id: number; section_id: number; title: string; code: string; expected_minutes: number; position: number; category?: string; };
-
+type Task = { id: number; section_id: number; title: string; code: string; expected_minutes: number; position: number; category?: string; revision_point: string; specs: string; suggestions: number; };
+// type InspectionTask = { id: number; section_id: number; revision_point: string; specs: string; suggestions: number; position: number; category?: string; };
+1
 const SortableTask: React.FC<{
   id: number;
   task: Task;
@@ -39,7 +41,7 @@ const SortableTask: React.FC<{
     <div ref={setNodeRef} style={style} className="item" >
       <div className="handle" {...attributes} {...listeners}>⠿</div>
 
-      <div style={{ display: "flex",  alignItems: "center", gap: 8, flex: 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
         <input
           value={t.title}
           onChange={(e) => onChange({ title: e.target.value })}
@@ -56,11 +58,11 @@ const SortableTask: React.FC<{
           onChange={(e) => onChange({ expected_minutes: Number(e.target.value) })}
           placeholder="Minutes"
         />
-        <select 
+        <select
           value={t.category}
           onChange={(e) => onChange({ category: e.target.value })}
           style={{ maxWidth: 150 }}
-          >
+        >
           <option value="Mantenimiento">Mantenimiento</option>
           <option value="Reparación">Reparación</option>
           <option value="Inspección">Inspección</option>
@@ -86,6 +88,72 @@ const SortableTask: React.FC<{
   );
 };
 
+const SortableTaskCalidad: React.FC<{
+  id: number;
+  task: any;
+  draft: Partial<any> & { __saved?: boolean };
+  onChange: (patch: Partial<any>) => void;
+  onSave: () => void;
+  onDelete: () => void;
+  savingOne: boolean;
+}> = ({ id, task, draft, onChange, onSave, onDelete, savingOne }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  const t = {
+    revision_point: draft?.revision_point ?? task.revision_point ?? "",
+    specs: draft?.specs ?? task.specs ?? "",
+    suggestions: draft?.suggestions ?? task.suggestions ?? "",
+    category: draft?.category ?? task.category ?? "Mecanica",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="item">
+      <div className="handle" {...attributes} {...listeners}>⠿</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+        <input
+          value={t.revision_point}
+          onChange={(e) => onChange({ revision_point: e.target.value })}
+          placeholder="Punto de revisión"
+        />
+        <input
+          value={t.specs}
+          onChange={(e) => onChange({ specs: e.target.value })}
+          placeholder="Especificaciones"
+        />
+        <input
+          value={t.suggestions}
+          onChange={(e) => onChange({ suggestions: e.target.value })}
+          placeholder="Sugerencias"
+        />
+        <select
+          value={t.category}
+          onChange={(e) => onChange({ category: e.target.value })}
+        >
+          <option value="Mecanica">Mecánica</option>
+          <option value="Electrica">Eléctrica</option>
+          <option value="Electronica">Electrónica</option>
+          <option value="Neumatica/Hidraulica">Neumática/Hidráulica</option>
+          <option value="Seguridad">Seguridad</option>
+          <option value="Interfaz/Software">Interfaz/Software</option>
+          <option value="Funcionalidad">Funcionalidad</option>
+          <option value="Limpieza">Limpieza</option>
+          <option value="Estetica">Estética</option>
+        </select>
+      </div>
+      <div className="right" style={{ gap: 8, alignItems: "center" }}>
+        <button onClick={onSave} disabled={savingOne} style={{ backgroundColor: 'rgba(76, 175, 80, 1)', color: 'white' }}>
+          {savingOne ? "Guardando…" : draft?.__saved ? "✔️ Guardado" : "Guardar"}
+        </button>
+        <button onClick={onDelete} style={{ backgroundColor: '#8B0000' }}>Eliminar</button>
+        <span className="badge">#{task.position}</span>
+      </div>
+    </div>
+  );
+};
+
+
+
 export default function TemplateTasksBuilder() {
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [templateId2, setTemplateId2] = useState<number | null>(null);
@@ -98,6 +166,8 @@ export default function TemplateTasksBuilder() {
   const [clonedTasks, setClonedTasks] = useState<any[]>([]);
   const [isCloning, setIsCloning] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState<string>("");
+  const [openFileDialog, setOpenFileDialog] = useState(false);
+  const [puntos, setPuntos] = useState<Array<{ puntos_revision: string[]; especificaciones: string[]; sugerencias: string[]; categoria: string[] }>>([]);
 
 
   const resetCloneState = () => {
@@ -114,14 +184,16 @@ export default function TemplateTasksBuilder() {
   );
 
   const { data: templates } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 } });
+  const selectedTemplate = templates?.data.find(t => t.id === templateId);
+  const isInspectionTemplate = selectedTemplate?.template_type === "INSPECCION";
   const { data: sectionsRes } = useList<Section>({
     resource: "sections",
     filters: [{ field: "template_id", operator: "eq", value: templateId ?? -1 }],
     queryOptions: { enabled: !!templateId },
     pagination: { pageSize: 500 },
   });
-  const { data: tasksRes, refetch } = useList<Task>({
-    resource: "tasks",
+  const { data: tasksRes, refetch } = useList<any>({
+    resource: isInspectionTemplate ? "quality/template_task_inspection" : "tasks",
     filters: [{ field: "section_id", operator: "eq", value: sectionId ?? -1 }],
     queryOptions: { enabled: !!sectionId },
     pagination: { pageSize: 1000 },
@@ -142,6 +214,10 @@ export default function TemplateTasksBuilder() {
   useEffect(() => { setSectionId(null); }, [templateId]);
 
   useEffect(() => {
+    console.log("isInspectionTemplate:", isInspectionTemplate);
+  }, [isInspectionTemplate]);
+
+  useEffect(() => {
     const map: Record<number, Partial<Task>> = {};
     (tasks ?? []).forEach(t => map[t.id] = {
       title: t.title, code: t.code ?? "", expected_minutes: t.expected_minutes ?? 0
@@ -154,18 +230,46 @@ export default function TemplateTasksBuilder() {
   const onAddTask = () => {
     if (!sectionId) return;
     const nextPos = (tasks?.length ?? 0) + 1;
-    createTask(
-      {
-        resource: "tasks",
-        values: { section_id: sectionId, title: "New Task", code: "", expected_minutes: 0, position: nextPos },
-      },
-      { onSuccess: () => refetch() }
-    );
+
+    if (isInspectionTemplate) {
+      // 🧩 Inserta en tabla de inspección
+      createTask(
+        {
+          resource: "quality/template_task_inspection",
+          values: {
+            section_id: sectionId,
+            revision_point: "Nuevo punto de revisión",
+            specs: "Nueva especificación",
+            suggestions: "Nueva sugerencia",
+            position: nextPos,
+          },
+        },
+        { onSuccess: () => refetch() }
+      );
+    } else {
+      // 🧩 Inserta en tabla normal
+      createTask(
+        {
+          resource: "tasks",
+          values: {
+            section_id: sectionId,
+            title: "New Task",
+            code: "",
+            expected_minutes: 0,
+            position: nextPos,
+          },
+        },
+        { onSuccess: () => refetch() }
+      );
+    }
   };
 
+
   const onDelete = (id: number) => {
-    if (!confirm("¿Eliminar modelo? Esta acción no se puede deshacer.")) return;
-    deleteMutate({ resource: "tasks", id }, { onSuccess: () => refetch() });
+    deleteMutate(
+      { resource: isInspectionTemplate ? "quality" : "tasks", id },
+      { onSuccess: () => refetch() }
+    );
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -177,9 +281,11 @@ export default function TemplateTasksBuilder() {
     const newIndex = ids.indexOf(Number(over.id));
     const moved = arrayMove(tasks, oldIndex, newIndex);
 
+
     patchReorder(
+
       {
-        url: "/tasks/reorder",
+        url: !isInspectionTemplate ? "/tasks/reorder" : "/quality/reorder",
         method: "patch",
         values: {
           section_id: sectionId,
@@ -194,22 +300,26 @@ export default function TemplateTasksBuilder() {
   const setTaskDraft = (id: number, patch: Partial<Task>) =>
     setDraft(d => ({ ...d, [id]: { ...(d[id] ?? {}), ...patch } }));
 
-  const saveOne = (t: Task) => {
+  const saveOne = (t: any) => {
     const d = draft[t.id] ?? {};
-    updateTask(
-      {
-        resource: "tasks",
-        id: t.id,
-        values: {
-          title: d.title ?? t.title,
-          code: d.code ?? t.code,
-          expected_minutes: (d.expected_minutes ?? t.expected_minutes) as number,
-          category: (d.category ?? (t as any).category) as string,
-        },
-      },
-      { onSuccess: () => refetch() }
-    );
+    const resource = isInspectionTemplate ? "quality" : "tasks";
+    const values = isInspectionTemplate
+      ? {
+        revision_point: d.revision_point ?? t.revision_point,
+        specs: d.specs ?? t.specs,
+        suggestions: d.suggestions ?? t.suggestions,
+        category: d.category ?? t.category ?? "Mecanica",
+      }
+      : {
+        title: d.title ?? t.title,
+        code: d.code ?? t.code,
+        expected_minutes: Number(d.expected_minutes ?? t.expected_minutes),
+        category: d.category ?? (t as any).category ?? "Mantenimiento",
+      };
+
+    updateTask({ resource, id: t.id, values }, { onSuccess: () => refetch() });
   };
+
 
   // 🔸 ACTUALIZA tu clonación para limpiar antes y marcar loading
   const clonacionDePlantilla = async () => {
@@ -323,12 +433,90 @@ export default function TemplateTasksBuilder() {
     }
   };
 
-
-
-
   const handleBack = () => {
     resetCloneState();
   };
+
+  const handleFileDialogOpen = () => setOpenFileDialog(true);
+  const handleFileDialogClose = () => setOpenFileDialog(false);
+
+const handleFileUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!sectionId) {
+        alert("Selecciona primero una sección donde insertar los puntos.");
+        return;
+    }
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        // Validar encabezados
+        const headers = rows[0].map((h: any) => (h + "").trim().toLowerCase());
+
+        const required = [
+            "punto de revisión",
+            "nueva especificación",
+            "sugerencia",
+            "categoría"
+        ];
+
+        const missing = required.filter(
+            r => !headers.includes(r.toLowerCase())
+        );
+
+        if (missing.length > 0) {
+            alert("El archivo XLSX no contiene las columnas necesarias: " + missing.join(", "));
+            return;
+        }
+
+        const idxRevision = headers.indexOf("punto de revisión".toLowerCase());
+        const idxSpecs = headers.indexOf("nueva especificación".toLowerCase());
+        const idxSug = headers.indexOf("sugerencia".toLowerCase());
+        const idxCat = headers.indexOf("categoría".toLowerCase());
+
+        const puntos = rows.slice(1).filter(r => r[idxRevision]);
+
+        if (puntos.length === 0) {
+            alert("No se encontraron puntos de revisión válidos.");
+            return;
+        }
+
+        // Insertar cada punto en la BD
+        for (let i = 0; i < puntos.length; i++) {
+            const row = puntos[i];
+
+            const body = {
+                section_id: sectionId,
+                revision_point: row[idxRevision] ?? "",
+                specs: row[idxSpecs] ?? "",
+                suggestions: row[idxSug] ?? "",
+                category: row[idxCat] ?? "General",
+                position: i + 1,
+            };
+
+            await fetch("https://desarrollotecnologicoar.com/api10/quality/template_task_inspection", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+        }
+
+        alert("Puntos de revisión cargados correctamente.");
+        refetch(); // para recargar la lista en pantalla
+        setOpenFileDialog(false);
+
+    } catch (err) {
+        console.error(err);
+        alert("Hubo un error procesando el archivo XLSX.");
+    }
+};
+
+
 
 
 
@@ -364,6 +552,23 @@ export default function TemplateTasksBuilder() {
               <button className='btn--clone' onClick={handleDialogOpen}>+ Clonar plantilla</button>
               {savingOrder ? <span className="badge">Clonando orden…</span> : null}
             </div>
+
+            {isInspectionTemplate && sectionId ? (
+              <Button
+              onClick={handleFileDialogOpen}
+              className="btn--clone"
+              startIcon={
+                <img
+                src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/microsoft-excel.svg"
+                alt="Excel"
+                style={{ width: 22, height: 22 }}
+                />
+              }
+              sx={{ minWidth: 0, padding: '6px 12px' }}
+              >
+              Cargar xlsx
+              </Button>
+            ) : null}
           </div>
 
         </div>
@@ -378,16 +583,33 @@ export default function TemplateTasksBuilder() {
           <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
             <div className="list">
               {tasks.map(t => (
-                <SortableTask
-                  key={t.id}
-                  id={t.id}
-                  task={t}
-                  draft={draft[t.id]}
-                  onChange={(patch) => setTaskDraft(t.id, patch)}
-                  onSave={() => saveOne(t)}
-                  onDelete={() => onDelete(t.id)}
-                  savingOne={savingOne}
-                />
+
+                <>
+                  {isInspectionTemplate ? (
+                    <SortableTaskCalidad
+                      key={t.id}
+                      id={t.id}
+                      task={t}
+                      draft={draft[t.id] ?? {}}
+                      onChange={(patch) => setTaskDraft(t.id, patch)}
+                      onSave={() => saveOne(t)}
+                      onDelete={() => onDelete(t.id)}
+                      savingOne={savingOne || deleting}
+                    />
+                  ) : (
+                    <SortableTask
+                      key={t.id}
+                      id={t.id}
+                      task={t}
+                      draft={draft[t.id]}
+                      onChange={(patch) => setTaskDraft(t.id, patch)}
+                      onSave={() => saveOne(t)}
+                      onDelete={() => onDelete(t.id)}
+                      savingOne={savingOne}
+                    />
+                  )}
+                </>
+
               ))}
             </div>
           </SortableContext>
@@ -510,6 +732,20 @@ export default function TemplateTasksBuilder() {
             </div>
           </div>
         )}
+      </Dialog>
+
+      <Dialog open={openFileDialog} onClose={handleFileDialogClose}>
+        <Box sx={{ padding: 2 }}>
+          <Typography variant="h6" gutterBottom>Cargar archivo <u style={{ color: 'green' }}>XLSX</u></Typography>
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            onChange={handleFileUpload}
+            style={{ margin: "16px 0" }}
+          />
+
+          <Button onClick={handleFileDialogClose} color="error" variant='outlined' sx={{ ml: 2 }}>Cerrar</Button>
+        </Box>
       </Dialog>
     </div>
 

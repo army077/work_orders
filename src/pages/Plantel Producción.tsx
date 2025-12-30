@@ -79,6 +79,12 @@ type WorkOrderWithTasks = WorkOrder & {
     tasks?: any[]; // o tu tipo correcto de tarea si lo tienes
 };
 
+const STATUS_LABELS: Record<string, string> = {
+    OPEN: "Abierta",
+    IN_PROGRESS: "En proceso",
+    CLOSED: "Cerrada",
+    FINISHED: "Finalizada",
+};
 
 const fdt = (iso?: string | null) =>
     iso ? new Date(iso).toLocaleString() : "—";
@@ -98,7 +104,7 @@ const statusClass = (st?: string) => {
 export default function PlantelProduccion() {
 
     const [q, setQ] = React.useState("");
-    const [st, setSt] = React.useState<"" | "OPEN" | "IN_PROGRESS" | "CLOSED" | "FINISHED">("OPEN");
+
     const [woID, setWoID] = useState<WorkOrderWithTasks | null>(null);
     const [open, setOpen] = useState(false);
     const [template, setTemplate] = useState<Template | null>(null);
@@ -122,7 +128,9 @@ export default function PlantelProduccion() {
     const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
     const [customs, setCustoms] = useState<any[]>([]);
     const [view, setView] = useState<"plantel" | "historial" | "bonos">("plantel");
-
+    const [filterStatus, setFilterStatus] =
+        React.useState<"" | "OPEN" | "IN_PROGRESS" | "CLOSED" | "FINISHED">("OPEN");
+    const filterOpen = Boolean(filterAnchorEl);
 
 
     const handleOpenDialog = (id: number) => {
@@ -170,35 +178,42 @@ export default function PlantelProduccion() {
     });
     const items = React.useMemo(() => {
         const arr = (data?.data ?? []).slice().sort((a, b) => {
-            const ad = a.created_at || "";
-            const bd = b.created_at || "";
-            return ad.localeCompare(bd); 
+            return (a.created_at || "").localeCompare(b.created_at || "");
         });
 
         const needle = q.trim().toLowerCase();
+
         return arr.filter((w) => {
-            const passStatus = st ? w.status === st : true;
-            // Obtener el template asociado
-            const template = w.template_id ? (templatesData?.data ?? []).find(t => t.id === w.template_id) : null;
-            // Filtrar solo si el template_type es 'ENSAMBLE'
-            const passTemplateType = template?.template_type === 'ENSAMBLE';
+            const passStatus = filterStatus ? w.status === filterStatus : true;
+
+            const template = w.template_id
+                ? (templatesData?.data ?? []).find(t => t.id === w.template_id)
+                : null;
+
+            const tecnico = w.assigned_tech_email
+                ? techs.find(t => t.correo_tecnico === w.assigned_tech_email)
+                : null;
+
+            const passTemplateType =
+                template?.template_type === 'ENSAMBLE' &&
+                tecnico?.puesto === 'Operador de producción';
+
             if (!passTemplateType) return false;
+
             if (!needle) return passStatus;
+
             const hay = [
                 w.customer_name,
                 w.machine_serial,
                 w.site_address,
                 w.assigned_tech_email,
                 String(w.id),
-            ]
-                .filter(Boolean)
-                .join(" ")
-                .toLowerCase();
+            ].filter(Boolean).join(" ").toLowerCase();
 
             return passStatus && hay.includes(needle);
-
         });
-    }, [data?.data, q, st, templatesData?.data]);
+    }, [data?.data, q, filterStatus, templatesData?.data, techs]);
+
 
     const templateMap = React.useMemo(() => {
         const map = new Map<number, Template>();
@@ -303,6 +318,52 @@ export default function PlantelProduccion() {
                         <MdFilterList />
                     </IconButton>
 
+                    <Menu
+                        anchorEl={filterAnchorEl}
+                        open={filterOpen}
+                        onClose={() => setFilterAnchorEl(null)}
+                        anchorOrigin={{
+                            vertical: "bottom",
+                            horizontal: "right",
+                        }}
+                        transformOrigin={{
+                            vertical: "top",
+                            horizontal: "right",
+                        }}
+                        PaperProps={{
+                            sx: {
+                                borderRadius: 2,
+                                minWidth: 200,
+                                boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+                            },
+                        }}
+                    >
+
+                        {["OPEN", "PENDING", "CLOSED", "FINISHED"].map((status) => (
+                            <MenuItem
+                                key={status}
+                                selected={filterStatus === status}
+                                onClick={() => {
+                                    setFilterStatus(status as any);
+                                    setFilterAnchorEl(null);
+                                }}
+                            >
+                                {STATUS_LABELS[status]}
+                            </MenuItem>
+                        ))}
+
+                        <MenuItem
+                            selected={filterStatus === ""}
+                            onClick={() => {
+                                setFilterStatus("");
+                                setFilterAnchorEl(null);
+                            }}
+                        >
+                            Todas
+                        </MenuItem>
+                    </Menu>
+
+
                     {/* DASHBOARD → PLANTEL */}
                     <IconButton
                         sx={{
@@ -345,7 +406,7 @@ export default function PlantelProduccion() {
                     placeholder="Buscar orden..."
                     value={q}
                     onChange={e => setQ(e.target.value)}
-                    sx={{ minWidth: 220 }}
+                    sx={{ minWidth: 220, bgcolor: COLORS.gray200, borderRadius: 1 }}
                 />
             </Box>
 
@@ -387,7 +448,7 @@ export default function PlantelProduccion() {
                                         </Typography>
                                         <Typography variant="body2"><strong>Técnico Asignado:</strong> {tecnico?.nombre_tecnico || "—"}</Typography>
                                         <Typography variant="body2"><strong>Modelo:</strong> {model?.name || "—"}</Typography>
-                                        <Typography variant="body2"><strong>Estado de la orden:</strong> <span className={statusClass(wo.status)}>{wo.status || "—"}</span></Typography>
+                                        <Typography variant="body2"><strong>Estado de la orden:</strong> <span className={statusClass(wo.status)}>{STATUS_LABELS[wo.status] || "—"}</span></Typography>
                                         <Typography variant="body2"><strong>Fecha de programación:</strong> {fdt(wo.scheduled_at)}</Typography>
                                         <Typography variant="body2"><strong>Creada el:</strong> {fdt(wo.created_at)}</Typography>
                                         <Box sx={{ position: "relative", width: "100%", mt: 1 }}>

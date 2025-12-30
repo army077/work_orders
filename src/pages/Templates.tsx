@@ -6,6 +6,9 @@ import type { Template } from "./components/TemplateDetailsDrawer";
 import { BsSearch } from 'react-icons/bs';
 import { FaRegEdit } from 'react-icons/fa';
 import { FaSave } from 'react-icons/fa';
+import { MdDeleteForever } from "react-icons/md";
+import axios from "axios";
+
 
 type MachineModel = {
   id: number;
@@ -26,7 +29,7 @@ export default function Templates() {
   const [search, setSearch] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [editMode, setEditMode] = React.useState(false);
-    const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const [editedName, setEditedName] = React.useState<string>("");
   const dataProvider = useDataProvider();
   const { mutate: createSection } = useCreate();
@@ -43,15 +46,15 @@ export default function Templates() {
     pagination: { pageSize: 500 },
   });
 
-  
+
   const { mutate: updateTemplate, isLoading: updating } = useCustomMutation();
 
-    const handleStartEdit = (template: Template) => {
+  const handleStartEdit = (template: Template) => {
     setEditingId(template.id);
     setEditedName(template.name);
   };
 
-    const handleSaveEdit = async (template: Template) => {
+  const handleSaveEdit = async (template: Template) => {
     const newName = editedName.trim();
     if (!newName) return alert("El nombre no puede estar vacío.");
 
@@ -73,7 +76,7 @@ export default function Templates() {
 
       setEditingId(null);
       setEditedName("");
-      
+
       alert("✅ Nombre actualizado");
       await refetch();
 
@@ -128,57 +131,69 @@ export default function Templates() {
   const [infoTemplate, setInfoTemplate] = React.useState<Template | null>(null);
 
   // ...
-const onCreateInspeccion = () => {
-  const name = form.name.trim();
-  if (!name) return alert("Falta el nombre");
-  if (!form.template_type) return alert("Selecciona un tipo de plantilla");
-  if (form.model_id && isNaN(Number(form.model_id))) return alert("Modelo inválido");
+  const onCreateInspeccion = () => {
+    const name = form.name.trim();
+    if (!name) return alert("Falta el nombre");
+    if (!form.template_type) return alert("Selecciona un tipo de plantilla");
+    if (form.model_id && isNaN(Number(form.model_id))) return alert("Modelo inválido");
 
-  createMutate(
-    {
-      resource: "templates",
-      values: {
-        name,
-        template_type: form.template_type,
-        model_id: form.model_id ? Number(form.model_id) : null,
+    createMutate(
+      {
+        resource: "templates",
+        values: {
+          name,
+          template_type: form.template_type,
+          model_id: form.model_id ? Number(form.model_id) : null,
+        },
       },
-    },
-    {
-      onSuccess: async ({ data: created }) => {
-        if (form.template_type !== "INSPECCION") {
-          alert(`Plantilla "${created.name}" creada`);
+      {
+        onSuccess: async ({ data: created }) => {
+          if (form.template_type !== "INSPECCION") {
+            alert(`Plantilla "${created.name}" creada`);
+            setForm({ name: "", template_type: "MANTENIMIENTO", model_id: "" });
+            refetch();
+            return;
+          }
+
+          const sections = [
+            { template_id: created.id, title: "Inspección de ensamble", position: 1 },
+            { template_id: created.id, title: "Inspección de pintura", position: 2 },
+          ];
+
+          for (const section of sections) {
+            await createSection(
+              {
+                resource: "sections",
+                values: section,
+              }
+            );
+          }
+
+          alert(`Plantilla "${created.name}" creada con secciones de inspección`);
           setForm({ name: "", template_type: "MANTENIMIENTO", model_id: "" });
           refetch();
-          return;
-        }
+        },
+        onError: (err) => {
+          alert(`Error creando plantilla: ${String(err?.message || err)}`);
+        },
+      }
+    );
+  };
 
-        const sections = [
-          { template_id: created.id, title: "Inspección de ensamble", position: 1 },
-          { template_id: created.id, title: "Inspección de pintura", position: 2 },
-        ];
-
-        for (const section of sections) {
-          await createSection(
-            {
-              resource: "sections",
-              values: section,
-            }
-          );
-        }
-
-        alert(`Plantilla "${created.name}" creada con secciones de inspección`);
-        setForm({ name: "", template_type: "MANTENIMIENTO", model_id: "" });
-        refetch();
-      },
-      onError: (err) => {
-        alert(`Error creando plantilla: ${String(err?.message || err)}`);
-      },
+  const handleEliminarPlantilla = async (templateId: number) => {
+    const confirm = window.confirm("¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer.");
+    if (!confirm) return;
+    try {
+      await axios.delete(`https://desarrollotecnologicoar.com/api10/templates/${templateId}`, {
+        headers: { "Content-Type": "application/json" },
+      });
+      alert("Plantilla eliminada");
+      refetch();
+    } catch (error: any) {
+      console.error("Error eliminando plantilla:", error);
+      alert(`Error al eliminar la plantilla: ${error.message || "Desconocido"}`);
     }
-  );
-};
-
-
-
+  };
 
   const onCreateEnsamble = () => {
     const name = form.name.trim();
@@ -358,7 +373,7 @@ const onCreateInspeccion = () => {
               <div
                 className="list-tile__content"
                 style={{ cursor: editingId === t.id ? "text" : "" }}
-  
+
               >
                 {editingId === t.id ? (
                   <input
@@ -366,7 +381,6 @@ const onCreateInspeccion = () => {
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, t)}
-                    onBlur={() => {handleSaveEdit(t)}} // Guarda al perder el foco
                     autoFocus
                     style={{
                       fontSize: "1rem",
@@ -389,14 +403,28 @@ const onCreateInspeccion = () => {
               {/* Botones */}
               <div className="list-tile__trailing" style={{ gap: 6 }}>
                 {editingId === t.id ? (
-                  <button
-                    className="btn btn--primary"
-                    onClick={() => handleSaveEdit(t)}
-                    disabled={updating}
-                    title="Guardar cambios"
-                  >
-                    <FaSave />
-                  </button>
+                  <>
+                    <button
+                      className="btn btn--secondary"
+                      onClick={() => {
+                        handleEliminarPlantilla(t.id);
+                      }}
+                      disabled={updating}
+                      title="Eliminar Plantilla"
+                      style={{ backgroundColor: "#ff4d4f", color: "white", marginRight: "8px" }}
+                    >
+                      <MdDeleteForever />
+                    </button>
+                    <button
+                      className="btn btn--primary"
+                      onClick={() => handleSaveEdit(t)}
+                      disabled={updating}
+                      title="Guardar cambios"
+                    >
+                      <FaSave />
+                    </button>
+                  </>
+
                 ) : (
                   <button
                     className="btn"

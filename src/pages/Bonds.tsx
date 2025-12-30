@@ -97,6 +97,7 @@ export default function BondsDashboard() {
             "Puntos Máquina": Number(t.suma_puntos_maquina).toFixed(2),
             "Puntos Custom": Number(t.suma_puntos_customs).toFixed(2),
             "Puntos Op. Secundario": Number(t.puntos_secundario).toFixed(2),
+            "Puntos Extra": Number(t.puntos_extra).toFixed(2),
             "Total Bono ($)": ((Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario) + Number(t.puntos_extra) + Number(t.puntos_eficiencia)) * 100).toFixed(2),
             
         }));
@@ -110,6 +111,7 @@ export default function BondsDashboard() {
                 "Puntos Máquina": "",
                 "Puntos Custom": "",
                 "Puntos Op. Secundario": "",
+                "Puntos Extra": "",
                 "Total Bono ($)": data.map((t) => ({
                     bono: (Number(t.suma_puntos_maquina) + Number(t.suma_puntos_customs) + Number(t.puntos_secundario) + Number(t.puntos_extra) + Number(t.puntos_eficiencia)) * 100 * 0.1,
                 })).reduce((acc, curr) => acc + curr.bono, 0).toFixed(2) ,

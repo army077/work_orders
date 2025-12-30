@@ -12,8 +12,15 @@ import {
     ListItem,
     ListItemText,
     ListSubheader,
+    Button,
+    IconButton,
+    Tooltip,
+    Menu,
+    MenuItem
 } from "@mui/material";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { FaEye } from 'react-icons/fa6';
+import { MdFilterList } from "react-icons/md";
 
 type InspectionOrder = {
     id: number;
@@ -28,6 +35,7 @@ type InspectionOrder = {
     work_order_id: number | null;
     estacion: number | null;
     comments: string | null;
+    evidencias?: string[];
 
     // work order data
     machine_serial: string | null;
@@ -46,6 +54,15 @@ type InspectionOrder = {
         section_title: string | null;
     }[];
 };
+
+const STATUS_LABELS: Record<string, string> = {
+    OPEN: "Abierta",
+    IN_PROGRESS: "En proceso",
+    PENDING: "Pendiente",
+    CLOSED: "Cerrada",
+    FINISHED: "Finalizada",
+};
+
 
 const COLORS = {
     red: "#8B0000",
@@ -66,6 +83,14 @@ export const PlantelInspeccion = () => {
     const [openTaskId, setOpenTaskId] = React.useState<number | null>(null);
     const [deviations, setDeviations] = React.useState<any[]>([]);
     const [loadingDev, setLoadingDev] = React.useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [editForm, setEditForm] = useState({
+        comments: "",
+    });
+    const [showEvidencePanel, setShowEvidencePanel] = useState(false);
+    const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
+    const filterOpen = Boolean(filterAnchorEl);
+
 
     const handleOpen = (order: InspectionOrder) => {
         setSelectedOrder(order);
@@ -111,7 +136,7 @@ export const PlantelInspeccion = () => {
         }
 
         // ordenar por fecha
-        return list.sort((a, b) =>
+        return list.sort((b, a) =>
             (a.created_at || "").localeCompare(b.created_at || "")
         );
     }, [inspections, search, filterStatus]);
@@ -123,25 +148,6 @@ export const PlantelInspeccion = () => {
             </Typography>
         );
     }
-
-    const fetchCustoms = async (woid: number) => {
-        try {
-            const res = await fetch(`https://desarrollotecnologicoar.com/api10/customs/workorder/${woid}`, {
-                method: "GET",
-            });
-            const json = await res.json();
-
-            console.log("Customs recibidas:", json);
-
-            // El endpoint devuelve directamente un array, no un objeto con data
-            setCustoms(Array.isArray(json) ? json : []);
-        } catch (error) {
-            console.error("Error fetching customs:", error);
-            setCustoms([]);
-            alert("Error fetching customs. Please try again.");
-        }
-    };
-
 
     const fetchDeviations = async (taskId: number) => {
         try {
@@ -158,6 +164,26 @@ export const PlantelInspeccion = () => {
             setLoadingDev(false);
         }
     };
+
+    const cancelOrderFunction = (inspection_order_id: number) => async () => {
+        const confirm = window.confirm(`¿Estás seguro de que deseas cancelar la orden de inspección #${inspection_order_id}? Esta acción no se puede deshacer.`);
+        if (!confirm) return;
+        try {
+            const res = await fetch(
+                `https://desarrollotecnologicoar.com/api10/quality/${inspection_order_id}/insp_cancel`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                }
+            );
+            if (!res.ok) throw new Error("Error cancelling inspection order");
+            alert(`La orden de inspección #${inspection_order_id} ha sido cancelada correctamente.`);
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            alert("No se pudo cancelar la orden, intenta de nuevo.");
+        }
+    }
 
 
     const renderCard = (o: InspectionOrder) => {
@@ -207,7 +233,7 @@ export const PlantelInspeccion = () => {
                     </Typography>
                     <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 1 }}>
                         <Chip
-                            label={o.status}
+                            label={STATUS_LABELS[o.status] || o.status}
                             sx={{
                                 backgroundColor:
                                     o.status === "OPEN"
@@ -217,6 +243,7 @@ export const PlantelInspeccion = () => {
                                             : o.status === "CLOSED"
                                                 ? COLORS.gray700
                                                 : o.status === "PENDING"
+
                                                     ? COLORS.redSoft
                                                     : COLORS.gray700,
                                 color: COLORS.white,
@@ -264,10 +291,79 @@ export const PlantelInspeccion = () => {
 
     return (
         <Box sx={{ p: 2 }}>
-            <Typography variant="h4" sx={{ mb: 2, color: COLORS.white }}>
-                Plantel de Inspección
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                <Typography variant="h4" sx={{ mb: 2, color: COLORS.white }}>
+                    Plantel de Inspección
+                </Typography>
 
+                <Box sx={{ position: "relative" }}>
+                    <IconButton
+                        sx={{
+                            color: COLORS.white,
+                            transition: 'color 0.3s, transform 0.3s',
+                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
+                        }}
+                        onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+                    >
+                        <MdFilterList />
+                    </IconButton>
+                </Box>
+
+                <Menu
+                    anchorEl={filterAnchorEl}
+                    open={filterOpen}
+                    onClose={() => setFilterAnchorEl(null)}
+                    anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "right",
+                    }}
+                    transformOrigin={{
+                        vertical: "top",
+                        horizontal: "right",
+                    }}
+                    PaperProps={{
+                        sx: {
+                            borderRadius: 2,
+                            minWidth: 200,
+                            boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+                        },
+                    }}
+                >
+                    <MenuItem
+                        selected={filterStatus === ""}
+                        onClick={() => {
+                            setFilterStatus("");
+                            setFilterAnchorEl(null);
+                        }}
+                    >
+                        Todas
+                    </MenuItem>
+
+                    {["OPEN", "PENDING", "CLOSED", "FINISHED"].map((status) => (
+                        <MenuItem
+                            key={status}
+                            selected={filterStatus === status}
+                            onClick={() => {
+                                setFilterStatus(status as any);
+                                setFilterAnchorEl(null);
+                            }}
+                        >
+                            {STATUS_LABELS[status]}
+                        </MenuItem>
+                    ))}
+                </Menu>
+
+                {filterStatus && (
+                    <Chip
+                        size="small"
+                        label={`Estado: ${STATUS_LABELS[filterStatus]}`}
+                        sx={{
+                            bgcolor: COLORS.gray200,
+                            fontWeight: 600,
+                        }}
+                    />
+                )}
+            </Box>
             <Grid container spacing={2}>
                 {filtered.map(renderCard)}
             </Grid>
@@ -335,7 +431,7 @@ export const PlantelInspeccion = () => {
 
                                 <Box sx={{ mt: 2 }}>
 
-                                    {selectedOrder.assigned_tech_email === null || selectedOrder.assigned_tech_email === "" ? (
+                                    {selectedOrder.assigned_tech_email === null || selectedOrder.assigned_tech_email === "" || !editMode ? (
                                         <>
                                             <Typography
                                                 variant="subtitle2"
@@ -444,6 +540,19 @@ export const PlantelInspeccion = () => {
                                         </Card>
                                     </>
                                 )}
+                                <Box sx={{ mt: 4, justifyContent: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+                                    <Button variant='contained'
+                                        onClick={() => setEditMode(!editMode)}
+                                        sx={{ backgroundColor: editMode! ? ("#1e39d1ff") : (COLORS.gray500), color: COLORS.white, alignItems: 'center' }}
+                                    >
+                                        {editMode! ? (`Editar información`) : (`Cancelar edición`)}
+                                    </Button>
+
+                                    <Button variant='contained' sx={{ backgroundColor: COLORS.redSoft, color: COLORS.white, alignItems: 'center', mt: 2 }} onClick={cancelOrderFunction(selectedOrder.inspection_order_id)}>
+                                        {`Cancelar la orden #${selectedOrder.inspection_order_id}`}
+                                    </Button>
+
+                                </Box>
                             </Box>
                         </Box>
 
@@ -457,13 +566,88 @@ export const PlantelInspeccion = () => {
                                     p: 3,
                                     borderBottom: `1px solid ${COLORS.gray200}`,
                                     bgcolor: COLORS.white,
-                                    textAlign: "center"
+                                    textAlign: "center",
+
                                 }}
                             >
                                 <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.black }}>
                                     Actividades por sección
                                 </Typography>
+                                <Tooltip title="Ver evidencias de la orden" arrow>
+                                    <IconButton sx={{ position: "absolute", top: 16, right: 16 }} onClick={() => setShowEvidencePanel(!showEvidencePanel)}>
+                                        <FaEye size={20} color={COLORS.gray500} />
+                                    </IconButton>
+                                </Tooltip>
                             </Box>
+
+                            {/* Panel de evidencias */}
+                            {showEvidencePanel && (
+                                <Box
+                                    sx={{
+                                        position: "absolute",
+                                        top: 0,
+                                        right: 0,
+                                        width: "60%",
+                                        height: "100%",
+                                        bgcolor: COLORS.white,
+                                        boxShadow: "-4px 0 12px rgba(0,0,0,0.15)",
+                                        zIndex: 50,
+                                        p: 3,
+                                        overflowY: "auto",
+                                        animation: "slideIn 0.25s ease",
+                                    }}
+                                >
+                                    {/* HEADER */}
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                            Evidencias de la orden
+                                        </Typography>
+                                        <IconButton onClick={() => setShowEvidencePanel(false)}>
+                                            <FaEye size={20} color={COLORS.gray500} />
+                                        </IconButton>
+                                    </Box>
+
+                                    {/* SIN EVIDENCIAS */}
+                                    {!selectedOrder?.evidencias || selectedOrder.evidencias.length === 0 ? (
+                                        <Typography sx={{ color: COLORS.gray500, textAlign: "center", mt: 4 }}>
+                                            No hay evidencias registradas.
+                                        </Typography>
+                                    ) : (
+                                        <Box
+                                            sx={{
+                                                display: "grid",
+                                                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                                                gap: 2,
+                                            }}
+                                        >
+                                            {selectedOrder.evidencias.map((url: string, i: number) => (
+                                                <Card
+                                                    key={i}
+                                                    sx={{
+                                                        cursor: "pointer",
+                                                        borderRadius: 2,
+                                                        overflow: "hidden",
+                                                        boxShadow: "0 3px 10px rgba(0,0,0,0.12)",
+                                                        transition: "0.2s",
+                                                        "&:hover": { transform: "scale(1.03)" },
+                                                    }}
+                                                    onClick={() => window.open(url, "_blank")}
+                                                >
+                                                    <img
+                                                        src={url}
+                                                        style={{
+                                                            width: "100%",
+                                                            height: 140,
+                                                            objectFit: "cover",
+                                                        }}
+                                                    />
+                                                </Card>
+                                            ))}
+                                        </Box>
+                                    )}
+                                </Box>
+                            )}
+
 
                             {/* Listado scrollable */}
                             <Box sx={{ flex: 1, overflow: "auto" }}>

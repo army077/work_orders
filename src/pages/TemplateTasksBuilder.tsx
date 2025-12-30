@@ -166,6 +166,8 @@ export default function TemplateTasksBuilder() {
   const [clonedTasks, setClonedTasks] = useState<any[]>([]);
   const [isCloning, setIsCloning] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState<string>("");
+  const [modelos, setModelos] = useState<Array<{ id: number; name: string }>>([]);
+  const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
   const [openFileDialog, setOpenFileDialog] = useState(false);
   const [puntos, setPuntos] = useState<Array<{ puntos_revision: string[]; especificaciones: string[]; sugerencias: string[]; categoria: string[] }>>([]);
 
@@ -224,6 +226,21 @@ export default function TemplateTasksBuilder() {
     });
     setDraft(map);
   }, [tasksRes?.data?.length]);
+
+  useEffect(() => {
+    const fetchModelos = async () => {
+      try {
+        const res = await fetch("https://desarrollotecnologicoar.com/api10/machine-models");
+        const data = await res.json();
+        setModelos(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error cargando modelos:", err);
+        setModelos([]);
+      }
+    };
+
+    fetchModelos();
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -340,6 +357,11 @@ export default function TemplateTasksBuilder() {
         `https://desarrollotecnologicoar.com/api10/templates/${templateId2}`
       );
       setClonedTemplate(response.data);
+      setSelectedModelId(response.data.model_id);
+      const isInspectionClone = response.data.template_type === "INSPECCION";
+      console.log(response.data);
+
+
 
       // 2) secciones
       const response1 = await axios.get(
@@ -347,19 +369,26 @@ export default function TemplateTasksBuilder() {
       );
       const sections = response1.data;
       setClonedSections(sections);
+      console.log
 
       // 3) tareas por sección
       const tasksBySection = await Promise.all(
         sections.map(async (s: any) => {
-          const resp = await axios.get(
-            `https://desarrollotecnologicoar.com/api10/tasks?section_id=${s.id}`
-          );
+          const url = isInspectionClone
+            ? `https://desarrollotecnologicoar.com/api10/quality/template_task_inspection?section_id=${s.id}`
+            : `https://desarrollotecnologicoar.com/api10/tasks?section_id=${s.id}`;
+
+          const resp = await axios.get(url);
           return resp.data;
         })
       );
 
       const allTasks = tasksBySection.flat();
       setClonedTasks(allTasks);
+
+      if (allTasks.length === 0) {
+        alert("La plantilla seleccionada no tiene actividades para clonar.");
+      }
     } catch (e) {
       console.error(e);
       alert("Error al clonar");
@@ -386,13 +415,14 @@ export default function TemplateTasksBuilder() {
   // 🔸 REEMPLAZA completamente tu CloneDialog por este
   const handleFinalize = () => {
     if (!clonedTemplate || clonedSections.length === 0) return alert("No hay datos para clonar");
+    const isInspectionClone = clonedTemplate.template_type === "INSPECCION";
     try {
       axios.post(
         `https://desarrollotecnologicoar.com/api10/templates/`,
         {
           name: newTemplateName.trim() || `Copia de ${clonedTemplate.name}`,
           template_type: clonedTemplate.template_type,
-          model_id: clonedTemplate.model_id,
+          model_id: selectedModelId || clonedTemplate.model_id,  
         },
         { headers: { "Content-Type": "application/json" } }
       ).then(res => {
@@ -414,9 +444,15 @@ export default function TemplateTasksBuilder() {
             // clonar tareas de esta sección
             const tasksToClone = clonedTasks.filter(t => t.section_id === s.id);
             return Promise.all(tasksToClone.map(t => {
+              const url = isInspectionClone
+                ? `https://desarrollotecnologicoar.com/api10/quality/template_task_inspection`
+                : `https://desarrollotecnologicoar.com/api10/tasks`;
+              const payload = isInspectionClone
+                ? { section_id: newSectionId, revision_point: t.revision_point, specs: t.specs, suggestions: t.suggestions, category: t.category, position: t.position }
+                : { section_id: newSectionId, title: t.title, code: t.code, expected_minutes: t.expected_minutes, category: t.category, position: t.position };
               return axios.post(
-                `https://desarrollotecnologicoar.com/api10/tasks/`,
-                { section_id: newSectionId, title: t.title, code: t.code, expected_minutes: t.expected_minutes, position: t.position },
+                url,
+                payload,
                 { headers: { "Content-Type": "application/json" } }
               );
             }));
@@ -440,81 +476,81 @@ export default function TemplateTasksBuilder() {
   const handleFileDialogOpen = () => setOpenFileDialog(true);
   const handleFileDialogClose = () => setOpenFileDialog(false);
 
-const handleFileUpload = async (e: any) => {
+  const handleFileUpload = async (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!sectionId) {
-        alert("Selecciona primero una sección donde insertar los puntos.");
-        return;
+      alert("Selecciona primero una sección donde insertar los puntos.");
+      return;
     }
 
     try {
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Validar encabezados
-        const headers = rows[0].map((h: any) => (h + "").trim().toLowerCase());
+      // Validar encabezados
+      const headers = rows[0].map((h: any) => (h + "").trim().toLowerCase());
 
-        const required = [
-            "punto de revisión",
-            "nueva especificación",
-            "sugerencia",
-            "categoría"
-        ];
+      const required = [
+        "punto de revisión",
+        "nueva especificación",
+        "sugerencia",
+        "categoría"
+      ];
 
-        const missing = required.filter(
-            r => !headers.includes(r.toLowerCase())
-        );
+      const missing = required.filter(
+        r => !headers.includes(r.toLowerCase())
+      );
 
-        if (missing.length > 0) {
-            alert("El archivo XLSX no contiene las columnas necesarias: " + missing.join(", "));
-            return;
-        }
+      if (missing.length > 0) {
+        alert("El archivo XLSX no contiene las columnas necesarias: " + missing.join(", "));
+        return;
+      }
 
-        const idxRevision = headers.indexOf("punto de revisión".toLowerCase());
-        const idxSpecs = headers.indexOf("nueva especificación".toLowerCase());
-        const idxSug = headers.indexOf("sugerencia".toLowerCase());
-        const idxCat = headers.indexOf("categoría".toLowerCase());
+      const idxRevision = headers.indexOf("punto de revisión".toLowerCase());
+      const idxSpecs = headers.indexOf("nueva especificación".toLowerCase());
+      const idxSug = headers.indexOf("sugerencia".toLowerCase());
+      const idxCat = headers.indexOf("categoría".toLowerCase());
 
-        const puntos = rows.slice(1).filter(r => r[idxRevision]);
+      const puntos = rows.slice(1).filter(r => r[idxRevision]);
 
-        if (puntos.length === 0) {
-            alert("No se encontraron puntos de revisión válidos.");
-            return;
-        }
+      if (puntos.length === 0) {
+        alert("No se encontraron puntos de revisión válidos.");
+        return;
+      }
 
-        // Insertar cada punto en la BD
-        for (let i = 0; i < puntos.length; i++) {
-            const row = puntos[i];
+      // Insertar cada punto en la BD
+      for (let i = 0; i < puntos.length; i++) {
+        const row = puntos[i];
 
-            const body = {
-                section_id: sectionId,
-                revision_point: row[idxRevision] ?? "",
-                specs: row[idxSpecs] ?? "",
-                suggestions: row[idxSug] ?? "",
-                category: row[idxCat] ?? "General",
-                position: i + 1,
-            };
+        const body = {
+          section_id: sectionId,
+          revision_point: row[idxRevision] ?? "",
+          specs: row[idxSpecs] ?? "",
+          suggestions: row[idxSug] ?? "",
+          category: row[idxCat] ?? "General",
+          position: i + 1,
+        };
 
-            await fetch("https://desarrollotecnologicoar.com/api10/quality/template_task_inspection", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            });
-        }
+        await fetch("https://desarrollotecnologicoar.com/api10/quality/template_task_inspection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      }
 
-        alert("Puntos de revisión cargados correctamente.");
-        refetch(); // para recargar la lista en pantalla
-        setOpenFileDialog(false);
+      alert("Puntos de revisión cargados correctamente.");
+      refetch(); // para recargar la lista en pantalla
+      setOpenFileDialog(false);
 
     } catch (err) {
-        console.error(err);
-        alert("Hubo un error procesando el archivo XLSX.");
+      console.error(err);
+      alert("Hubo un error procesando el archivo XLSX.");
     }
-};
+  };
 
 
 
@@ -555,18 +591,18 @@ const handleFileUpload = async (e: any) => {
 
             {isInspectionTemplate && sectionId ? (
               <Button
-              onClick={handleFileDialogOpen}
-              className="btn--clone"
-              startIcon={
-                <img
-                src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/microsoft-excel.svg"
-                alt="Excel"
-                style={{ width: 22, height: 22 }}
-                />
-              }
-              sx={{ minWidth: 0, padding: '6px 12px' }}
+                onClick={handleFileDialogOpen}
+                className="btn--clone"
+                startIcon={
+                  <img
+                    src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/microsoft-excel.svg"
+                    alt="Excel"
+                    style={{ width: 22, height: 22 }}
+                  />
+                }
+                sx={{ minWidth: 0, padding: '6px 12px' }}
               >
-              Cargar xlsx
+                Cargar xlsx
               </Button>
             ) : null}
           </div>
@@ -692,6 +728,30 @@ const handleFileUpload = async (e: any) => {
                 />
               </div>
               <div className="stat">
+                <div className="label"><b>Modelo</b></div>
+                <select
+                  value={selectedModelId ?? ""}
+                  onChange={(e) => {setSelectedModelId(
+                    e.target.value ? Number(e.target.value) : null
+                  )}}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    fontSize: 15,
+                    borderRadius: 6,
+                    border: "1px solid #ccc",
+                  }}
+                >
+                  {modelos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+
+              </div>
+
+              <div className="stat">
                 <div className="label"><b>Secciones</b></div>
                 <div className="value">{clonedSections.length}</div>
               </div>
@@ -713,7 +773,7 @@ const handleFileUpload = async (e: any) => {
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       {(tasksBySectionMap[s.id] ?? []).map((t) => (
                         <li key={t.id} style={{ marginBottom: 4 }}>
-                          <span style={{ fontWeight: 500 }}>{t.title}</span>
+                          <span style={{ fontWeight: 500 }}>{t.title || t.revision_point}</span>
                           {t.code ? <span style={{ marginLeft: 6, opacity: 0.7 }}>({t.code})</span> : null}
                           <span className="pill" style={{ marginLeft: 8 }}>{t.expected_minutes ?? 0} min</span>
                         </li>

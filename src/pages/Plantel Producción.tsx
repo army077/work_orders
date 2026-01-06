@@ -87,7 +87,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const fdt = (iso?: string | null) =>
-    iso ? new Date(iso).toLocaleString() : "—";
+    iso ? new Date(new Date(iso).getTime() + 6 * 60 * 60 * 1000).toLocaleString() : "—";
 
 const statusClass = (st?: string) => {
     const m: Record<string, string> = {

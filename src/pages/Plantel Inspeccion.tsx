@@ -36,6 +36,7 @@ type InspectionOrder = {
     estacion: number | null;
     comments: string | null;
     evidencias?: string[];
+    inspection_type: string | null;
 
     // work order data
     machine_serial: string | null;
@@ -214,7 +215,13 @@ export const PlantelInspeccion = () => {
                         variant="h6"
                         sx={{ fontWeight: 4000, color: COLORS.black, mb: 1 }}
                     >
-                        {o.titulo ? o.titulo : `Inspección #${o.id}`}
+                        {o.inspection_type && o.equipo ? (
+                            <>
+                                {o.inspection_type} para <u>{o.equipo}</u>
+                            </>
+                        ) : (
+                            `Inspección #${o.id}`
+                        )}
                         {o.estacion !== null && (
                             <span style={{ color: COLORS.gray700, fontWeight: 400, marginLeft: 8 }}>
                                 | Estación: <strong>{o.estacion}</strong>
@@ -229,7 +236,7 @@ export const PlantelInspeccion = () => {
                         Equipo: <strong>{o.equipo ?? "N/A"}</strong>
                     </Typography>
                     <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
-                        Solicitada el: <strong>{fdt(o.created_at) ?? "N/A"}</strong>
+                        Solicitada el: <strong>{new Date(new Date(o.created_at).getTime() + 6 * 60 * 60 * 1000).toLocaleString() ?? "N/A"}</strong>
                     </Typography>
                     <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 1 }}>
                         <Chip
@@ -527,7 +534,7 @@ export const PlantelInspeccion = () => {
 
                                 <Typography variant="subtitle2">Solicitada el</Typography>
                                 <Typography variant="body2" sx={{ mb: 2 }}>
-                                    {new Date(selectedOrder.created_at).toLocaleString()}
+                                    {new Date(new Date(selectedOrder.created_at).getTime() + 6 * 60 * 60 * 1000).toLocaleString()}
                                 </Typography>
 
                                 {selectedOrder.comments && (

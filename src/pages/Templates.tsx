@@ -435,6 +435,10 @@ export default function Templates() {
                   </button>
                 )}
 
+                <button className="btn" onClick={() => setOpenTmpl(t)} title="Ver detalles">
+                  ⓘ
+                </button>
+
                 <span className="pill">v{t.version}</span>
                 {t.is_published ? (
                   <span className="pill pill--ok">Publicado</span>

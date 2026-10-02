@@ -171,7 +171,21 @@ r.post('/inspection/request', async (req, res) => {
   const client = await pool.connect();
 
   try {
-    // ❗ 0) VALIDAR si ya existe una inspection_order pendiente
+    await client.query("BEGIN");
+
+    // FOR UPDATE serializa solicitudes simultáneas de la misma orden y evita duplicados
+    const { rows: woRows } = await client.query(
+      `SELECT * FROM work_order WHERE id = $1 FOR UPDATE`,
+      [work_order_id]
+    );
+
+    if (!woRows.length) {
+      await client.query("ROLLBACK");
+      console.log("❌ ERROR: No existe work_order con ese ID");
+      return res.status(404).json({ error: "work_order not found" });
+    }
+
+    const wo = woRows[0];
 
     const { rows: existingInspections } = await client.query(
       `SELECT *
@@ -184,6 +198,7 @@ r.post('/inspection/request', async (req, res) => {
     );
 
     if (existingInspections.length > 0) {
+      await client.query("ROLLBACK");
       console.log("⚠️ Ya existe una inspección pendiente para esta orden en esta sección:", existingInspections[0]);
 
       return res.status(409).json({
@@ -193,21 +208,6 @@ r.post('/inspection/request', async (req, res) => {
       });
     }
 
-    await client.query("BEGIN");
-
-    // 1) work_order
-    const { rows: woRows } = await client.query(
-      `SELECT * FROM work_order WHERE id = $1`,
-      [work_order_id]
-    );
-
-    if (!woRows.length) {
-      console.log("❌ ERROR: No existe work_order con ese ID");
-      return res.status(404).json({ error: "work_order not found" });
-    }
-
-    const wo = woRows[0];
-
     // 2) plantilla INSPECCION
     const { rows: tplRows } = await client.query(
       `SELECT * FROM maintenance_template WHERE model_id = $1 AND template_type = 'INSPECCION'`,
@@ -215,6 +215,7 @@ r.post('/inspection/request', async (req, res) => {
     );
 
     if (!tplRows.length) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "maintenance_template (INSPECCION) not found" });
     }
 
@@ -543,6 +544,9 @@ r.get('/inspection/orders/:id', async (req, res) => {
       SELECT 
         io.*,
         wo.*,
+        io.id AS inspection_order_id,
+        io.status AS inspection_status,
+        io.created_at AS inspection_created_at,
         mm.name AS model_name,
         wo.assigned_tech_email AS operador_produccion
       FROM PUBLIC.inspection_order io
@@ -717,6 +721,11 @@ r.put("/:id/stavance", async (req, res) => {
   }
 });
 
+const CODIGO_LIBERACION = {
+  "Inspección de ensamble": "LIB001",
+  "Inspección de pintura": "LIB002",
+};
+
 r.put("/liberar_orden/:id", async (req, res) => {
   const work_order_id = Number(req.params.id);
 
@@ -727,14 +736,8 @@ r.put("/liberar_orden/:id", async (req, res) => {
     return res.status(400).json({ error: "Falta la sección o el ID" });
   }
 
-  // Según la sección, elegimos el código correcto
-  let codigoLiberacion = null;
-
-  if (section_title === "Inspección de ensamble") {
-    codigoLiberacion = "LIB001";
-  } else if (section_title === "Inspección de pintura") {
-    codigoLiberacion = "LIB002"; // ejemplo, cámbialo al que necesites
-  } else {
+  const codigoLiberacion = CODIGO_LIBERACION[section_title];
+  if (!codigoLiberacion) {
     return res.status(400).json({ error: "Sección no válida" });
   }
 
@@ -770,19 +773,33 @@ r.put("/liberar_orden/:id", async (req, res) => {
 
 r.put("/:id/restart_stavance", async (req, res) => {
   const inspectionOrderId = Number(req.params.id);
-  const { work_order_id } = req.body; // <-- viene del frontend
 
   if (!inspectionOrderId) {
     return res.status(400).json({ error: "Falta inspection_order_id" });
   }
 
-  if (!work_order_id) {
-    return res.status(400).json({ error: "Falta work_order_id en el body" });
-  }
+  const client = await pool.connect();
 
   try {
-    // 1️⃣ Reiniciar tareas de inspección
-    await pool.query(
+    // La orden de trabajo y el tipo salen de la inspección, no del cliente
+    const { rows: orders } = await client.query(
+      `SELECT work_order_id, inspection_type FROM inspection_order WHERE id = $1`,
+      [inspectionOrderId]
+    );
+
+    if (!orders.length) {
+      return res.status(404).json({ error: "Inspección no encontrada" });
+    }
+
+    const { work_order_id, inspection_type } = orders[0];
+    // Inspecciones antiguas pueden no tener tipo: se reinician ambas como antes
+    const codigosLiberacion = CODIGO_LIBERACION[inspection_type]
+      ? [CODIGO_LIBERACION[inspection_type]]
+      : Object.values(CODIGO_LIBERACION);
+
+    await client.query("BEGIN");
+
+    await client.query(
       `UPDATE inspection_order_task
        SET status = 'PENDING',
            started_at = NULL,
@@ -792,25 +809,30 @@ r.put("/:id/restart_stavance", async (req, res) => {
       [inspectionOrderId]
     );
 
-    // 2️⃣ Reiniciar tareas de producción LIB001 y LIB002
-    await pool.query(
+    // Solo la liberación de este tipo; la otra puede estar ya otorgada
+    await client.query(
       `UPDATE work_order_task
        SET status = 'PENDING',
            started_at = NULL,
            finished_at = NULL,
            actual_minutes = 0
        WHERE work_order_id = $1
-         AND code IN ('LIB001', 'LIB002')`,
-      [work_order_id]
+         AND code = ANY($2)`,
+      [work_order_id, codigosLiberacion]
     );
+
+    await client.query("COMMIT");
 
     res.json({ 
       message: "Actividades de inspección y producción reiniciadas correctamente" 
     });
 
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("❌ Error reseteando tareas:", err);
     res.status(500).json({ error: "Error en el servidor" });
+  } finally {
+    client.release();
   }
 });
 

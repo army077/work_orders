@@ -1,8 +1,9 @@
+import { API10_URL } from "../config/api";
+import { addApi5Technician, getApi5Technicians, sendApi5Notification } from "../services/api5";
 import React, { useMemo, useState, useEffect } from "react";
 import { useList, useCreate } from "@refinedev/core";
 import { Dialog, FormControl, InputLabel, Select, MenuItem, IconButton } from "@mui/material";
 import { FaEye } from 'react-icons/fa6';
-import axios from "axios";
 import { collection, getDocs, addDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase/firebase-config'
 
@@ -118,8 +119,7 @@ export default function CreateWorkOrderFromTemplate() {
       try {
         setLoadingTechs(true);
         setTechsError(null);
-        const res = await fetch("https://desarrollotecnologicoar.com/api5/tecnicos");
-        const data: Technician[] = await res.json();
+        const data = await getApi5Technicians<Technician>();
         if (!cancel) setTechs(data.filter(t => (t.estatus || "").toLowerCase() === "activo"));
         await fetchUsuarios();
       } catch (e: any) {
@@ -147,7 +147,7 @@ export default function CreateWorkOrderFromTemplate() {
 
   const fetchCustoms = async () => {
     try {
-      const res = await fetch("https://desarrollotecnologicoar.com/api10/customs/template_custom");
+      const res = await fetch(`${API10_URL}/customs/template_custom`);
       if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
       const data: Customization[] = await res.json();
       setCustoms(data); // 👈 correcto
@@ -190,7 +190,7 @@ export default function CreateWorkOrderFromTemplate() {
           if (selectedCustoms.length > 0) {
             for (const custom of selectedCustoms) {
               try {
-                await fetch("https://desarrollotecnologicoar.com/api10/customs/custom_wo", {
+                await fetch(`${API10_URL}/customs/custom_wo`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -256,25 +256,14 @@ export default function CreateWorkOrderFromTemplate() {
       setNewTec((f) => ({ ...f, [k]: e.target.value }));
 
   const guardarTecnico = async () => {
-    if (!confirm("¿Estás seguro que la información es correcta?")) return;
+    if (!confirm("¿Estás seguro que la información es correcta?")) return false;
 
     if (!newTecForm.nombre_tecnico || !newTecForm.correo_tecnico) {
       alert("El nombre y correo del técnico son obligatorios");
-      return;
+      return false;
     }
     try {
-      const res = await fetch("https://desarrollotecnologicoar.com/api5/agregar_tecnico", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTecForm),
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Error guardando técnico");
-
-      }
-
-      const saved: Technician = await res.json();
+      const saved = await addApi5Technician<Technician>(newTecForm);
       setTechs((t) => [...t, saved]);
       setForm((f) => ({ ...f, assigned_tech_email: saved.correo_tecnico }));
       setNewTec({
@@ -290,18 +279,21 @@ export default function CreateWorkOrderFromTemplate() {
       setManualEmail(false);
       await handleAddOperador();
       alert(`Técnico guardado con éxito,ahora puedes asignarlo para la orden de trabajo`);
+      return true;
     } catch (e: any) {
       alert(`Error: ${String(e?.message || e)}`);
+      return false;
     }
   };
 
   const mandarNotificacion = async (notif: any) => {
     try {
       console.log("Enviando notificación:", notif);
-      const res = await axios.post("https://desarrollotecnologicoar.com/api5/enviarNotificacion/", notif);
-      console.log("Respuesta del servidor:", res.data);
-    } catch (e) {
+      const res = await sendApi5Notification(notif);
+      console.log("Respuesta del servidor:", res.status);
+    } catch (e: any) {
       console.error("Error al enviar las actividades:", e);
+      alert(`No se envió la notificación: ${String(e?.message || e)}`);
     }
   };
 
@@ -313,7 +305,7 @@ export default function CreateWorkOrderFromTemplate() {
     setIsSavingCustom(true);
     setNewCustomState(false);
     try {
-      const res = await fetch("https://desarrollotecnologicoar.com/api10/customs/template_custom", {
+      const res = await fetch(`${API10_URL}/customs/template_custom`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -336,7 +328,7 @@ export default function CreateWorkOrderFromTemplate() {
   const handleDeleteCustom = async (id: number) => {
     if (!confirm("¿Seguro que deseas eliminar esta customización?")) return;
     try {
-      const res = await fetch(`https://desarrollotecnologicoar.com/api10/customs/${id}/template_custom`, {
+      const res = await fetch(`${API10_URL}/customs/${id}/template_custom`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Error eliminando custom");
@@ -653,8 +645,7 @@ export default function CreateWorkOrderFromTemplate() {
                   return;
                 }
 
-                await guardarTecnico(); // <- este ya guarda y actualiza estados
-                handleCloseDialogNewTec();
+                if (await guardarTecnico()) handleCloseDialogNewTec();
               }}
             >
               Confirmar

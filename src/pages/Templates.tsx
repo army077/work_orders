@@ -1,3 +1,4 @@
+import { API10_URL } from "../config/api";
 // src/pages/Templates.tsx
 import React from "react";
 import { useList, useCreate, useCustomMutation, useDataProvider } from "@refinedev/core";
@@ -184,7 +185,7 @@ export default function Templates() {
     const confirm = window.confirm("¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer.");
     if (!confirm) return;
     try {
-      await axios.delete(`https://desarrollotecnologicoar.com/api10/templates/${templateId}`, {
+      await axios.delete(`${API10_URL}/templates/${templateId}`, {
         headers: { "Content-Type": "application/json" },
       });
       alert("Plantilla eliminada");

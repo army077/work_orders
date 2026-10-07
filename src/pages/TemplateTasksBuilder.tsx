@@ -1,3 +1,4 @@
+import { API10_URL } from "../config/api";
 // src/pages/TemplateTasksBuilder.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useList, useCreate, useCustomMutation, useUpdate, useDelete } from "@refinedev/core";
@@ -230,7 +231,7 @@ export default function TemplateTasksBuilder() {
   useEffect(() => {
     const fetchModelos = async () => {
       try {
-        const res = await fetch("https://desarrollotecnologicoar.com/api10/machine-models");
+        const res = await fetch(`${API10_URL}/machine-models`);
         const data = await res.json();
         setModelos(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -354,7 +355,7 @@ export default function TemplateTasksBuilder() {
 
       // 1) plantilla
       const response = await axios.get(
-        `https://desarrollotecnologicoar.com/api10/templates/${templateId2}`
+        `${API10_URL}/templates/${templateId2}`
       );
       setClonedTemplate(response.data);
       setSelectedModelId(response.data.model_id);
@@ -365,7 +366,7 @@ export default function TemplateTasksBuilder() {
 
       // 2) secciones
       const response1 = await axios.get(
-        `https://desarrollotecnologicoar.com/api10/sections?template_id=${templateId2}`
+        `${API10_URL}/sections?template_id=${templateId2}`
       );
       const sections = response1.data;
       setClonedSections(sections);
@@ -375,8 +376,8 @@ export default function TemplateTasksBuilder() {
       const tasksBySection = await Promise.all(
         sections.map(async (s: any) => {
           const url = isInspectionClone
-            ? `https://desarrollotecnologicoar.com/api10/quality/template_task_inspection?section_id=${s.id}`
-            : `https://desarrollotecnologicoar.com/api10/tasks?section_id=${s.id}`;
+            ? `${API10_URL}/quality/template_task_inspection?section_id=${s.id}`
+            : `${API10_URL}/tasks?section_id=${s.id}`;
 
           const resp = await axios.get(url);
           return resp.data;
@@ -418,7 +419,7 @@ export default function TemplateTasksBuilder() {
     const isInspectionClone = clonedTemplate.template_type === "INSPECCION";
     try {
       axios.post(
-        `https://desarrollotecnologicoar.com/api10/templates/`,
+        `${API10_URL}/templates/`,
         {
           name: newTemplateName.trim() || `Copia de ${clonedTemplate.name}`,
           template_type: clonedTemplate.template_type,
@@ -429,14 +430,14 @@ export default function TemplateTasksBuilder() {
         const newTemplateId = res.data.id;
         // Publicar la nueva plantilla
         axios.post(
-          `https://desarrollotecnologicoar.com/api10/templates/${newTemplateId}/publish`,
+          `${API10_URL}/templates/${newTemplateId}/publish`,
           { version: 1 },
           { headers: { "Content-Type": "application/json" } }
         );
         // clonar secciones
         Promise.all(clonedSections.map(s => {
           return axios.post(
-            `https://desarrollotecnologicoar.com/api10/sections/`,
+            `${API10_URL}/sections/`,
             { template_id: newTemplateId, title: s.title, position: s.position },
             { headers: { "Content-Type": "application/json" } }
           ).then(resSec => {
@@ -445,8 +446,8 @@ export default function TemplateTasksBuilder() {
             const tasksToClone = clonedTasks.filter(t => t.section_id === s.id);
             return Promise.all(tasksToClone.map(t => {
               const url = isInspectionClone
-                ? `https://desarrollotecnologicoar.com/api10/quality/template_task_inspection`
-                : `https://desarrollotecnologicoar.com/api10/tasks`;
+                ? `${API10_URL}/quality/template_task_inspection`
+                : `${API10_URL}/tasks`;
               const payload = isInspectionClone
                 ? { section_id: newSectionId, revision_point: t.revision_point, specs: t.specs, suggestions: t.suggestions, category: t.category, position: t.position }
                 : { section_id: newSectionId, title: t.title, code: t.code, expected_minutes: t.expected_minutes, category: t.category, position: t.position };
@@ -535,7 +536,7 @@ export default function TemplateTasksBuilder() {
           position: i + 1,
         };
 
-        await fetch("https://desarrollotecnologicoar.com/api10/quality/template_task_inspection", {
+        await fetch(`${API10_URL}/quality/template_task_inspection`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),

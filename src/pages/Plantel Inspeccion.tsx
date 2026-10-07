@@ -1,3 +1,4 @@
+import { API10_URL } from "../config/api";
 import { useList } from "@refinedev/core";
 import {
     Card,
@@ -154,7 +155,7 @@ export const PlantelInspeccion = () => {
         try {
             setLoadingDev(true);
             const res = await fetch(
-                `https://desarrollotecnologicoar.com/api10/quality/desviaciones/${taskId}`
+                `${API10_URL}/quality/desviaciones/${taskId}`
             );
             const json = await res.json();
             setDeviations(Array.isArray(json) ? json : []);
@@ -171,7 +172,7 @@ export const PlantelInspeccion = () => {
         if (!confirm) return;
         try {
             const res = await fetch(
-                `https://desarrollotecnologicoar.com/api10/quality/${inspection_order_id}/insp_cancel`,
+                `${API10_URL}/quality/${inspection_order_id}/insp_cancel`,
                 {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -456,7 +457,7 @@ export const PlantelInspeccion = () => {
                                                     try {
                                                         console.log("Asignando inspector:", email, "a orden", selectedOrder.id);
                                                         const res = await fetch(
-                                                            "https://desarrollotecnologicoar.com/api10/quality/inspection/assign_inspector",
+                                                            `${API10_URL}/quality/inspection/assign_inspector`,
                                                             {
                                                                 method: "POST",
                                                                 headers: { "Content-Type": "application/json" },

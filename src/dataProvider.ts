@@ -1,3 +1,4 @@
+import { API10_URL } from "./config/api";
 // src/dataProvider.ts
 import type {
     DataProvider,
@@ -6,7 +7,6 @@ import type {
     ConditionalFilter,
 } from "@refinedev/core";
 
-const API_URL = "https://desarrollotecnologicoar.com/api10";
 const API_URL2 = "https://desarrollotecnologicoar.com/api7";
 
 /** Busca recursivamente el valor de un filtro por 'field' */
@@ -36,33 +36,33 @@ export const dataProvider: DataProvider = {
 
         if (resource === "sections") {
             const templateId = qp?.template_id ?? getFilterValue(filters, "template_id");
-            const res = await fetch(`${API_URL}/sections?template_id=${templateId}`);
+            const res = await fetch(`${API10_URL}/sections?template_id=${templateId}`);
             const data = await res.json();
             return { data, total: data.length ?? 0 };
         }
 
         if (resource === "inspection") {
-            const res = await fetch(`${API_URL}/quality/inspection/orders_all?include=tasks`);
+            const res = await fetch(`${API10_URL}/quality/inspection/orders_all?include=tasks`);
             const data = await res.json();
             return { data, total: data.length ?? 0 };
         }
 
         if (resource === "tasks") {
             const sectionId = qp?.section_id ?? getFilterValue(filters, "section_id");
-            const res = await fetch(`${API_URL}/tasks?section_id=${sectionId}`);
+            const res = await fetch(`${API10_URL}/tasks?section_id=${sectionId}`);
             const data = await res.json();
             return { data, total: data.length ?? 0 };
         }
         if (resource === "quality/template_task_inspection") {
             const sectionId = qp?.section_id ?? getFilterValue(filters, "section_id");
-            const res = await fetch(`${API_URL}/quality/template_task_inspection?section_id=${sectionId}`);
+            const res = await fetch(`${API10_URL}/quality/template_task_inspection?section_id=${sectionId}`);
             const data = await res.json();
             return { data, total: data.length ?? 0 };
         }
 
 
 
-        const res = await fetch(`${API_URL}/${resource}`);
+        const res = await fetch(`${API10_URL}/${resource}`);
         const data = await res.json();
         return { data, total: data.length ?? 0 };
     },
@@ -71,11 +71,11 @@ export const dataProvider: DataProvider = {
     getOne: async ({ resource, id }) => {
         // work-orders: devuelve checklist materializado
         if (resource === "work-orders") {
-            const res = await fetch(`${API_URL}/work-orders/${id}/tasks`);
+            const res = await fetch(`${API10_URL}/work-orders/${id}/tasks`);
             const data = await res.json();
             return { data };
         }
-        const res = await fetch(`${API_URL}/${resource}/${id}`);
+        const res = await fetch(`${API10_URL}/${resource}/${id}`);
         const data = await res.json();
         return { data };
     },
@@ -85,7 +85,7 @@ export const dataProvider: DataProvider = {
         // crear WO desde plantilla
         if (resource === "work-orders" && (variables as any)?.fromTemplate) {
             const body = { ...(variables as any).payload };
-            const res = await fetch(`${API_URL}/work-orders/from-template`, {
+            const res = await fetch(`${API10_URL}/work-orders/from-template`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -94,7 +94,7 @@ export const dataProvider: DataProvider = {
             return { data: data.data ? data.data : data };
         }
 
-        const res = await fetch(`${API_URL}/${resource}`, {
+        const res = await fetch(`${API10_URL}/${resource}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(variables),
@@ -107,7 +107,7 @@ export const dataProvider: DataProvider = {
     update: async ({ resource, id, variables }) => {
         // actualizar ítem de WO
         if (resource === "work-order-task") {
-            const res = await fetch(`${API_URL}/work-orders/tasks/${id}`, {
+            const res = await fetch(`${API10_URL}/work-orders/tasks/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(variables),
@@ -115,7 +115,7 @@ export const dataProvider: DataProvider = {
             const data = await res.json();
             return { data };
         }
-        const res = await fetch(`${API_URL}/${resource}/${id}`, {
+        const res = await fetch(`${API10_URL}/${resource}/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(variables),
@@ -127,7 +127,7 @@ export const dataProvider: DataProvider = {
     // ------ NOT USED IN STARTER ------
     deleteOne: async ({ resource, id }) => {
         // Construye la URL según el recurso
-        const url = `${API_URL}/${resource}/${id}`;
+        const url = `${API10_URL}/${resource}/${id}`;
         const res = await fetch(url, {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
@@ -152,7 +152,7 @@ export const dataProvider: DataProvider = {
         throw new Error("Not implemented");
     },
 
-    getApiUrl: () => API_URL,
+    getApiUrl: () => API10_URL,
 
     custom: async (params) => {
         const { url, method, meta } = params as any;
@@ -163,7 +163,7 @@ export const dataProvider: DataProvider = {
             (params as any).payload ??              // soporte alterno
             undefined;
 
-        const fullUrl = url!.startsWith("http") ? url! : `${API_URL}${url}`;
+        const fullUrl = url!.startsWith("http") ? url! : `${API10_URL}${url}`;
         const baseHeaders = { "Content-Type": "application/json" };
         const headers = { ...baseHeaders, ...(meta?.headers || {}) };
 

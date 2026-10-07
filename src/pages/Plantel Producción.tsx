@@ -1,3 +1,5 @@
+import { API10_URL } from "../config/api";
+import { getApi5Technicians } from "../services/api5";
 import React, { useState, useEffect } from "react";
 import { Menu, MenuItem, Select, Dialog, Box, Typography, List, Tab, ListItem, ListItemText, ListSubheader, Chip, Divider, Grid, Card, LinearProgress, Button, TextField, Stack, IconButton } from "@mui/material";
 import { useCustom, useList } from "@refinedev/core";
@@ -153,8 +155,7 @@ export default function PlantelProduccion() {
             try {
                 setLoadingTechs(true);
                 setTechsError(null);
-                const res = await fetch("https://desarrollotecnologicoar.com/api5/tecnicos");
-                const data: Technician[] = await res.json();
+                const data = await getApi5Technicians<Technician>();
                 if (!cancel) setTechs(data.filter(t => (t.estatus || "").toLowerCase() === "activo"));
             } catch (e: any) {
                 if (!cancel) setTechsError(e?.message || "No se pudieron cargar los técnicos");
@@ -230,7 +231,7 @@ export default function PlantelProduccion() {
 
     const fetchWO = async (id: number) => {
         try {
-            const res = await fetch(`https://desarrollotecnologicoar.com/api10/work-orders/${id}?include=tasks`);
+            const res = await fetch(`${API10_URL}/work-orders/${id}?include=tasks`);
             const dataWO = await res.json();
 
             const template = dataWO.template_id ? templateMap.get(dataWO.template_id) ?? null : null;
@@ -261,7 +262,7 @@ export default function PlantelProduccion() {
             return;
         }
         try {
-            const res = await fetch(`https://desarrollotecnologicoar.com/api10/work-orders/delete/${id}`, {
+            const res = await fetch(`${API10_URL}/work-orders/delete/${id}`, {
                 method: "DELETE",
             });
             if (!res.ok) {
@@ -279,7 +280,7 @@ export default function PlantelProduccion() {
 
     const fetchCustoms = async (woid: number) => {
         try {
-            const res = await fetch(`https://desarrollotecnologicoar.com/api10/customs/workorder/${woid}`, {
+            const res = await fetch(`${API10_URL}/customs/workorder/${woid}`, {
                 method: "GET",
             });
             const json = await res.json();
@@ -663,7 +664,7 @@ export default function PlantelProduccion() {
                                             onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 try {
-                                                    const res = await fetch(`https://desarrollotecnologicoar.com/api10/work-orders/edit_prod/${woID.id}`, {
+                                                    const res = await fetch(`${API10_URL}/work-orders/edit_prod/${woID.id}`, {
                                                         method: "PUT",
                                                         headers: { "Content-Type": "application/json" },
                                                         body: JSON.stringify({

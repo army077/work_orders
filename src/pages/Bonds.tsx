@@ -1,3 +1,4 @@
+import { API10_URL } from "../config/api";
 import React, { useEffect, useState, useMemo } from "react";
 import {
     Box,
@@ -47,7 +48,7 @@ export default function BondsDashboard() {
     const fetchBonos = async () => {
         setLoading(true);
         try {
-            const url = new URL("https://desarrollotecnologicoar.com/api10/bonds/visualizar");
+            const url = new URL(`${API10_URL}/bonds/visualizar`);
             if (inicio) url.searchParams.append("inicio", inicio);
             if (fin) url.searchParams.append("fin", fin);
 

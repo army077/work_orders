@@ -758,19 +758,76 @@ r.put("/liberar_orden/:id", async (req, res) => {
   const work_order_id = Number(req.params.id);
 
   // Extraemos correctamente el body
-  const { section_title, started_at, finished_at, actual_minutes } = req.body;
+  const { inspection_order_id, section_title, started_at, finished_at, actual_minutes } = req.body;
 
   if (!work_order_id || !section_title) {
     return res.status(400).json({ error: "Falta la sección o el ID" });
   }
 
-  const codigoLiberacion = CODIGO_LIBERACION[section_title];
-  if (!codigoLiberacion) {
+  const inspectionOrderId = typeof inspection_order_id === "number"
+    ? inspection_order_id
+    : typeof inspection_order_id === "string" && /^\d+$/.test(inspection_order_id.trim())
+      ? Number(inspection_order_id)
+      : NaN;
+
+  if (!Number.isSafeInteger(inspectionOrderId) || inspectionOrderId <= 0) {
+    return res.status(400).json({ error: "inspection_order_id es obligatorio y debe ser un entero positivo válido" });
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(CODIGO_LIBERACION, section_title)) {
     return res.status(400).json({ error: "Sección no válida" });
   }
 
+  let client;
   try {
-    const { rows } = await pool.query(
+    client = await pool.connect();
+    await client.query("BEGIN");
+
+    const { rows: inspectionOrders } = await client.query(
+      `SELECT work_order_id, inspection_type
+       FROM inspection_order
+       WHERE id = $1
+       FOR UPDATE`,
+      [inspectionOrderId]
+    );
+
+    if (!inspectionOrders.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Inspección no encontrada" });
+    }
+
+    const inspectionOrder = inspectionOrders[0];
+    if (inspectionOrder.work_order_id !== work_order_id) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "La inspección no pertenece a la orden de trabajo solicitada" });
+    }
+
+    if (inspectionOrder.inspection_type !== section_title) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "El tipo de inspección no corresponde a la sección solicitada" });
+    }
+
+    const codigoLiberacion = CODIGO_LIBERACION[inspectionOrder.inspection_type];
+    const { rows: tasks } = await client.query(
+      `SELECT status
+       FROM inspection_order_task
+       WHERE inspection_order_id = $1
+       ORDER BY id
+       FOR UPDATE`,
+      [inspectionOrderId]
+    );
+
+    if (!tasks.length) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "La inspección no tiene puntos de inspección" });
+    }
+
+    if (tasks.some((task) => task.status !== "DONE")) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Todos los puntos de inspección deben estar DONE antes de liberar" });
+    }
+
+    const { rows } = await client.query(
       `
       UPDATE work_order_task
       SET 
@@ -786,16 +843,21 @@ r.put("/liberar_orden/:id", async (req, res) => {
     );
 
     if (!rows.length) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "Tarea no encontrada" });
     }
 
+    await client.query("COMMIT");
     res.json({
       message: "Tarea liberada correctamente",
       task: rows[0],
     });
   } catch (err) {
+    if (client) await client.query("ROLLBACK");
     console.error("❌ Error actualizando tarea:", err);
     res.status(500).json({ error: "Error en el servidor" });
+  } finally {
+    if (client) client.release();
   }
 });
 

@@ -253,6 +253,7 @@ r.post('/inspection/request', async (req, res) => {
     );
 
     let pos = 1;
+    let createdTaskCount = 0;
 
     // 5) Insertar tareas
     for (const section of sections) {
@@ -288,7 +289,15 @@ r.post('/inspection/request', async (req, res) => {
             section.title
           ]
         );
+        createdTaskCount++;
       }
+    }
+
+    if (createdTaskCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(422).json({
+        error: "No se encontraron tareas de inspección para el tipo solicitado"
+      });
     }
 
     await client.query("COMMIT");

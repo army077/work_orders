@@ -2,6 +2,83 @@ const express = require("express");
 const r = express.Router();
 const pool = require("../db");
 
+function isValidZonedTimestamp(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/
+  );
+  if (!match) {
+    return false;
+  }
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const offsetHourText = match[10];
+  const offsetMinuteText = match[11];
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [
+    31,
+    leapYear ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+
+  if (
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth[month - 1] ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return false;
+  }
+
+  if (offsetHourText !== undefined) {
+    const offsetHour = Number(offsetHourText);
+    const offsetMinute = Number(offsetMinuteText);
+    if (
+      offsetMinute > 59 ||
+      offsetHour > 14 ||
+      (offsetHour === 14 && offsetMinute !== 0)
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function validateZonedTimestamps(res, timestamps) {
+  for (const [field, value] of Object.entries(timestamps)) {
+    if (value != null && !isValidZonedTimestamp(value)) {
+      res.status(400).json({
+        error: `${field} debe ser una fecha válida con zona explícita: Z u offset ±HH:MM`,
+      });
+      return false;
+    }
+  }
+  return true;
+}
+
 // post de tareas template
 r.post("/template_task_inspection", async (req, res) => {
   try {
@@ -466,7 +543,8 @@ r.put("/inspection/orders/:id/assign", async (req, res) => {
     const { rows: updated } = await pool.query(
       `UPDATE inspection_order
          SET assigned_tech_email = $1,
-         status = 'IN_PROGRESS'
+             status = 'IN_PROGRESS',
+             started_at = COALESCE(started_at, timezone('America/Mexico_City', now()))
        WHERE id = $2
        RETURNING *`,
       [email, id]
@@ -726,12 +804,16 @@ r.put("/:id/stavance", async (req, res) => {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
   }
 
+  if (!validateZonedTimestamps(res, { started_at, finished_at })) {
+    return;
+  }
+
   try {
     const { rows } = await pool.query(
       `UPDATE inspection_order_task
        SET status = $1,
-           started_at = COALESCE($2, started_at),
-           finished_at = COALESCE($3, finished_at),
+           started_at = COALESCE($2::timestamptz AT TIME ZONE 'America/Mexico_City', started_at),
+           finished_at = COALESCE($3::timestamptz AT TIME ZONE 'America/Mexico_City', finished_at),
            actual_minutes = COALESCE($4, actual_minutes)
        WHERE id = $5
        RETURNING *`,
@@ -776,6 +858,10 @@ r.put("/liberar_orden/:id", async (req, res) => {
 
   if (!Object.prototype.hasOwnProperty.call(CODIGO_LIBERACION, section_title)) {
     return res.status(400).json({ error: "Sección no válida" });
+  }
+
+  if (!validateZonedTimestamps(res, { started_at, finished_at })) {
+    return;
   }
 
   let client;
@@ -928,12 +1014,10 @@ r.put("/:id/restart_stavance", async (req, res) => {
 
 r.put("/:id/insp_end", async (req, res) => {
   const id = Number(req.params.id);
-  const {started_at} = req.body;
   if (!id) {
     return res.status(400).json({ error: "Falta ID" });
   }
 
-  const nowMX = new Date().toLocaleString("sv-SE", { timeZone: "America/Mexico_City" });
   let client;
   try {
     client = await pool.connect();
@@ -1001,19 +1085,30 @@ r.put("/:id/insp_end", async (req, res) => {
       });
     }
 
+    // Legacy rows with no persisted start use only the backend clock as a fallback.
     const { rows } = await client.query(
-      `UPDATE inspection_order
+      `WITH clock AS (
+         SELECT timezone('America/Mexico_City', now()) AS now_mx
+       )
+       UPDATE inspection_order AS io
        SET status = 'FINISHED',
-       started_at = $3,
-       finished_at = $2
-       WHERE id=$1
-       RETURNING *`,
-      [id, nowMX, started_at]
+           started_at = COALESCE(io.started_at, clock.now_mx),
+           finished_at = clock.now_mx
+       FROM clock
+       WHERE io.id = $1
+         AND (
+           io.started_at IS NULL
+           OR io.started_at <= clock.now_mx
+         )
+       RETURNING io.*`,
+      [id]
     );
 
     if (!rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Orden no encontrada" });
+      return res.status(409).json({
+        error: "Inconsistencia temporal: el inicio de la inspección es posterior al reloj actual de México. No se puede finalizar."
+      });
     }
 
     await client.query("COMMIT");

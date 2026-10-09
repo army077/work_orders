@@ -285,19 +285,38 @@ r.post('/inspection/request', async (req, res) => {
       });
     }
 
-    // 2) plantilla INSPECCION
+    // 2) Plantilla INSPECCION publicada para el modelo y tipo solicitado
     const { rows: tplRows } = await client.query(
-      `SELECT * FROM maintenance_template WHERE model_id = $1 AND template_type = 'INSPECCION'`,
-      [wo.model_id]
+      `SELECT mt.*
+       FROM maintenance_template AS mt
+       WHERE mt.model_id = $1
+         AND mt.template_type = 'INSPECCION'
+         AND mt.is_published = TRUE
+         AND EXISTS (
+           SELECT 1
+           FROM template_section AS ts
+           WHERE ts.template_id = mt.id
+             AND ts.title = $2
+         )
+       ORDER BY mt.id`,
+      [wo.model_id, inspection_type]
     );
 
     if (!tplRows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "maintenance_template (INSPECCION) not found" });
+      return res.status(404).json({
+        error: "No existe una plantilla de INSPECCION publicada para el modelo y tipo solicitado"
+      });
     }
 
-    const mainTemplate = tplRows[0];
-    const inspectionTemplate = tplRows[0];
+    if (tplRows.length > 1) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: "Configuración ambigua: existe más de una plantilla de INSPECCION publicada para el modelo y tipo solicitado"
+      });
+    }
+
+    const [inspectionTemplate] = tplRows;
 
     // 3) Crear inspection_order
     const { rows: orderRows } = await client.query(
@@ -314,7 +333,7 @@ r.post('/inspection/request', async (req, res) => {
       RETURNING *`,
       [
         inspectionTemplate.id,
-        mainTemplate.model_id,
+        inspectionTemplate.model_id,
         work_order_id,
         estacion,
         nowMX,
@@ -325,8 +344,12 @@ r.post('/inspection/request', async (req, res) => {
     const inspectionOrder = orderRows[0];
     // 4) SECCIONES
     const { rows: sections } = await client.query(
-      `SELECT * FROM template_section WHERE template_id = $1 ORDER BY position`,
-      [inspectionTemplate.id]
+      `SELECT *
+       FROM template_section
+       WHERE template_id = $1
+         AND title = $2
+       ORDER BY position, id`,
+      [inspectionTemplate.id, inspection_type]
     );
 
     let pos = 1;
@@ -334,9 +357,6 @@ r.post('/inspection/request', async (req, res) => {
 
     // 5) Insertar tareas
     for (const section of sections) {
-
-        // Saltar secciones que no correspondan
-      if (section.title !== inspection_type) continue;
 
       const { rows: tasks } = await client.query(
         `SELECT * FROM template_task_inspection WHERE section_id = $1 ORDER BY position`,

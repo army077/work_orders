@@ -819,6 +819,14 @@ r.get('/desviaciones/', async (req, res) => {
 r.put("/:id/stavance", async (req, res) => {
   const id = Number(req.params.id);
   const { status, started_at, finished_at, actual_minutes } = req.body;
+  const clearFinishedAt =
+    status === 'PENDING' &&
+    Object.prototype.hasOwnProperty.call(req.body, 'finished_at') &&
+    finished_at === null;
+  const clearActualMinutes =
+    status === 'PENDING' &&
+    Object.prototype.hasOwnProperty.call(req.body, 'actual_minutes') &&
+    actual_minutes === null;
 
   if (!id || !status) {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -833,11 +841,17 @@ r.put("/:id/stavance", async (req, res) => {
       `UPDATE inspection_order_task
        SET status = $1,
            started_at = COALESCE($2::timestamptz AT TIME ZONE 'America/Mexico_City', started_at),
-           finished_at = COALESCE($3::timestamptz AT TIME ZONE 'America/Mexico_City', finished_at),
-           actual_minutes = COALESCE($4, actual_minutes)
+           finished_at = CASE
+             WHEN $6::boolean THEN NULL
+             ELSE COALESCE($3::timestamptz AT TIME ZONE 'America/Mexico_City', finished_at)
+           END,
+           actual_minutes = CASE
+             WHEN $7::boolean THEN NULL
+             ELSE COALESCE($4, actual_minutes)
+           END
        WHERE id = $5
        RETURNING *`,
-      [status, started_at, finished_at, actual_minutes, id]
+      [status, started_at, finished_at, actual_minutes, id, clearFinishedAt, clearActualMinutes]
     );
 
     if (!rows.length) {

@@ -613,7 +613,7 @@ select.status-chip { height: 36px; padding-right: 28px; }
 /* ===== Layout responsivo ===== */
 .layout.responsive {
   display: grid;
-  grid-template-columns: 260px 1fr;   /* sidebar + contenido en desktop */
+  grid-template-columns: 260px minmax(0, 1fr);   /* sidebar + contenido en desktop */
   grid-template-rows: 1fr;
   height: 100%;
 }
@@ -648,6 +648,7 @@ select.status-chip { height: 36px; padding-right: 28px; }
 .nav-horizontal {
   display: flex;
   gap: 8px;
+  min-width: 0;
   overflow-x: auto;          /* se puede hacer scroll horizontal si no caben */
   white-space: nowrap;       /* que no se rompan las etiquetas */
 }
@@ -665,7 +666,7 @@ select.status-chip { height: 36px; padding-right: 28px; }
 /* ===== Breakpoint móvil ===== */
 @media (max-width: 900px) {
   .layout.responsive {
-    grid-template-columns: 1fr;        /* solo contenido */
+    grid-template-columns: minmax(0, 1fr);        /* solo contenido */
     grid-template-rows: auto 1fr;      /* topbar + contenido */
   }
   .sidebar.nav-desktop { display: none; }

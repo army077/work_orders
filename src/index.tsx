@@ -15,6 +15,7 @@ import Models from "./pages/Models";
 import WorkOrdersList from "./pages/WorkOrdersList";
 import PlantelProduccion from "./pages/Plantel Producción";
 import { PlantelInspeccion } from "./pages/Plantel Inspeccion";
+import EngineeringDocuments from "./pages/EngineeringDocuments";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         { name: "sections" },
         { name: "tasks" },
         { name: "work-orders" },
+        { name: "engineering/documents" },
       ]}
     >
       <BrowserRouter>
@@ -47,6 +49,7 @@ function App() {
               <Link to="/run-work-order/1">Panel de control de orden</Link>
               <Link to="/plantel-produccion">Panel de Producción</Link>
               <Link to="/plantel-inspeccion">Panel de Inspección</Link>
+              <Link to="/engineering-documents">Documentación de Ingeniería</Link>
             </nav>
           </aside>
 
@@ -65,6 +68,7 @@ function App() {
               <Link to="/work-orders">Work Orders</Link>
               <Link to="/plantel-produccion">Producción</Link>
               <Link to="/plantel-inspeccion">Inspección</Link>
+              <Link to="/engineering-documents">Documentación de Ingeniería</Link>
             </nav>
           </header>
 
@@ -81,6 +85,7 @@ function App() {
               <Route path="/run-work-order/:id" element={<WorkOrderRun />} />
               <Route path="/plantel-produccion" element={<PlantelProduccion />} />
               <Route path="/plantel-inspeccion" element={<PlantelInspeccion />} />
+              <Route path="/engineering-documents" element={<EngineeringDocuments />} />
             </Routes>
           </main>
         </div>

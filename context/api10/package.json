@@ -1,0 +1,19 @@
+{
+  "name": "work-orders-api10",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/engineering.test.js"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  },
+  "dependencies": {
+    "auth-material-ui": "file:../..",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

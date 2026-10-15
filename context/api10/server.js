@@ -9,6 +9,8 @@ const machineModels = require("./routes/machineModels");
 const customs = require("./routes/customs");
 const bonds = require("./routes/productionBonds");
 const quality = require('./routes/quality');
+const { createEngineeringRouter } = require("./routes/engineering");
+const pool = require("./db");
 
 const app = express();
 app.use(cors());
@@ -23,10 +25,10 @@ app.use("/api10/machine-models", machineModels);
 app.use('/api10/customs', customs);
 app.use('/api10/bonds', bonds);
 app.use('/api10/quality', quality);
+app.use('/api10/engineering', createEngineeringRouter(pool));
 
 app.get("/api10/health", (_req, res) => res.json({ ok: true, service: "api10-ordenes" }));
 const PORT = 3010;
 app.listen(PORT, () => {
   console.log(`API10 escuchando en http://localhost:${PORT}/api10/health :)`);
 });
-

@@ -24,6 +24,11 @@ app.use('/api10/customs', customs);
 app.use('/api10/bonds', bonds);
 app.use('/api10/quality', quality);
 
+// Diagnóstico de autenticación: solo LOCAL/TEST, nunca en producción.
+if (["local", "test"].includes(String(process.env.APP_ENV || "").toLowerCase())) {
+  app.use('/api10/auth/logistica', require("./routes/authLogistica"));
+}
+
 app.get("/api10/health", (_req, res) => res.json({ ok: true, service: "api10-ordenes" }));
 const PORT = 3010;
 app.listen(PORT, () => {

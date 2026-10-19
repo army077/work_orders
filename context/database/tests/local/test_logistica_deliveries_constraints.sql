@@ -201,9 +201,14 @@ BEGIN
             v_rejected := false;
             BEGIN
                 INSERT INTO public.logistica_delivery_evidence
-                    (id, delivery_id, evidence_type, sequence_no)
+                    (id, delivery_id, evidence_type, sequence_no, client_evidence_id)
                 VALUES
-                    (v_evidence_id, v_delivery_id, v_case.evidence_type, v_sequence_no);
+                    (v_evidence_id, v_delivery_id, v_case.evidence_type, v_sequence_no,
+                     -- UUID reservado para TEST: numero de caso + secuencia desplazada.
+                     -- Distingue tambien los dos intentos del caso 19 (0 y -1).
+                     ('00000000-0000-4000-8000-'
+                      || lpad(v_case.test_no::TEXT, 8, '0')
+                      || lpad((v_sequence_no + 1)::TEXT, 4, '0'))::UUID);
             EXCEPTION
                 WHEN check_violation OR foreign_key_violation OR unique_violation THEN
                     GET STACKED DIAGNOSTICS

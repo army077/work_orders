@@ -33,15 +33,16 @@ function normalizePayload(body) {
     throw new PayloadValidationError("client_request_id debe ser un UUID en formato canónico");
   }
 
-  const latitude = body.latitude;
-  const longitude = body.longitude;
-  if (latitude === undefined || latitude === null
-    || longitude === undefined || longitude === null) {
-    throw new PayloadValidationError("latitude y longitude son obligatorias y no admiten null");
+  const latitude = body.latitude ?? null;
+  const longitude = body.longitude ?? null;
+  if ((latitude === null) !== (longitude === null)) {
+    throw new PayloadValidationError("latitude y longitude deben enviarse juntas");
   }
-  if (typeof latitude !== "number" || !Number.isFinite(latitude)
+  if (latitude !== null && (
+    typeof latitude !== "number" || !Number.isFinite(latitude)
     || typeof longitude !== "number" || !Number.isFinite(longitude)
-    || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180
+  )) {
     throw new PayloadValidationError("Coordenadas inválidas");
   }
 

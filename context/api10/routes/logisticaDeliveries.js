@@ -5,6 +5,8 @@ const { requireLogisticaAuthorizedUser } = require("../auth/requireLogisticaAuth
 const { parseEvidenceMultipart, createEvidenceHandler } = require("./logisticaEvidence");
 const { createEvidenceRepository } = require("../repositories/logisticaEvidence");
 const logisticaDrive = require("../integrations/logisticaDrive");
+const { createCompletionRepository } = require("../repositories/logisticaCompletion");
+const { createCompletionHandler } = require("./logisticaCompletion");
 
 const router = express.Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -214,6 +216,13 @@ router.post(
   requireLogisticaAuthorizedUser,
   parseEvidenceMultipart,
   createEvidenceHandler({ repository: createEvidenceRepository(pool), drive: logisticaDrive })
+);
+
+router.post(
+  "/entregas/:id/finalizar",
+  requireLogisticaFirebaseAuth,
+  requireLogisticaAuthorizedUser,
+  createCompletionHandler({ repository: createCompletionRepository(pool) })
 );
 
 module.exports = router;

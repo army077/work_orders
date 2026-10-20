@@ -2,6 +2,9 @@ const express = require("express");
 const pool = require("../db");
 const { requireLogisticaFirebaseAuth } = require("../auth/requireLogisticaFirebaseAuth");
 const { requireLogisticaAuthorizedUser } = require("../auth/requireLogisticaAuthorizedUser");
+const { parseEvidenceMultipart, createEvidenceHandler } = require("./logisticaEvidence");
+const { createEvidenceRepository } = require("../repositories/logisticaEvidence");
+const logisticaDrive = require("../integrations/logisticaDrive");
 
 const router = express.Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -203,6 +206,14 @@ router.post(
       }
     }
   }
+);
+
+router.post(
+  "/entregas/:id/evidencias",
+  requireLogisticaFirebaseAuth,
+  requireLogisticaAuthorizedUser,
+  parseEvidenceMultipart,
+  createEvidenceHandler({ repository: createEvidenceRepository(pool), drive: logisticaDrive })
 );
 
 module.exports = router;

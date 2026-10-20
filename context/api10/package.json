@@ -5,13 +5,16 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "start:local": "node --env-file=.env.local server.js"
+    "start:local": "node --env-file=.env.local server.js",
+    "test:evidence": "node --test --test-isolation=none tests/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.0",
+    "file-type": "^22.2.0",
     "firebase-admin": "^14.5.0",
     "googleapis": "^186.0.0",
+    "multer": "^2.4.0",
     "pg": "^8.13.0"
   }
 }

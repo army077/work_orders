@@ -9,6 +9,8 @@ const { createCompletionRepository } = require("../repositories/logisticaComplet
 const { createCompletionHandler } = require("./logisticaCompletion");
 const { createDeliveryListRepository } = require("../repositories/logisticaDeliveryList");
 const { createDeliveryListHandler } = require("./logisticaDeliveryList");
+const { createDeliveryHistoryRepository } = require("../repositories/logisticaDeliveryHistory");
+const { createDeliveryHistoryHandler } = require("./logisticaDeliveryHistory");
 
 const router = express.Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -76,6 +78,13 @@ function publicDelivery(row) {
     created_at: row.created_at,
   };
 }
+
+router.get(
+  "/entregas/historial",
+  requireLogisticaFirebaseAuth,
+  requireLogisticaAuthorizedUser,
+  createDeliveryHistoryHandler({ repository: createDeliveryHistoryRepository(pool) })
+);
 
 router.get(
   "/entregas",

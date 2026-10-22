@@ -131,6 +131,7 @@ test('TOC selection is fixed, exact, preserves archive order, includes function 
   assert.deepEqual(selected.trim().split('\n'),lines.filter(l=>!l.startsWith('90')));
   assert.throws(()=>selectToc(lines.filter(l=>!l.includes('FUNCTION public move_section')).join('\n'),a),/FUNCTIONS_INCOMPLETE/);
   assert.throws(()=>selectToc(lines.filter(l=>!l.includes('TABLE DATA public machine_family ')).join('\n'),a),/DATA_INCOMPLETE/);
+  assert.throws(()=>selectToc(lines.filter(l=>!l.includes('SEQUENCE SET public work_order_id_seq ')).join('\n'),a),/SEQUENCE_STATES_INCOMPLETE/);
   assert.throws(()=>selectToc('bad format',a),/TOC_FORMAT/);
 });
 test('logistics validator derives final shape, all seven hashes/order from existing production artifacts',()=>{
@@ -152,16 +153,18 @@ test('operational commands stop/reject retries and reuse original migration appl
   assert.match(runner,/for\(const file of artifacts\(\)\)/);
   assert.match(runner,/MIGRATIONS_ALREADY_ATTEMPTED_STOP/);
   assert.match(runner,/RESTORE_ALREADY_ATTEMPTED_STOP/);
-  assert.match(runner,/ESCRITORES_DETENIDOS==='SI'/);
+  assert.doesNotMatch(runner,/ESCRITORES_DETENIDOS|WRITERS_NOT_CONFIRMED_STOPPED|SOURCE_CHANGED_DURING_FREEZE/);
+  assert.match(runner,/withExportedSnapshot/); assert.match(runner,/--snapshot=/);
   assert.match(runner,/SOURCE_TARGET_SERVER_MISMATCH/);
   assert.match(runner,/--single-transaction/); assert.match(runner,/--exit-on-error/);
   assert.doesNotMatch(runner,/native\('(?:pg_dump|pg_restore)',\[.*--(?:clean|create|disable-triggers|no-owner|no-acl)/);
   assert.match(docs,/BACKUP DE SEGURIDAD/); assert.match(docs,/EXPORT SELECTIVO/);
   assert.match(docs,/No editar el TOC manualmente/);
 });
-test('exactly five pending confirmations, public environment values and no embedded credentials',()=>{
+test('fixed Node18 target, only two unknown deployment details, public values and no embedded credentials',()=>{
   const admin=read('00_LEEME_ADMIN.md'), checklist=read('06_CHECKLIST_CUTOVER.md');
-  assert.equal(admin.match(/^\d\. /gm).length,5);
+  assert.equal(admin.match(/^\d\. /gm).length,2);
+  assert.match(admin,/Node.js v18.19.1/);
   for(const name of ['APP_ENV','PGHOST','PGPORT','PGUSER','PGPASSWORD','PGDATABASE','FIREBASE_LOGISTICA_PROJECT_ID',
     'GOOGLE_APPLICATION_CREDENTIALS','LOGISTICA_DRIVE_OAUTH_CREDENTIALS_PATH','LOGISTICA_DRIVE_TOKEN_PATH','LOGISTICA_DRIVE_PEDIDOS_FOLDER_ID']) assert.ok(checklist.includes(name));
   for(const file of readdirSync(new URL('./',import.meta.url))) {
@@ -171,7 +174,7 @@ test('exactly five pending confirmations, public environment values and no embed
     assert.doesNotMatch(content,/<PASSWORD>/);
   }
   assert.match(checklist,/PGDATABASE=calidad/); assert.match(checklist,/FIREBASE_LOGISTICA_PROJECT_ID=logistica-ar/);
-  assert.match(checklist,/no volver\s+ciegamente/);
+  assert.match(checklist,/no volver\s+ciegamente/i);
 });
 test('FileZilla manifest includes runtime and lockfile, excludes secrets/tests/admin assets',()=>{
   const paths=read('07_ARCHIVOS_API10_FILEZILLA.txt').trim().split('\n');

@@ -1,72 +1,63 @@
 # Paquete administrativo: artecnologia → calidad
 
-Estado: **PREPARADO PARA REVISIÓN; NO EJECUTADO EN DB**. Esta entrega no autoriza
-iniciar el cutover. Ejecutar únicamente durante la ventana autorizada, con los
-escritores detenidos y API10 todavía sobre `artecnologia`.
+Estado: PREPARADO PARA REVISIÓN; sin ejecución en DB ni deploy. Runtime fijo:
+**Node.js v18.19.1**. No actualizar Node del servidor.
 
-El inventario, el comparador y las siete migraciones siguen siendo los de
-[`transfer_calidad`](../transfer_calidad/README.md) y [`migrations/prod`](../migrations/prod/).
+El inventario y las siete migraciones siguen en transfer_calidad/ y migrations/prod/.
 El administrador no elige tablas, no compara conteos manualmente y no decide el
-orden de las migraciones. Cualquier `NO`, `REVISAR`, error o conexión perdida
-significa **DETENERSE; NO continuar; NO reintentar automáticamente**. Enviar los
-reportes de metadatos a Codex para resolver el motivo.
+orden. El procedimiento autorizado es **snapshot/export → restore → validación →
+cutover → CONCILIACION DELTA**. No exige un freeze total de escrituras.
 
-Antes del cutover solamente necesitamos estas **cinco confirmaciones**:
+Datos pendientes del administrador:
 
-1. Salida de `node --version` (el lock actual incluye dependencias que requieren Node ≥22).
-2. Nombre exacto del proceso API10 en PM2.
-3. Ruta real del directorio API10.
-4. Backup actualizado de `artecnologia` realizado = SI (bloque C).
-5. Mecanismo para detener temporalmente escritores durante el snapshot = CONFIRMADO.
+1. Nombre exacto del proceso API10 en PM2.
+2. Ruta real del directorio API10.
 
-PostgreSQL 16.15, Ubuntu, HeidiSQL, FileZilla y respaldo de API10 ya están
-confirmados. Las rutas de servidor y el nombre PM2 se sustituyen en el checklist
-cuando lleguen las respuestas 2 y 3. Host, puerto, rol y directorio de respaldo
-son parámetros del entorno administrado; no se incluyen credenciales aquí.
+Node 18.19.1, PostgreSQL 16.15/Ubuntu, HeidiSQL, FileZilla y respaldo de API10 ya
+están confirmados. El backup actualizado de artecnologia se produce y verifica
+en el bloque C; el plan de conciliación manual ya está aceptado. No pedir otra
+confirmación de freeze. Verificar el binario usado por PM2, no solo el del shell.
 
-Orden de uso:
+Orden operativo:
 
-- `01_preflight_artecnologia.sql`: ejecutar completo en HeidiSQL sobre
-  `artecnologia`; guardar la tabla CHECK/ESTADO/DETALLE. Incluye 15 tablas con
-  conteos exactos y cuatro históricos separados como PENDIENTE_VERIFICACION_PROD.
-- `02_preflight_calidad.sql`: ejecutar completo sobre `calidad`; repetir es seguro.
-- Seguir [05_COMANDOS_TRANSFERENCIA.md](05_COMANDOS_TRANSFERENCIA.md), bloques A–F.
-  El runner guarda automáticamente los mismos reportes en TSV, evitando exportar
-  manualmente desde HeidiSQL.
-- `03_validar_post_restore_calidad.sql`: captura en `calidad` antes de Logística.
-  `CAPTURA_RESTORE_APTA=SI` no certifica igualdad. El comparador determina
-  **RESTORE_VALIDADO=SI/NO** contra `origen_definitivo.tsv` del mismo freeze.
-- Bloque G: las siete migraciones se aplican y verifican una por una por el runner.
-- `04_validar_post_logistica_calidad.sql`: ledger, orden, checksums y fingerprint
-  completo esperado; no exige usuarios, mappings ni entregas reales.
-- Solo después seguir [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md).
+- 01_preflight_artecnologia.sql: una ejecución READ ONLY en artecnologia; 15 tablas,
+  conteos/estructura/secuencias y cuatro históricos separados pendientes.
+- 02_preflight_calidad.sql: una ejecución repetible READ ONLY en calidad vacía.
+- [05_COMANDOS_TRANSFERENCIA.md](05_COMANDOS_TRANSFERENCIA.md), A–F: el runner
+  conserva abierto un snapshot MVCC compartido por capturas y pg_dump. Registra
+  SNAPSHOT_ID, inicio/finalización, artefactos y SHA-256 en snapshot.json.
+- 03_validar_post_restore_calidad.sql: captura antes de Logística; el comparador
+  existente valida estructura/conteos y el comparador delta valida hashes por fila
+  contra delta_baseline.tsv del snapshot, sin comparar manualmente.
+- G: aplicar y verificar las siete migraciones, una por una, con sus bytes/guards.
+- 04_validar_post_logistica_calidad.sql: seis tablas, fingerprint, checksums y ledger.
+- [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md): FileZilla/PM2, después de DB validada.
+- I: capturar ambos lados y revisar CONCILIACION DELTA. No cerrar la tarea de datos
+  hasta resolver/registrar diferencias y repetir las capturas necesarias.
 
-Los cuatro SQL son READ ONLY, compatibles con PostgreSQL/HeidiSQL sin comandos
-psql. Un guard de base/versión equivocada aborta la transacción; ejecutar ROLLBACK
-o reconectar antes de otro intento. El límite de 120 segundos puede detener
-conteos grandes: no es un resultado aprobado y requiere revisión técnica.
+Un NO/REVISAR, captura truncada, schema distinto, secuencia insegura o error del
+restore/migración significa DETENERSE antes del corte. El código 2 del comparador
+delta significa diferencias pendientes de revisión, no una conciliación realizada.
+Un fallo antes del corte permite mantener API10 anterior sobre artecnologia.
 
-Compartir únicamente los `.tsv` y reportes de resultados JSON. Contienen
-metadatos, firmas, conteos y estados de secuencia; las definiciones/defaults se
-representan mediante SHA-256. No contienen filas de negocio ni cuerpos de
-funciones. Los nombres de roles/objetos son metadatos de infraestructura.
-**No compartir** dumps, export SQL, archivos de entorno, passfiles ni archivos
-de Firebase/Drive. El backup completo puede contener toda la información de la
-base y debe quedar privado fuera del repositorio.
+Los cuatro SQL administrativos y las dos capturas delta son READ ONLY. Un guard
+de base/PG16 equivocada aborta su transacción. El límite 120s puede detener
+capturas grandes: revisar técnicamente, no aceptar una salida incompleta.
 
-Las cuatro tablas históricas pendientes se reportan pero **no se transfieren**.
-No se crea ni utiliza PREPROD ni una DB LOCAL. El destino está fijado a `calidad`.
-Un objeto auxiliar no soportado produce REVISAR; Codex ajustará el paquete tras
-revisar la captura, sin trasladar decisiones de alcance al administrador.
+Compartir TSV y reportes JSON, que contienen metadatos, conteos, hashes y PK
+numéricas/UUID necesarias. PK textuales se identifican por hash para evitar
+exponer datos personales. No se imprimen filas completas ni cuerpos de funciones.
+NO compartir dumps/export SQL, passfiles, entornos ni credenciales Firebase/Drive.
 
-Los SQL y el manifiesto FileZilla se generan offline con `build_package.mjs`
-desde las fuentes existentes. No editarlos a mano. Los tests comprueban que
-continúan sincronizados. Este paquete no sustituye un ensayo real autorizado:
-no se ha ejecutado SQL para producir esta entrega.
+Los cuatro históricos PostgreSQL pendientes no se incorporan automáticamente.
+El snapshot histórico Entregas del Sheet es un flujo distinto del delta PostgreSQL.
+No se crea ni utiliza PREPROD ni una DB LOCAL.
 
-Límites de la certificación: conteos/MAX y hashes estructurales no demuestran
-igualdad de cada celda; el freeze es obligatorio. `pg_depend` no registra todas
-las referencias dentro de PL/pgSQL o SQL dinámico. Se conserva el alcance de
-funciones ya inventariado; un hallazgo nuevo vuelve a Codex, sin pedir al
-administrador diseñar consultas o elegir objetos. Las comprobaciones offline no
-sustituyen ejecutar los preflights/validadores durante la ventana autorizada.
+Los generadores offline y sus tests evitan duplicar inventarios/comparadores.
+Los scripts no aplican INSERT/UPDATE/DELETE de conciliación. Nuevas altas que
+colisionen por PK, cambios divergentes y ausencias requieren decisión humana.
+El snapshot no congela secuencias ni escrituras posteriores: el restore verifica
+su seguridad contra las PK restauradas y la conciliación conserva ambas versiones.
+
+Compatibilidad y riesgos de dependencias: [AUDITORIA_NODE18.md](../../api10/AUDITORIA_NODE18.md).
+Detalle y límites del delta: [CONCILIACION_DELTA.md](../transfer_calidad/CONCILIACION_DELTA.md).

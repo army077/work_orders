@@ -57,6 +57,11 @@ un baseline ejecutable fiable. Las definiciones reales se obtendran con pg_dump.
 
 ## Historicos existentes en el repositorio, presencia productiva pendiente
 
+El paquete operativo vigente reporta estos cuatro nombres y los excluye mediante
+selected=false. Su presencia no autoriza copiarlos: cualquier inclusión posterior
+requiere una decisión explícita de alcance. Las condiciones de las filas siguientes
+describen los candidatos, no una selección automática para el cutover actual.
+
 Estado de los cuatro nombres siguientes: **PENDIENTE VERIFICACIÓN PROD**.
 Su existencia confirmada en `artecnologia_test_local` no demuestra presencia en
 `artecnologia`. El generador de dump productivo exige ahora aprobacion explicita

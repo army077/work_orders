@@ -1,21 +1,29 @@
 # Evidencias de entregas: pruebas locales
 
-Pruebas aisladas (comando verificado con Node 24.19.0, sin credenciales ni variables PG):
+Pruebas aisladas con Node 18.19.1, sin credenciales ni conexiones productivas:
 
 ```powershell
 cd context/api10
 npm.cmd run test:evidence
 ```
 
-Estas pruebas no importan `server.js`, `db.js` ni los middlewares Firebase.
-No invocan el endpoint, no abren puertos y no contactan PostgreSQL o Google.
-El parser multipart se prueba directamente con streams en memoria. El repositorio
-recibe un pool simulado y Drive recibe un cliente simulado. Ningún doble escribe
-datos externos. Los identificadores `TEST_ONLY_*` y UUIDs constantes son ficticios.
+El script deshabilita las dos integraciones DB. Los repositorios usan pools
+simulados; multipart usa streams reales en memoria. Las pruebas de compatibilidad
+ejercitan Firebase SDK/ADC/verifyIdToken y OAuth/Drive con descubrimiento y
+transportes simulados. El smoke de arranque importa server.js en un proceso TEST,
+abre solo el HTTP de loopback y bloquea las conexiones salientes: health debe dar
+200 sin contactar DB ni Google. Los identificadores TEST_ONLY_* son ficticios.
+
+Instalar con npm ci y engine-strict bajo Node 18.19.1; no usar --test-isolation
+ni --env-file, que no están disponibles en ese runtime. Para el servidor LOCAL
+se proporciona npm run start:local con un cargador restringido de .env.local.
+Auditoría completa: [AUDITORIA_NODE18.md](../AUDITORIA_NODE18.md).
 
 La detección de tipo revisa firmas binarias, no decodifica ni certifica que una
 imagen sea íntegra. Los tamaños se limitan a 10 MiB (PHOTO) y 2 MiB (SIGNATURE).
 Se normalizan aliases MIME de JPEG/PNG; se rechazan los formatos incompatibles.
+Un prefilter de firmas limita el detector a JPEG/PNG/WEBP y bloquea ASF/ZIP antes
+de invocarlo; fileTypeFromBuffer sigue siendo obligatorio para validar MIME real.
 Las filas PENDING, UPLOADED y FAILED consumen cupo: un nuevo UUID no permite
 saltarse las 15 fotos o la firma única. Un retry válido reutiliza su propia fila.
 

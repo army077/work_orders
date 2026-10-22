@@ -1,19 +1,10 @@
-# Comandos Linux para la ventana autorizada
+# Comandos Linux: snapshot y conciliación controlada
 
-**Preparados, no ejecutados.** Ejecutar en Bash desde la raíz de este checkout
-revisado, conservando su estructura `context/database/` y `context/api10/`.
-FileZilla permite llevar el checkout al servidor; el código administrativo no se
-copia al directorio público de API10. `pg_dump`, `pg_restore` y `psql` deben ser
-clientes PostgreSQL 16. Usar un endpoint fijo del cluster autorizado.
-En FileZilla usar transferencia **binaria**, sin conversión de saltos de línea:
-los checksums dependen de los bytes exactos de las siete migraciones.
+Preparados; NO ejecutados en DB. Desde la raíz del checkout revisado, con clientes
+PostgreSQL 16 y Node **18.19.1**. En FileZilla usar transferencia binaria para
+preservar los checksums. No subir herramientas administrativas al directorio público.
 
-## A — Captura/preflight
-
-Configurar parámetros del servidor. La autenticación debe existir mediante un
-passfile privado ya aprovisionado; nunca poner contraseñas en los comandos o en
-el chat. Conservar la política SSL del entorno. No imprimir variables de entorno.
-El runner también admite la variable PGPASSWORD provista por el gestor seguro.
+## A — Preflight
 
 ```bash
 set -euo pipefail
@@ -29,54 +20,53 @@ node --version
 node context/database/deploy_calidad/08_operar.mjs preflight
 ```
 
-BACKUP_DIR debe ser un directorio **nuevo por ventana**, privado, fuera del
-checkout y con espacio para el respaldo completo y export SQL. No reutilizar una
-carpeta de una ventana anterior. Ningún comando sobrescribe evidencias existentes.
-No activar flags de tests de integración ni cargar configuraciones LOCAL.
+BACKUP_DIR: nuevo por ventana, privado y fuera del checkout. No imprimir entornos
+ni pasar passwords por CLI. Mantener SSL y el mecanismo seguro de autenticación
+existente. También se admite PGPASSWORD suministrada por el gestor seguro.
+Los parámetros de servidor son los autorizados, con endpoint estable del cluster.
 
-Resultados: `preflight_origen.tsv` con ORIGEN_APTO=SI y `preflight_destino.tsv`
-con DESTINO_VACIO_Y_APTO=SI. Antes del freeze sirven como diagnóstico; todavía
-no son la captura definitiva. El runner fija origen/destino y rechaza otros
-nombres. HeidiSQL puede ejecutar los mismos archivos 01/02 íntegros.
+Guardar preflight_origen.tsv (ORIGEN_APTO=SI) y preflight_destino.tsv
+(DESTINO_VACIO_Y_APTO=SI). HeidiSQL puede ejecutar íntegros 01 y 02, sin psql.
 
-## B — Freeze
+## B — Punto de corte identificable, sin freeze total
 
-El responsable aplica el mecanismo de negocio confirmado en el punto 5 del
-LEEME. Debe detener **todos** los escritores: API10, otras APIs, jobs, integraciones,
-sesiones manuales, cambios DDL y consumidores de secuencias. No basta detener
-solo PM2. No inventar un comando para ese mecanismo.
+No exigir ESCRITORES_DETENIDOS=SI. Los usuarios pueden continuar en artecnologia
+durante la copia. El plan aceptado obliga a conservar el snapshot y conciliar el
+delta posterior, sin pérdida silenciosa. Evitar DDL concurrente durante el dump;
+un error o cambio estructural obliga a revisar, no a mezclar capturas.
 
-Después de comprobarlo, y manteniéndolo hasta el corte o rollback:
+El runner mantiene una transacción REPEATABLE READ READ ONLY abierta, exporta
+pg_export_snapshot() y comparte ese identificador con pg_dump. La captura
+estructural y delta_baseline.tsv se calculan dentro de esa misma transacción.
+No usar una captura previa independiente como baseline definitivo.
 
-```bash
-export ESCRITORES_DETENIDOS=SI
-```
-
-El flag documenta una confirmación humana; no detiene escritores por sí mismo.
-El respaldo utiliza el snapshot consistente de pg_dump; el freeze cubre también
-secuencias, que no quedan congeladas por MVCC. La captura definitiva, backup,
-export, comparación y corte pertenecen a esta misma ventana sin escrituras.
-
-## C — BACKUP DE SEGURIDAD completo de artecnologia
+## C — BACKUP DE SEGURIDAD completo
 
 ```bash
 node context/database/deploy_calidad/08_operar.mjs backup
 ```
 
-El runner ejecuta exactamente, sin escribir en origen:
+Internamente ejecuta pg_dump --format=custom --snapshot=<SNAPSHOT_ID> con
+--dbname=artecnologia y --file=artecnologia_seguridad.dump en BACKUP_DIR.
+El identificador solo es importable mientras vive la conexión exportadora:
+no copiar el comando interno a otra sesión ni reusar un snapshot expirado.
 
-```bash
-pg_dump --no-password --format=custom --dbname=artecnologia \
-  --file="$BACKUP_DIR/artecnologia_seguridad.dump"
-pg_restore --no-password --list "$BACKUP_DIR/artecnologia_seguridad.dump"
-```
+Guardar snapshot_started.json, snapshot.json (COMPLETE), backup_ok.json,
+origen_definitivo.tsv, delta_baseline.tsv, artecnologia_seguridad.dump y seguridad.toc.
+snapshot.json registra SNAPSHOT_ID, fecha/hora de inicio/finalización, estrategia,
+artefacto y hashes del backup y capturas. Un fallo deja el intento sin recibo COMPLETE;
+no reusar la ventana ni promoverlo a éxito manualmente.
 
-No hay selectores de tablas en el backup completo. Se guardan
-`origen_definitivo.tsv`, `artecnologia_seguridad.dump`, `seguridad.toc` y
-`backup_ok.json` (SHA-256). `pg_dump` incluye los objetos de la DB, datos y estado
-de secuencias; no respalda roles globales del cluster. No se restaurará este
-archivo completo en `calidad`. El éxito del comando no equivale a un ensayo de
-recuperación del backup. Confirmación 4 = SI después de su creación correcta.
+Es un respaldo completo de la DB, no de los roles globales del cluster. Su creación
+no demuestra un restore de recuperación. Contiene datos privados fuera del alcance
+selectivo y no se restaura entero en calidad.
+
+Las secuencias no son MVCC. No se exige igualdad de last_value de dos instantes
+vivos: el restore conserva el estado nativo del dump y verifica candidato siguiente
+contra MIN/MAX de las filas restauradas, además de parámetros/ownership/defaults.
+Una secuencia atrasada, compartida, CYCLE/cache no demostrable exige REVISAR;
+no se llama nextval/setval para arreglarla. Snapshot largo puede retener vacuum:
+vigilar la duración y cancelar ante incidencias; no es un CDC continuo.
 
 ## D — EXPORT SELECTIVO PARA calidad
 
@@ -84,28 +74,23 @@ recuperación del backup. Confirmación 4 = SI después de su creación correcta
 node context/database/deploy_calidad/08_operar.mjs export
 ```
 
-Se reutiliza el archivo completo del mismo snapshot: se genera automáticamente
-`selectivo.toc` con OIDs capturados de tablas/PK/FK/índices/defaults/triggers,
-secuencias y firmas de funciones aprobadas. El selector reutiliza
-`prepare_dump_args.mjs` y `manifest.psql`; no toma listas del administrador.
-Excluye históricos pendientes y Logística. La relación de dependencias reutiliza
-`dependencies.sql`; dependencias no admitidas impiden ORIGEN_APTO=SI.
+Genera selectivo.toc automáticamente usando manifest.psql, prepare_dump_args.mjs
+y OIDs del catálogo capturados bajo el snapshot. Conserva el orden nativo del
+archive para funciones/defaults/PK/FK/índices/triggers y sus ACL. Excluye históricos
+pendientes y Logística. No editar el TOC manualmente ni elegir tablas.
 
-La selección conserva el orden topológico del archivo original, incluidas las
-funciones antes de defaults/triggers que las referencian. Produce el export
-selectivo reproducible mediante:
+Produce el export privado reproducible con:
 
 ```bash
 pg_restore --no-password --use-list="$BACKUP_DIR/selectivo.toc" \
   --file="$BACKUP_DIR/calidad_selectivo.sql" "$BACKUP_DIR/artecnologia_seguridad.dump"
 ```
 
-`calidad_selectivo.sql` es privado, contiene datos y **no** se comparte ni se
-versiona. Es una representación revisable del export; el restore usa el mismo
-archive y TOC para conservar las garantías nativas. El runner vuelve a capturar
-origen (`origen_post_export.tsv`), compara estructura/conteos/MAX/secuencias y
-guarda `export_ok.json`. Eso complementa el freeze; no demuestra igualdad de cada
-celda ni sustituye detener escritores. No editar el TOC manualmente.
+El runner guarda export_ok.json con SNAPSHOT_ID, hashes y finalización. Los
+cambios nuevos en origen no invalidan el snapshot: se detectarán en el delta.
+También extrae solo SEQUENCE SET a sequence_states.sql, sin ejecutarlo, y genera
+sequence_states.json. El selector exige un estado por cada secuencia. Se conserva
+el contador exacto del archive incluso si una tabla quedó vacía por deletes previos.
 
 ## E — Restore calidad
 
@@ -113,20 +98,18 @@ celda ni sustituye detener escritores. No editar el TOC manualmente.
 node context/database/deploy_calidad/08_operar.mjs restore
 ```
 
-Antes de ejecutar, vuelve a exigir `calidad` vacía y que su servidor/rol coincidan
-con la captura de origen. Verifica SHA del backup y TOC. Después usa:
+Vuelve a exigir calidad vacía y servidor/rol coincidentes con origen; verifica
+el backup/TOC/recibos. El comando exacto interno es:
 
 ```bash
 pg_restore --no-password --exit-on-error --single-transaction --dbname=calidad \
   --use-list="$BACKUP_DIR/selectivo.toc" "$BACKUP_DIR/artecnologia_seguridad.dump"
 ```
 
-Sin opciones de borrado/creación de DB ni omisiones de owners/ACL/triggers. Los
-roles originales deben existir y el rol administrativo tener permisos para
-restaurar ownership/ACL. Una dependencia o permiso faltante detiene la operación;
-no se relajan permisos ni se cambian autenticación/owners automáticamente.
-`restore_started.json` impide reintentos ciegos, incluso ante conexión perdida;
-`restore_completed.json` se crea solo al recibir éxito. No tocar `artecnologia`.
+Sin --clean, --create, --disable-triggers, --no-owner ni --no-acl. Los roles/ACL
+originales se conservan; errores de permisos/dependencias detienen todo. No modificar
+autenticación ni origen. restore_started.json impide reintentos ciegos si se pierde
+la conexión; restore_completed.json solo se crea tras éxito confirmado.
 
 ## F — Validación post restore
 
@@ -134,24 +117,25 @@ no se relajan permisos ni se cambian autenticación/owners automáticamente.
 node context/database/deploy_calidad/08_operar.mjs validate-restore
 ```
 
-Ejecuta `03_validar_post_restore_calidad.sql`, guarda
-`destino_post_restore.tsv` y compara automáticamente con `origen_definitivo.tsv`
-usando **el comparador existente**. Resultado obligatorio en
-`restore_validado.json`: RESTORE_VALIDADO=SI, cero diferencias y cero warnings.
-Verifica también safety de cada secuencia contra MIN/MAX de su consumidor,
-sin nextval/setval. Las definiciones se comparan por hash, owners/ACL de forma
-estricta; no se usa el mapeo de permisos LOCAL.
+Ejecuta 03_validar_post_restore_calidad.sql y capture_delta_calidad.sql. Guarda
+destino_post_restore.tsv y delta_destino_post_restore.tsv. El comparador existente
+valida estructura/conteos/PK/FK/índices/defaults/funciones/triggers/ACL frente al
+origen del snapshot. Se permiten diferencias no MVCC de estado de secuencia
+solamente con recibo de snapshot y safety del destino; las definiciones siguen
+siendo estrictas. Además compara hashes de todas las filas con PK soportada.
+last_value/is_called del destino deben coincidir exactamente con sequence_states.json
+extraído del dump; no basta con que el siguiente candidato sea mayor que MAX(pk).
 
-Si se necesita revisión offline por Codex, compartir únicamente ambos TSV:
+RESTORE_VALIDADO=SI en restore_validado.json exige también cero diferencias de
+fila y cero tablas no comparables. No exige que el origen vivo siga igual al snapshot.
+No compara a mano. Para revisión offline compartir estos seis archivos:
 
 ```bash
 node context/database/deploy_calidad/09_comparar_restore.mjs \
-  "$BACKUP_DIR/origen_definitivo.tsv" "$BACKUP_DIR/destino_post_restore.tsv"
+  "$BACKUP_DIR/origen_definitivo.tsv" "$BACKUP_DIR/destino_post_restore.tsv" \
+  "$BACKUP_DIR/snapshot.json" "$BACKUP_DIR/delta_baseline.tsv" \
+  "$BACKUP_DIR/delta_destino_post_restore.tsv" "$BACKUP_DIR/sequence_states.json"
 ```
-
-No comparar conteos a mano. Una captura truncada, metadato faltante o secuencia
-insegura da NO. HeidiSQL puede ejecutar 03, pero la comparación cruzada requiere
-los dos archivos; un resultado local CAPTURA_RESTORE_APTA no reemplaza esa comparación.
 
 ## G — Siete migraciones Logística
 
@@ -159,22 +143,21 @@ los dos archivos; un resultado local CAPTURA_RESTORE_APTA no reemplaza esa compa
 node context/database/deploy_calidad/08_operar.mjs migrate
 ```
 
-El runner exige restore validado y fija exclusivamente `calidad`. Importa el
-aplicador PROD existente, conserva sus guards y calcula SHA de los bytes enviados.
-Orden cerrado, **ejecutar y validar éxito antes de enviar la siguiente**:
+Orden cerrado: ejecutar y validar COMMIT/fingerprint/ledger de cada una antes de
+enviar la siguiente. Ruta de todos: context/database/migrations/prod/.
 
-1. `20261016_create_logistica_authorized_users.sql` → COMMIT + schema/ledger 1/7.
-2. `20261016_create_logistica_deliveries.sql` → COMMIT + schema/ledger 2/7.
-3. `20261019_extend_logistica_delivery_evidence.sql` → COMMIT + schema/ledger 3/7.
-4. `20261019_add_logistica_delivery_drive_folder.sql` → COMMIT + schema/ledger 4/7.
-5. `20261020_add_logistica_delivery_completion.sql` → COMMIT + schema/ledger 5/7.
-6. `20261021_create_entregas_logistica_legacy.sql` → COMMIT + schema/ledger 6/7.
-7. `20261021_create_logistica_legacy_owner_mapping.sql` → COMMIT + schema/ledger 7/7.
+1. `20261016_create_logistica_authorized_users.sql` → validar éxito 1/7.
+2. `20261016_create_logistica_deliveries.sql` → validar éxito 2/7.
+3. `20261019_extend_logistica_delivery_evidence.sql` → validar éxito 3/7.
+4. `20261019_add_logistica_delivery_drive_folder.sql` → validar éxito 4/7.
+5. `20261020_add_logistica_delivery_completion.sql` → validar éxito 5/7.
+6. `20261021_create_entregas_logistica_legacy.sql` → validar éxito 6/7.
+7. `20261021_create_logistica_legacy_owner_mapping.sql` → validar éxito 7/7.
 
-Ruta de todos: `context/database/migrations/prod/`. Cada éxito produce
-`<nombre-migracion>.result.json`. Si una falla: **DETENERSE, NO continuar**.
-El ledger/shape/checksum decide el estado; no repetir una migración tras una
-pérdida de conexión. Codex debe evaluar el estado antes de autorizar recuperación.
+El runner usa el aplicador PROD existente y sus guards/checksums exactos para
+calidad. Genera <nombre-migracion>.result.json por éxito. Si una falla:
+DETENERSE, NO continuar, NO reintentar automáticamente. Mantener API10 anterior
+en artecnologia hasta resolver. No insertar usuarios/mappings/entregas de prueba.
 
 ## H — Validación final schema
 
@@ -182,13 +165,36 @@ pérdida de conexión. Codex debe evaluar el estado antes de autorizar recuperac
 node context/database/deploy_calidad/08_operar.mjs validate-final
 ```
 
-Ejecuta `04_validar_post_logistica_calidad.sql` y guarda
-`destino_post_logistica.tsv` y `logistica_validada.json`.
-LOGISTICA_SCHEMA_VALIDO=SI certifica las seis tablas, columnas/constraints/índices,
-triggers/guard de mapping, secuencias, fingerprint final, siete hashes del ledger
-y orden temporal estricto. No consulta filas de usuarios, mappings ni entregas.
-Con SI, continuar con el checklist de API10; mantener el freeze hasta resolver el
-corte o rollback. No habilitar tráfico a `calidad` antes de completar validaciones.
+Ejecuta 04_validar_post_logistica_calidad.sql; guarda destino_post_logistica.tsv
+y logistica_validada.json. Exige LOGISTICA_SCHEMA_VALIDO=SI, ledger 7/7 con
+hashes/orden y fingerprint de las seis tablas, constraints/índices/triggers.
+No requiere datos reales de usuarios, mappings ni histórico. Con SI seguir 06.
 
-Referencias de las herramientas: [pg_dump 16](https://www.postgresql.org/docs/16/app-pgdump.html),
-[pg_restore 16](https://www.postgresql.org/docs/16/app-pgrestore.html).
+## I — CONCILIACION DELTA después del cutover
+
+```bash
+node context/database/deploy_calidad/08_operar.mjs delta
+```
+
+Solo SELECT/READ ONLY contra artecnologia y calidad; no corrige ninguna fila.
+Guarda delta_origen_<captura>.tsv, delta_destino_<captura>.tsv y delta_<captura>.json
+con SNAPSHOT_ID, inicio/final y diferencias SOLO_ORIGEN / SOLO_DESTINO /
+CONTENIDO_DISTINTO. Usa también delta_baseline.tsv para separar cambios observados
+en cada lado desde el snapshot. Código 0: sin diferencias observadas; 2: pendientes
+o tablas no comparables; 1: captura/operación inválida. No tratar 2 como resuelto.
+
+Revisión humana: altas solo en origen pueden trasladarse tras validar PK/FK;
+updates divergentes y colisiones de IDs deben revisarse antes de sobrescribir.
+No inferir deletes ni ejecutar INSERT/UPDATE/DELETE automáticos. Registrar cada
+resolución aprobada y repetir las capturas hasta cerrar la conciliación. Evitar
+nuevas rutas hacia el sistema anterior y considerar solicitudes/jobs en vuelo.
+Si el origen sigue cambiando, el informe es puntual y debe repetirse; no declarar
+cerrado el delta hasta acordar su última escritura relevante.
+
+Detalles y limitaciones: [CONCILIACION_DELTA.md](../transfer_calidad/CONCILIACION_DELTA.md).
+El histórico Entregas del Sheet tiene su propio snapshot final y conciliación:
+no mezclarlo con este delta PostgreSQL.
+
+Referencias: [snapshot exportado PG16](https://www.postgresql.org/docs/16/functions-admin.html#FUNCTIONS-SNAPSHOT-SYNCHRONIZATION),
+[pg_dump](https://www.postgresql.org/docs/16/app-pgdump.html),
+[pg_restore](https://www.postgresql.org/docs/16/app-pgrestore.html).

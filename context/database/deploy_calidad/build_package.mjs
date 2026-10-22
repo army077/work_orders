@@ -254,7 +254,7 @@ ROLLBACK;
 }
 export function generatedFiles() {
   const dirs=['routes','services','repositories','auth','integrations'];
-  const runtime=['db.js','server.js','package.json','package-lock.json', ...dirs.flatMap(dir =>
+  const runtime=['db.js','server.js','package.json','package-lock.json','.npmrc','scripts/audit_node18_engines.cjs', ...dirs.flatMap(dir =>
     readdirSync(new URL(`../../api10/${dir}/`,import.meta.url)).filter(n=>n.endsWith('.js')).sort().map(n=>dir+'/'+n))];
   return new Map([
     ['01_preflight_artecnologia.sql',captureSQL('artecnologia')],

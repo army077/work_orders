@@ -1,5 +1,6 @@
 -- SOLO PREPARADO. Salida JSONL: psql -X -q -t -A --output=<archivo> -f snapshot.sql.
--- Capturar ORIGEN y DESTINO sin escritores y ANTES de Logistica.
+-- Capturar ANTES de Logistica. En PROD usar el snapshot compartido del runner
+-- deploy_calidad/08_operar.mjs; capturas vivas separadas no representan el mismo corte.
 \set ON_ERROR_STOP on
 \pset format unaligned
 \pset tuples_only on

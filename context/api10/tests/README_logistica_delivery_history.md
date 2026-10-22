@@ -46,16 +46,20 @@ No hay migración nueva ni escrituras de datos en los handlers/repositorios.
 
 ## Validación
 
-Desde context/api10, sin instalación de paquetes:
+Desde context/api10, después de npm ci con Node 18.19.1:
 
-    node --test --test-isolation=none tests/*.test.js
+    npm run test:evidence
 
 La prueba real de PostgreSQL requiere habilitación explícita y la configuración
 LOCAL existente; aborta ante otra base/host/puerto/rol o mappings persistentes:
 
     $env:RUN_LOGISTICA_DELIVERY_HISTORY_LOCAL_TESTS = '1'
-    node --env-file=.env.local --test --test-isolation=none tests/logisticaDeliveryHistoryLocal.test.js
+    node --test tests/logisticaDeliveryHistoryLocal.test.js
     Remove-Item Env:RUN_LOGISTICA_DELIVERY_HISTORY_LOCAL_TESTS
+
+Solo después de autorización, las variables LOCAL deben estar suministradas al
+proceso mediante el mecanismo seguro existente. Node 18 no admite --env-file.
+No habilitar esta integración como parte de la regresión offline actual.
 
 No aplica migraciones ni importa el XLSX. Usa identidades ficticias, IDs explícitos
 sin avanzar secuencias y una transacción con ROLLBACK obligatorio. Los mappings

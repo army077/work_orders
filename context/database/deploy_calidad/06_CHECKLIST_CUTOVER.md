@@ -1,22 +1,23 @@
-# Deploy API10 mediante FileZilla, después de DB validada
+# Deploy API10 y conciliación posterior
 
-Requisitos: RESTORE_VALIDADO=SI y LOGISTICA_SCHEMA_VALIDO=SI de la misma ventana;
-freeze vigente; artefacto API10 anterior respaldado (ya confirmado). Una comprobación
-fallida detiene el deploy. No copiar el paquete administrativo al runtime público.
+Requisitos: RESTORE_VALIDADO=SI y LOGISTICA_SCHEMA_VALIDO=SI de la misma ventana,
+snapshot.json COMPLETE y artefacto anterior respaldado. **No requiere freeze total**.
+API10 permanece en artecnologia hasta terminar la migración/validación de calidad.
 
-- [ ] API10 anterior respaldada = SI; conservar su configuración para `artecnologia`.
-- [ ] Confirmaciones 1–5 del LEEME recibidas. Node del proceso PM2 compatible con ≥22.
-- [ ] Archivos nuevos subidos = SI: con FileZilla subir **todos** los archivos de
-  [07_ARCHIVOS_API10_FILEZILLA.txt](07_ARCHIVOS_API10_FILEZILLA.txt) desde
-  `context/api10/` a `<DIRECTORIO_API10_REAL>`, conservando subdirectorios.
-  Usar transferencia binaria para conservar los bytes del artefacto revisado.
-  No subir tests, `.env`, credenciales, dumps, `node_modules` ni scripts SQL.
-- [ ] `package.json` / `package-lock.json` actualizados = SI (incluidos en esa lista).
-- [ ] Variables productivas configuradas = SI, mediante el mecanismo seguro
-  existente que alimenta PM2. `server.js` no carga archivos `.env` automáticamente.
-  No asumir que subir un `.env` configura el proceso.
+- [ ] API10 anterior respaldada = SI (ya confirmado), incluida su configuración.
+- [ ] Node del proceso PM2 = v18.19.1; NO actualizar Node del servidor.
+- [ ] Nombre exacto PM2 y directorio API10 confirmados.
+- [ ] Archivos subidos con FileZilla = SI: todos los de
+  [07_ARCHIVOS_API10_FILEZILLA.txt](07_ARCHIVOS_API10_FILEZILLA.txt), desde context/api10/
+  hacia <DIRECTORIO_API10_REAL>, conservando rutas y usando transferencia binaria.
+  No subir tests, entornos, credenciales, dumps ni node_modules.
+- [ ] package.json/package-lock.json/.npmrc actualizados = SI. engine-strict permanece
+  activado; no usar force, legacy-peer-deps ni ignorar engines.
+- [ ] Variables productivas configuradas mediante el mecanismo seguro de PM2.
+  server.js no carga archivos .env automáticamente. No heredar el rol administrativo
+  del runner hacia API10; usar el rol de aplicación autorizado.
 
-Nombres de variables requeridas (sin valores secretos):
+Nombres de variables (sin valores secretos):
 
 ```text
 APP_ENV
@@ -32,7 +33,7 @@ LOGISTICA_DRIVE_TOKEN_PATH
 LOGISTICA_DRIVE_PEDIDOS_FOLDER_ID
 ```
 
-Valores públicos esperados:
+Valores públicos:
 
 ```text
 APP_ENV=production
@@ -40,38 +41,36 @@ PGDATABASE=calidad
 FIREBASE_LOGISTICA_PROJECT_ID=logistica-ar
 ```
 
-Los archivos de Firebase/Drive permanecen privados fuera del runtime compartido;
-configurar sus rutas según el mecanismo existente. Usar el rol de API10, no
-propagar el entorno administrativo del runner al proceso API. No ejecutar
-`pm2 env`, volcados de entorno ni publicar logs con secretos.
-
-Con el proceso sin tráfico y antes de levantar el freeze:
+Después de DB validada, coordinar el cambio de tráfico y considerar requests
+en vuelo. No se exige detener todos los escritores durante el snapshot. Evitar
+que nuevos clientes sigan llegando al artefacto anterior después del cutover.
 
 ```bash
 cd '<DIRECTORIO_API10_REAL>'
-npm ci --omit=dev
+node --version
+npm ci --omit=dev --engine-strict
+npm run audit:node18
 pm2 restart '<NOMBRE_EXACTO_PM2_API10>' --update-env
 curl --fail --silent --show-error --output /dev/null \
   --write-out '%{http_code}\n' http://127.0.0.1:3010/api10/health
 ```
 
-- [ ] `npm ci --omit=dev` = PASS.
-- [ ] PM2 proceso API10 reiniciado = SI, con el nombre exacto confirmado.
-- [ ] Health = 200.
-- [ ] Configuración activa confirmada para `calidad` sin imprimir secretos.
-- [ ] Responsable autoriza abrir tráfico y finalizar freeze.
+- [ ] npm ci --omit=dev = PASS y árbol runtime Node 18.19.1 compatible.
+- [ ] Proceso PM2 reiniciado = SI con entorno nuevo, health = 200.
+- [ ] Tráfico dirigido a calidad, hora del cutover registrada.
+- [ ] Ejecutar bloque I de 05: CONCILIACION DELTA; asignar revisión y registrar
+  resoluciones; repetir hasta cerrar diferencias sin pérdidas silenciosas.
 
-El health comprueba HTTP del proceso; **no prueba una consulta DB ni la operación
-Firebase/Drive**. Las validaciones previas certifican el schema; la habilitación
-operativa de usuarios/mappings y validaciones funcionales de negocio se realizan
-según el alcance posterior autorizado. No insertar datos de negocio para probar.
+Health valida HTTP; no acredita DB ni credenciales externas. No hacer escrituras
+reales en Firebase/Drive solo para validar el arranque. Las pruebas locales usan
+transportes simulados y la aplicación real con conexiones salientes bloqueadas.
 
-Rollback antes de nuevas escrituras de negocio en `calidad`: mantener/restaurar
-el artefacto y configuración anterior de API10 sobre `artecnologia`, reiniciar
-el mismo proceso y verificar health antes de levantar el freeze. Las escrituras
-administrativas de restore/ledger no equivalen a nuevas escrituras de negocio.
+Rollback antes de nuevas escrituras de negocio en calidad: mantener/restaurar
+artefacto y configuración anterior de API10 sobre artecnologia. El binario nuevo
+rechaza artecnologia por su guard. Restore/ledger no cuentan como operaciones de
+negocio nuevas. No volver ciegamente a artecnologia una vez que calidad reciba
+altas/updates nuevos: preservar ambos lados, revisar delta/efectos externos y
+autorizar una reconciliación o roll-forward. No borrar ninguna DB.
 
-Si `calidad` ya recibió **cualquier escritura nueva de negocio**, no volver
-ciegamente a `artecnologia`. Detener escritores, preservar ambos estados y
-reconciliar/reproducir las diferencias mediante un plan autorizado antes de
-cambiar tráfico. No automatizar esa decisión ni borrar ninguna DB.
+El snapshot final Entregas/Sheet es independiente del delta PostgreSQL.
+Riesgos de dependencias y mitigaciones: [AUDITORIA_NODE18.md](../../api10/AUDITORIA_NODE18.md).

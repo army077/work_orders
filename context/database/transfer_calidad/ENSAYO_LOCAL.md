@@ -1,5 +1,10 @@
 # Ensayo aislado de transferencia y Logistica
 
+Los ejemplos con --env-file/--test-isolation pertenecen al runtime anterior del
+ensayo archivado; no están disponibles en Node 18.19.1 ni son instrucciones del
+cutover vigente. Para pruebas offline usar context/api10/scripts/run_tests.cjs
+y node --test con los archivos explícitos del paquete operativo actual.
+
 **Antecedente archivado, no ejecutar como parte del cierre actual.** El usuario
 acepto el bloqueo administrativo LOCAL y descarto crear calidad_test_local u
 otra base de ensayo. No se solicitan nuevas credenciales ni cambios de permisos.

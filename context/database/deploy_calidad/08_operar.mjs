@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, createReadStream } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { compareSnapshots, parseSnapshot } from '../transfer_calidad/compare_snapshots.mjs';
@@ -10,6 +10,10 @@ import { prepareDumpArgs } from '../transfer_calidad/prepare_dump_args.mjs';
 import { core, historical } from '../transfer_calidad/manifest.mjs';
 import { artifacts, assertTarget, identitySql } from '../migrations/prod/logistica_prod_support.js';
 import { applyMigration } from '../migrations/prod/apply_logistica_migration_prod.js';
+import { withExportedSnapshot } from '../transfer_calidad/live_snapshot.mjs';
+import { compareDelta } from '../transfer_calidad/compare_delta.mjs';
+import { statements } from './build_package.mjs';
+import { parseArchiveSequences,archiveSequenceDifferences } from '../transfer_calidad/archive_sequences.mjs';
 
 const check=(value,code)=>{if(!value) throw new Error(code);};
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -35,13 +39,25 @@ export function extractCapture(report,database) {
   check(rows.find(r=>r.kind==='scope').tables.every(t=>t.selected===core.includes(t.name)),'FIXED_SCOPE_REQUIRED');
   return data;
 }
-export function validateRestore(source,destination) {
+export function validateRestore(source,destination,{snapshot,rowBaseline,rowDestination,archiveSequences}={}) {
   const a=parseReport(source), b=parseReport(destination);
   check(a.find(r=>r.check==='ORIGEN_APTO')?.status==='SI','ORIGIN_NOT_READY');
   check(b.find(r=>r.check==='CAPTURA_RESTORE_APTA')?.status==='SI','RESTORE_CAPTURE_NOT_READY');
-  const result=compareSnapshots(extractCapture(a,'artecnologia'),extractCapture(b,'calidad'));
+  if(snapshot) check(snapshot.status==='COMPLETE' && snapshot.strategy==='SNAPSHOT_CON_DELTA','SNAPSHOT_NOT_COMPLETE');
+  const result=compareSnapshots(extractCapture(a,'artecnologia'),extractCapture(b,'calidad'),snapshot?
+    {mode:'production_snapshot_delta',snapshotId:snapshot.snapshot_id}:undefined);
   const ok=result.equivalent && result.warnings.length===0;
-  return {RESTORE_VALIDADO:ok?'SI':'NO',...result};
+  if(snapshot) {
+    check(typeof rowBaseline==='string' && typeof rowDestination==='string','ROW_HASH_CAPTURES_REQUIRED');
+    check(snapshot.baseline_sha256===hash(source) && snapshot.delta_baseline_sha256===hash(rowBaseline),'SNAPSHOT_CAPTURE_HASH_MISMATCH');
+    const rows=compareDelta(rowBaseline,rowDestination);
+    const sequences=report=>report.filter(r=>r.check==='CAPTURA'&&r.detail.kind==='sequence').map(r=>r.detail);
+    const sequenceDifferences=archiveSequenceDifferences(sequences(b),archiveSequences,snapshot,sequences(a).map(r=>r.name));
+    return {RESTORE_VALIDADO:ok && rows.status==='SIN_DIFERENCIAS_OBSERVADAS' && !sequenceDifferences.length?'SI':'NO',...result,
+      archive_sequence_differences:sequenceDifferences,
+      row_hash_validation:rows.status,row_review:rows.review,row_differences:rows.differences,snapshot_id:snapshot.snapshot_id};
+  }
+  return {RESTORE_VALIDADO:ok?'SI':'NO',...result,scope:'LEGACY_STRICT_STRUCTURE_AND_COUNTS'};
 }
 export function selectToc(toc,report) {
   const snapshot=extractCapture(report,'artecnologia');
@@ -53,7 +69,8 @@ export function selectToc(toc,report) {
   check(objects.size>=core.length+3,'TOC_METADATA_MISSING');
   const relations=new Set(plan.tables_and_sequences.map(n=>n.slice('public.'.length)));
   const signatures=new Set(rows.filter(r=>r.kind==='function').map(r=>r.name.slice('public.'.length).replaceAll(/\s/g,'')));
-  const selected=[], tables=new Set(), functions=new Set(), data=new Set();
+  const selected=[], tables=new Set(), functions=new Set(), data=new Set(), sequenceSets=new Set();
+  const sequenceNames=rows.filter(r=>r.kind==='sequence').map(r=>r.name);
   for(const line of toc.split(/\r?\n/)) {
     if(!line || line.startsWith(';')) continue;
     const m=line.match(/^\d+; (\d+) (\d+) (.+)$/);
@@ -63,6 +80,7 @@ export function selectToc(toc,report) {
     // Entries with synthetic OIDs must match an approved object, never a substring.
     const aux=description.match(/^(TABLE DATA|SEQUENCE SET|SEQUENCE OWNED BY) public ([a-z_][a-z0-9_]*) \S+$/);
     if(aux) allowed=relations.has(aux[2]);
+    if(aux?.[1]==='SEQUENCE SET') allowed=sequenceNames.includes('public.'+aux[2]);
     const acl=description.match(/^ACL public (TABLE|SEQUENCE|COLUMN|FUNCTION) (.+) \S+$/);
     if(acl) {
       const identity=acl[2].replaceAll(/\s/g,'');
@@ -74,12 +92,14 @@ export function selectToc(toc,report) {
     // Comments/security labels are not required by the captured structural contract.
     if(/^(COMMENT|SECURITY LABEL) /.test(description)) continue;
     selected.push(line);
+    if(aux?.[1]==='SEQUENCE SET') sequenceSets.add('public.'+aux[2]);
     const table=description.match(/^TABLE public (\S+) \S+$/); if(table) tables.add('public.'+table[1]);
     const tableData=description.match(/^TABLE DATA public (\S+) \S+$/); if(tableData) data.add('public.'+tableData[1]);
     const fn=description.match(/^FUNCTION public (.+) \S+$/); if(fn) functions.add(fn[1].replaceAll(/\s/g,''));
   }
   check(core.every(n=>tables.has(n)&&data.has(n)) && tables.size===core.length,'TOC_TABLES_OR_DATA_INCOMPLETE');
   check([...signatures].every(n=>functions.has(n)) && functions.size===signatures.size,'TOC_FUNCTIONS_INCOMPLETE');
+  check(sequenceNames.every(n=>sequenceSets.has(n))&&sequenceNames.length===sequenceSets.size,'TOC_SEQUENCE_STATES_INCOMPLETE');
   check(historical.every(n=>!tables.has(n)),'HISTORICAL_NOT_APPROVED');
   return selected.join('\n')+'\n';
 }
@@ -92,6 +112,29 @@ function native(tool,args,{database,readonly=true}={}) {
   check(!result.error && result.status===0,'NATIVE_OPERATION_FAILED_'+tool.toUpperCase()+(state?'_SQLSTATE_'+state:''));
   return result.stdout;
 }
+async function nativeAsync(tool,args,database) {
+  await new Promise((resolve,reject)=>{
+    const child=spawn(tool,['--no-password',...args],{env:{...process.env,PGDATABASE:database,
+      PGAPPNAME:'deploy_calidad_snapshot',PGOPTIONS:'-c default_transaction_read_only=on'},stdio:['ignore','ignore','pipe']});
+    // Never echo server messages, credentials or data.
+    child.stderr.resume();
+    child.once('error',()=>reject(new Error('BACKUP_PROCESS_FAILED')));
+    child.once('close',code=>code===0?resolve():reject(new Error('BACKUP_PROCESS_FAILED')));
+  });
+}
+export async function captureInSnapshot(client,sql) {
+  const parsed=statements(sql);
+  check(parsed[0]==='BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' && parsed.at(-1)==='ROLLBACK','CAPTURE_TRANSACTION_REQUIRED');
+  let output='';
+  for(const query of parsed.slice(1,-1)) {
+    const result=await client.query(query);
+    for(const row of result.rows??[]) {
+      if(Object.hasOwn(row,'database_guard')) output+=String(row.database_guard)+'\n';
+      else if(row.CHECK) output+=[row.CHECK,row.ESTADO,JSON.stringify(row.DETALLE)].join('\t')+'\n';
+    }
+  }
+  return output;
+}
 function capture(name,database,path) {
   const text=native('psql',['-X','-q','-t','-A','-F','\t','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate',
     '--dbname='+database,'--file='+sqlPath(name)],{database});
@@ -101,7 +144,6 @@ function capture(name,database,path) {
   writeFileSync(path,text,{flag:'wx',mode:0o600}); return report;
 }
 function ready(report,key) { check(report.find(r=>r.check===key)?.status==='SI','NO_GO_'+key); }
-function frozen() { check(process.env.ESCRITORES_DETENIDOS==='SI','WRITERS_NOT_CONFIRMED_STOPPED'); }
 function config() {
   for(const name of ['PGHOST','PGPORT','PGUSER','BACKUP_DIR']) check(process.env[name]?.trim(),'CONFIG_MISSING_'+name);
   check(/^\d+$/.test(process.env.PGPORT),'PORT_INVALID');
@@ -111,7 +153,7 @@ function config() {
   check(!process.env.PGSERVICE && !process.env.PGOPTIONS,'AMBIGUOUS_LIBPQ_SETTINGS');
 }
 export async function main(command) {
-  check(['preflight','backup','export','restore','validate-restore','migrate','validate-final'].includes(command),'COMMAND_INVALID');
+  check(['preflight','backup','export','restore','validate-restore','migrate','validate-final','delta'].includes(command),'COMMAND_INVALID');
   config();
   const dir=resolve(process.env.BACKUP_DIR), p=name=>resolve(dir,name);
   mkdirSync(dir,{recursive:true,mode:0o700});
@@ -122,18 +164,42 @@ export async function main(command) {
     ready(capture('02_preflight_calidad.sql','calidad',p('preflight_destino.tsv')),'DESTINO_VACIO_Y_APTO');
     return;
   }
-  frozen();
   if(command==='backup') {
     check(!existsSync(p('artecnologia_seguridad.dump')),'BACKUP_ALREADY_EXISTS');
-    // Frozen capture immediately before a full backup, including objects outside selective scope.
-    ready(capture('01_preflight_artecnologia.sql','artecnologia',p('origen_definitivo.tsv')),'ORIGEN_APTO');
-    native('pg_dump',['--format=custom','--dbname=artecnologia','--file='+p('artecnologia_seguridad.dump')],{database:'artecnologia'});
+    const require=createRequire(new URL('../../api10/package.json',import.meta.url));
+    const {Client}=require('pg');
+    const client=new Client({host:process.env.PGHOST,port:Number(process.env.PGPORT),user:process.env.PGUSER,
+      password:process.env.PGPASSWORD,database:'artecnologia',connectionTimeoutMillis:5000,application_name:'deploy_calidad_snapshot_keeper'});
+    const startedAt=new Date().toISOString();
+    let snapshot;
+    try {
+      await client.connect();
+      client.on('error',()=>{}); // No raw connection messages; awaited operations still fail closed.
+      snapshot=await withExportedSnapshot(client,async meta=>{
+        save('snapshot_started.json',{...meta,status:'STARTED',client_started_at:startedAt});
+        const baseline=await captureInSnapshot(client,readFileSync(sqlPath('01_preflight_artecnologia.sql'),'utf8'));
+        ready(parseReport(baseline),'ORIGEN_APTO');
+        writeFileSync(p('origen_definitivo.tsv'),baseline,{flag:'wx',mode:0o600});
+        const deltaSql=readFileSync(new URL('../transfer_calidad/capture_delta_artecnologia.sql',import.meta.url),'utf8');
+        writeFileSync(p('delta_baseline.tsv'),await captureInSnapshot(client,deltaSql),{flag:'wx',mode:0o600});
+        await nativeAsync('pg_dump',['--format=custom','--snapshot='+meta.snapshot_id,'--dbname=artecnologia',
+          '--file='+p('artecnologia_seguridad.dump')],'artecnologia');
+        return {...meta,status:'COMPLETE',client_started_at:startedAt,completed_at:new Date().toISOString(),
+          backup:'artecnologia_seguridad.dump',backup_sha256:await hashFile(p('artecnologia_seguridad.dump')),
+          baseline_sha256:hash(baseline),delta_baseline_sha256:await hashFile(p('delta_baseline.tsv'))};
+      });
+    } finally { await client.end(); }
     const toc=native('pg_restore',['--list',p('artecnologia_seguridad.dump')],{database:'artecnologia'});
     writeFileSync(p('seguridad.toc'),toc,{flag:'wx',mode:0o600});
-    save('backup_ok.json',{sha256:await hashFile(p('artecnologia_seguridad.dump'))});
+    save('snapshot.json',snapshot);
+    save('backup_ok.json',{sha256:snapshot.backup_sha256,snapshot_id:snapshot.snapshot_id});
     return;
   }
   const backup=JSON.parse(read('backup_ok.json'));
+  const snapshot=JSON.parse(read('snapshot.json'));
+  check(snapshot.status==='COMPLETE' && snapshot.snapshot_id===backup.snapshot_id &&
+    snapshot.backup_sha256===backup.sha256 && snapshot.baseline_sha256===hash(read('origen_definitivo.tsv')) &&
+    snapshot.delta_baseline_sha256===await hashFile(p('delta_baseline.tsv')),'SNAPSHOT_RECEIPT_MISMATCH');
   check(await hashFile(p('artecnologia_seguridad.dump'))===backup.sha256,'BACKUP_CHANGED');
   if(command==='export') {
     const report=parseReport(read('origen_definitivo.tsv'));
@@ -141,17 +207,20 @@ export async function main(command) {
     writeFileSync(p('selectivo.toc'),selected,{flag:'wx',mode:0o600});
     check(!existsSync(p('calidad_selectivo.sql')),'EXPORT_ALREADY_EXISTS');
     native('pg_restore',['--use-list='+p('selectivo.toc'),'--file='+p('calidad_selectivo.sql'),p('artecnologia_seguridad.dump')],{database:'artecnologia'});
-    const after=capture('01_preflight_artecnologia.sql','artecnologia',p('origen_post_export.tsv'));
-    const a=extractCapture(report,'artecnologia'), b=extractCapture(after,'artecnologia');
-    // Reuse comparator in strict production mode; only its identity row is intentionally different.
-    const dest=b.split('\n').filter(Boolean).map(JSON.parse).map(r=>r.kind==='identity'?{...r,database:'calidad'}:r);
-    const result=compareSnapshots(a,dest.map(r=>JSON.stringify(r)).join('\n'));
-    ready(after,'ORIGEN_APTO'); check(result.equivalent && !result.warnings.length,'SOURCE_CHANGED_DURING_FREEZE');
-    save('export_ok.json',{backup:backup.sha256,toc:hash(selected),sql:await hashFile(p('calidad_selectivo.sql'))});
+    const sequenceToc=selected.split('\n').filter(line=>/; \d+ \d+ SEQUENCE SET /.test(line)).join('\n')+'\n';
+    writeFileSync(p('sequence_states.toc'),sequenceToc,{flag:'wx',mode:0o600});
+    native('pg_restore',['--use-list='+p('sequence_states.toc'),'--file='+p('sequence_states.sql'),p('artecnologia_seguridad.dump')],{database:'artecnologia'});
+    const sequenceNames=[...parseSnapshot(extractCapture(report,'artecnologia'),'artecnologia').values()].filter(r=>r.kind==='sequence').map(r=>r.name);
+    save('sequence_states.json',{snapshot_id:snapshot.snapshot_id,backup_sha256:backup.sha256,
+      sequences:parseArchiveSequences(read('sequence_states.sql'),sequenceNames)});
+    save('export_ok.json',{backup:backup.sha256,snapshot_id:snapshot.snapshot_id,toc:hash(selected),
+      sequence_states_sha256:hash(read('sequence_states.json')),
+      sql:await hashFile(p('calidad_selectivo.sql')),completed_at:new Date().toISOString()});
     return;
   }
   const exported=JSON.parse(read('export_ok.json'));
-  check(exported.backup===backup.sha256 && exported.toc===hash(read('selectivo.toc')),'EXPORT_CHANGED');
+  check(exported.backup===backup.sha256 && exported.toc===hash(read('selectivo.toc')) &&
+    exported.sequence_states_sha256===hash(read('sequence_states.json')),'EXPORT_CHANGED');
   if(command==='restore') {
     check(!existsSync(p('restore_started.json')),'RESTORE_ALREADY_ATTEMPTED_STOP');
     const dest=capture('02_preflight_calidad.sql','calidad',p('destino_inmediatamente_antes_restore.tsv'));
@@ -170,11 +239,28 @@ export async function main(command) {
   check(JSON.parse(read('restore_completed.json')).backup===backup.sha256,'RESTORE_NOT_COMPLETED');
   if(command==='validate-restore') {
     capture('03_validar_post_restore_calidad.sql','calidad',p('destino_post_restore.tsv'));
-    const result=validateRestore(read('origen_definitivo.tsv'),read('destino_post_restore.tsv'));
+    const deltaText=native('psql',['-X','-q','-t','-A','-F','\t','-v','ON_ERROR_STOP=1','--dbname=calidad',
+      '--file='+fileURLToPath(new URL('../transfer_calidad/capture_delta_calidad.sql',import.meta.url))],{database:'calidad'});
+    writeFileSync(p('delta_destino_post_restore.tsv'),deltaText,{flag:'wx',mode:0o600});
+    const result=validateRestore(read('origen_definitivo.tsv'),read('destino_post_restore.tsv'),{
+      snapshot,rowBaseline:read('delta_baseline.tsv'),rowDestination:deltaText,archiveSequences:JSON.parse(read('sequence_states.json'))});
     save('restore_validado.json',result); check(result.RESTORE_VALIDADO==='SI','RESTORE_NOT_VALIDATED');
     console.log('RESTORE_VALIDADO = SI'); return;
   }
   check(JSON.parse(read('restore_validado.json')).RESTORE_VALIDADO==='SI','RESTORE_NOT_VALIDATED');
+  if(command==='delta') {
+    const started=new Date().toISOString(),id=started.replaceAll(/[^0-9TZ]/g,'');
+    const collect=database=>native('psql',['-X','-q','-t','-A','-F','\t','-v','ON_ERROR_STOP=1',
+      '--dbname='+database,'--file='+fileURLToPath(new URL('../transfer_calidad/capture_delta_'+database+'.sql',import.meta.url))],{database});
+    const source=collect('artecnologia'),destination=collect('calidad');
+    writeFileSync(p('delta_origen_'+id+'.tsv'),source,{flag:'wx',mode:0o600});
+    writeFileSync(p('delta_destino_'+id+'.tsv'),destination,{flag:'wx',mode:0o600});
+    const result=compareDelta(source,destination,read('delta_baseline.tsv'));
+    save('delta_'+id+'.json',{...result,snapshot_id:snapshot.snapshot_id,started_at:started,completed_at:new Date().toISOString()});
+    console.log(result.status+'; automatic_writes=false');
+    if(result.review.length||result.differences.length) process.exitCode=2;
+    return;
+  }
   if(command==='migrate') {
     check(!existsSync(p('migrations_started.json')),'MIGRATIONS_ALREADY_ATTEMPTED_STOP');
     check(process.env.APP_ENV==='production' && process.env.PGDATABASE==='calidad','PRODUCTION_CALIDAD_ENV_REQUIRED');

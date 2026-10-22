@@ -2,6 +2,8 @@ db.js
 server.js
 package.json
 package-lock.json
+.npmrc
+scripts/audit_node18_engines.cjs
 routes/authLogistica.js
 routes/customs.js
 routes/logisticaCompletion.js

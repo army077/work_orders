@@ -56,13 +56,16 @@ export function parseSnapshot(bytes, database) {
   return indexed;
 }
 
-export function compareSnapshots(sourceBytes, destinationBytes, { mode = 'production' } = {}) {
-  check(['production', 'local_rehearsal'].includes(mode), 'UNAPPROVED_MODE');
+export function compareSnapshots(sourceBytes, destinationBytes, { mode = 'production', snapshotId } = {}) {
+  check(['production', 'local_rehearsal', 'production_snapshot_delta'].includes(mode), 'UNAPPROVED_MODE');
+  const live = mode === 'production_snapshot_delta';
+  if (live) check(typeof snapshotId === 'string' && /^[0-9A-Fa-f]+-[0-9A-Fa-f]+-[0-9]+$/.test(snapshotId), 'EXPORTED_SNAPSHOT_REQUIRED');
   const local = mode === 'local_rehearsal';
   const source = parseSnapshot(sourceBytes, local ? 'artecnologia_test_local' : 'artecnologia');
   const destination = parseSnapshot(destinationBytes, local ? 'calidad_test_local' : 'calidad');
   const mismatches = [];
   const permissionDifferences = [];
+  const sequenceStateDifferences = [];
   // Solo el ensayo LOCAL restaura --no-owner/--no-acl como workorders_test.
   // Se reportan las diferencias; este mapeo NUNCA se aplica a comparacion PROD.
   const structure = value => value && typeof value === 'object'
@@ -73,7 +76,10 @@ export function compareSnapshots(sourceBytes, destinationBytes, { mode = 'produc
     // Explicitly excluded historical tables are reported but are not transferred.
     // Legacy snapshots without `selected` preserve their original strict scope.
     const comparable = row => row?.kind === 'scope' ? { ...row, tables: row.tables.map(t =>
-      t.selected === false ? { ...t, present: false } : t) } : row;
+      t.selected === false ? { ...t, present: false } : t) } : live && row?.kind === 'sequence'
+        ? { ...row, last_value: 'NON_MVCC_CHECKED_SEPARATELY', is_called: 'NON_MVCC_CHECKED_SEPARATELY' } : row;
+    if (live && source.get(key)?.kind === 'sequence' &&
+      (source.get(key).last_value !== destination.get(key)?.last_value || source.get(key).is_called !== destination.get(key)?.is_called)) sequenceStateDifferences.push(key);
     const left = comparable(source.get(key)), right = comparable(destination.get(key));
     if (local && stable(left) !== stable(right) && stable(structure(left)) === stable(structure(right))) permissionDifferences.push(key);
     if (stable(local ? structure(left) : left) !== stable(local ? structure(right) : right)) mismatches.push(key);
@@ -87,6 +93,8 @@ export function compareSnapshots(sourceBytes, destinationBytes, { mode = 'produc
     }
   }
   return { equivalent: mismatches.length === 0, mismatches, warnings, permission_differences: permissionDifferences,
+    sequence_state_differences: sequenceStateDifferences,
+    sequence_state_policy: live ? 'NON_MVCC; destination safety must be validated independently against restored PK bounds' : 'EXACT',
     local_role_mapping: local ? 'Propietarios/ACL originales registrados; destino aislado con workorders_test' : null,
     scope: 'Baseline antes de Logistica; no certifica igualdad de cada celda ni cierre de dependencias auxiliares.' };
 }

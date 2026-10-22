@@ -1,0 +1,22 @@
+-- Incluir DESPUES de BEGIN READ ONLY. Variables obligatorias del operador.
+-- Un guard falso causa division por cero y ON_ERROR_STOP termina psql.
+-- No imprime credenciales, no usa nextval/setval ni ejecuta funciones del proyecto.
+SET LOCAL search_path = pg_catalog;
+SET LOCAL statement_timeout = '120s';
+SET LOCAL lock_timeout = '5s';
+SET LOCAL row_security = off;
+\if :{?transfer_mode}
+\else
+\set transfer_mode production
+\endif
+SELECT 1 / (coalesce((current_database() = :'expected_database'
+  AND ((:'transfer_mode' = 'production' AND current_database() IN ('artecnologia', 'calidad'))
+    OR (:'transfer_mode' = 'local_rehearsal'
+      AND current_database() IN ('artecnologia_test_local', 'calidad_test_local')
+      AND current_user = 'workorders_test'
+      AND host(inet_server_addr()) IN ('127.0.0.1', '::1') AND inet_server_port() = 5432))
+  AND current_user = :'expected_user' AND current_user = session_user
+  AND host(inet_server_addr()) = :'expected_server_address'
+  AND inet_server_port() = :'expected_server_port'::integer
+  AND current_setting('server_version_num')::integer / 10000 = 16), false)::integer) AS identity_guard
+\gset

@@ -6,10 +6,10 @@ SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 DO $guard$
 BEGIN
-  IF current_database() IS DISTINCT FROM 'artecnologia'
+  IF current_database() IS DISTINCT FROM 'calidad'
      OR current_user IS DISTINCT FROM session_user
      OR current_user = 'workorders_test'
-     OR current_setting('logistica.confirm_production',true) IS DISTINCT FROM 'artecnologia'
+     OR current_setting('logistica.confirm_production',true) IS DISTINCT FROM 'calidad'
      OR current_setting('logistica.expected_user',true) IS DISTINCT FROM current_user::text
      OR coalesce(current_setting('logistica.expected_server_address',true),'') = ''
      OR current_setting('logistica.expected_server_address',true) IS DISTINCT FROM host(inet_server_addr())
@@ -122,7 +122,7 @@ DECLARE actual jsonb;
 BEGIN
   SELECT coalesce(jsonb_object_agg(migration_name,migration_sha256),'{}'::jsonb)
     INTO actual FROM public.logistica_schema_migrations;
-  IF actual IS DISTINCT FROM '{"20261016_create_logistica_authorized_users.sql":"fb17ed0c093292f7df11ad5e1862d59ffe4b2902e200ab33a334ce54ea3b4cd8","20261016_create_logistica_deliveries.sql":"7aa40d501685dffb2fd2847888bac1186be1d74c3f6fc7309aeb6df989a4e033","20261019_extend_logistica_delivery_evidence.sql":"db407919a2eb7b71137406130e2c8c40c502bd5c7739ca061839595e06ead810"}'::jsonb THEN
+  IF actual IS DISTINCT FROM '{"20261016_create_logistica_authorized_users.sql":"fc648e1e00f21c70bada0d7cdbd08bfcb7b6280e794ae4bbb0b05e3c2eb84844","20261016_create_logistica_deliveries.sql":"caaf530fba5860f6e7b2e1fe0659d66bef0de1bcebafa35e6241811c31504382","20261019_extend_logistica_delivery_evidence.sql":"25a31baa36e135424bcef69dc2ef73bec7c64d8c0cc7adcbcb4af7e50cf42f35"}'::jsonb THEN
     RAISE EXCEPTION 'MIGRATION_CHECKSUM_OR_ORDER_MISMATCH';
   END IF;
 END;

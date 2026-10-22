@@ -18,7 +18,7 @@ for (const name of requiredEnv) {
 const allowedDatabases = {
     local: "artecnologia_test_local",
     test: "artecnologia_test",
-    production: "artecnologia",
+    production: "calidad",
 };
 
 const appEnv = process.env.APP_ENV;

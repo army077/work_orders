@@ -40,10 +40,10 @@ export function options(args, allowed) {
 }
 export const TARGET_ARGS = ['--expected-user','--expected-server-address','--expected-server-port','--confirm-production'];
 export function targetFromOptions(opts, env=process.env) {
-  invariant(env.APP_ENV==='production' && env.PGDATABASE==='artecnologia', 'PROD_ENV_REQUIRED');
+  invariant(env.APP_ENV==='production' && env.PGDATABASE==='calidad', 'PROD_ENV_REQUIRED');
   for (const name of ['PGHOST','PGPORT','PGUSER','PGPASSWORD']) invariant(env[name]?.trim(), 'PG_CONFIG_REQUIRED');
   invariant(!['local','test','workorders_test'].includes(env.PGUSER), 'PROD_ROLE_REQUIRED');
-  invariant(opts['--confirm-production']==='artecnologia', 'PROD_CONFIRMATION_REQUIRED');
+  invariant(opts['--confirm-production']==='calidad', 'PROD_CONFIRMATION_REQUIRED');
   invariant(opts['--expected-user']===env.PGUSER, 'EXPECTED_USER_REQUIRED');
   invariant(opts['--expected-server-address']?.trim(), 'EXPECTED_SERVER_ADDRESS_REQUIRED');
   const port=opts['--expected-server-port'];
@@ -55,7 +55,7 @@ export const identitySql = 'SELECT current_database() AS database,current_user A
   + 'session_user AS session_user,host(inet_server_addr()) AS address,inet_server_port() AS port,'
   + "current_setting('server_version_num')::int AS version_num,version() AS version";
 export function matchesTarget(identity,target) {
-  return identity.database==='artecnologia' && identity.username===target.user
+  return identity.database==='calidad' && identity.username===target.user
     && identity.session_user===target.user && identity.username!=='workorders_test'
     && identity.address===target.address && identity.port===target.port
     && Math.floor(identity.version_num/10000)===16;
@@ -67,7 +67,7 @@ export async function assertTarget(client,target) {
 }
 export async function connectProduction(target) {
   const client=new Client({host:process.env.PGHOST,port:target.port,user:target.user,
-    password:process.env.PGPASSWORD,database:'artecnologia',connectionTimeoutMillis:5000,
+    password:process.env.PGPASSWORD,database:'calidad',connectionTimeoutMillis:5000,
     application_name:'logistica_prod_admin'});
   try { await client.connect(); await assertTarget(client,target); return client; }
   catch(error) { await client.end().catch(()=>{}); throw error; }
@@ -118,7 +118,7 @@ export async function inspectSchema(client, schema='public') {
 }
 export async function configureMigration(client,target,file) {
   const entries={
-    'logistica.confirm_production':'artecnologia',
+    'logistica.confirm_production':'calidad',
     'logistica.expected_user':target.user,'logistica.expected_server_address':target.address,
     'logistica.expected_server_port':String(target.port),
     'logistica.migration_name':file.name,'logistica.migration_sha256':file.sha256,

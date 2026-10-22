@@ -6,10 +6,10 @@ SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 DO $guard$
 BEGIN
-  IF current_database() IS DISTINCT FROM 'artecnologia'
+  IF current_database() IS DISTINCT FROM 'calidad'
      OR current_user IS DISTINCT FROM session_user
      OR current_user = 'workorders_test'
-     OR current_setting('logistica.confirm_production',true) IS DISTINCT FROM 'artecnologia'
+     OR current_setting('logistica.confirm_production',true) IS DISTINCT FROM 'calidad'
      OR current_setting('logistica.expected_user',true) IS DISTINCT FROM current_user::text
      OR coalesce(current_setting('logistica.expected_server_address',true),'') = ''
      OR current_setting('logistica.expected_server_address',true) IS DISTINCT FROM host(inet_server_addr())
@@ -122,7 +122,7 @@ DECLARE actual jsonb;
 BEGIN
   SELECT coalesce(jsonb_object_agg(migration_name,migration_sha256),'{}'::jsonb)
     INTO actual FROM public.logistica_schema_migrations;
-  IF actual IS DISTINCT FROM '{"20261016_create_logistica_authorized_users.sql":"fb17ed0c093292f7df11ad5e1862d59ffe4b2902e200ab33a334ce54ea3b4cd8","20261016_create_logistica_deliveries.sql":"7aa40d501685dffb2fd2847888bac1186be1d74c3f6fc7309aeb6df989a4e033","20261019_extend_logistica_delivery_evidence.sql":"db407919a2eb7b71137406130e2c8c40c502bd5c7739ca061839595e06ead810","20261019_add_logistica_delivery_drive_folder.sql":"4eae63459c8d309903e44f3c3d99963f7b2d52d71cc6a637f5f8c8820e98bcb5","20261020_add_logistica_delivery_completion.sql":"916466cbc68c8552fbb486361de67fbe25cc0c10b7cfdacf2d19c14dbbfa2275","20261021_create_entregas_logistica_legacy.sql":"855cd40f4baa8c7e7a9a6c81d2dde95dd92cd34b96c6f9b6df24f2e4f28d7b49"}'::jsonb THEN
+  IF actual IS DISTINCT FROM '{"20261016_create_logistica_authorized_users.sql":"fc648e1e00f21c70bada0d7cdbd08bfcb7b6280e794ae4bbb0b05e3c2eb84844","20261016_create_logistica_deliveries.sql":"caaf530fba5860f6e7b2e1fe0659d66bef0de1bcebafa35e6241811c31504382","20261019_extend_logistica_delivery_evidence.sql":"25a31baa36e135424bcef69dc2ef73bec7c64d8c0cc7adcbcb4af7e50cf42f35","20261019_add_logistica_delivery_drive_folder.sql":"6bc3c84bd0cc830467e7f0d3dc7a72065aa72c0d259d7935663a95684f8e9f25","20261020_add_logistica_delivery_completion.sql":"9a44b2246d10d84612420f8d2cd15482238e56b4b65b3bbda96cfd5377aea8d0","20261021_create_entregas_logistica_legacy.sql":"f9e6bf843dd9dd4c8310b1af0e6b6bb6385ab7ea7ebaf6809a229e1952d35bef"}'::jsonb THEN
     RAISE EXCEPTION 'MIGRATION_CHECKSUM_OR_ORDER_MISMATCH';
   END IF;
 END;

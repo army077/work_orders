@@ -19,10 +19,10 @@ SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 DO $guard$
 BEGIN
-  IF current_database() IS DISTINCT FROM 'artecnologia'
+  IF current_database() IS DISTINCT FROM 'calidad'
      OR current_user IS DISTINCT FROM session_user
      OR current_user = 'workorders_test'
-     OR current_setting('logistica.confirm_production',true) IS DISTINCT FROM 'artecnologia'
+     OR current_setting('logistica.confirm_production',true) IS DISTINCT FROM 'calidad'
      OR current_setting('logistica.expected_user',true) IS DISTINCT FROM current_user::text
      OR coalesce(current_setting('logistica.expected_server_address',true),'') = ''
      OR current_setting('logistica.expected_server_address',true) IS DISTINCT FROM host(inet_server_addr())

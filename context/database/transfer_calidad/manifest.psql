@@ -1,0 +1,6 @@
+-- Alcance estatico respaldado por API10. No descubre ni agrega tablas ajenas.
+-- Los historicos son candidatos: solo se copian si existen en ORIGEN y se aprueban.
+\set core_tables '{public.machine_family,public.machine_model,public.machine_customs,public.maintenance_template,public.template_section,public.template_task,public.template_task_inspection,public.work_order,public.work_order_task,public.work_order_customs,public.inspection_order,public.inspection_order_task,public.desviaciones_calidad,public.prod_delayments,public.plantilla_tecnicos}'
+\set historical_tables '{public.desviaciones_calidad_legacy,public.liberaciones_empaque_legacy,public.procesos_liberacion_legacy,public.preembarque_legacy}'
+\set logistics_tables '{public.logistica_authorized_users,public.logistica_deliveries,public.logistica_delivery_evidence,public.entregas_logistica_legacy,public.logistica_legacy_owner_mapping,public.logistica_schema_migrations}'
+\set root_functions '{move_section,move_task,move_task_inspection}'

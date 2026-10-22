@@ -32,7 +32,7 @@ respaldo recuperable y ventana de mantenimiento. **Todavia no hay una IP/host
 productivo confirmado en estos artefactos**. No se lo inventa ni se adopta un
 destino desde `.env.local`.
 
-El entorno debe suministrar `APP_ENV=production`, `PGDATABASE=artecnologia`,
+El entorno debe suministrar `APP_ENV=production`, `PGDATABASE=calidad`,
 `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` y el transporte TLS aprobado. Usar el
 mecanismo de secretos operativo; no poner passwords en CLI, README ni archivos
 versionados. Configurar/verificar TLS segun infraestructura, sin desactivar la
@@ -40,7 +40,7 @@ verificacion del certificado. Los scripts no cargan archivos `.env` por defecto.
 
 Se exige adicionalmente `--expected-user`, `--expected-server-address` (direccion
 TCP observada **por PostgreSQL**, no necesariamente el hostname del cliente),
-`--expected-server-port` y `--confirm-production artecnologia`. Se valida
+`--expected-server-port` y `--confirm-production calidad`. Se valida
 `current_database`, `current_user=session_user`, direccion y puerto observados;
 se rechaza `workorders_test` y se admite exclusivamente PostgreSQL **16**.
 No se admite conexion Unix sin direccion TCP ni SET ROLE a un rol distinto.
@@ -88,7 +88,7 @@ En PowerShell, una vez preparado el entorno mediante el mecanismo aprobado:
 $target = @('--expected-user','<ROL_APROBADO>',
   '--expected-server-address','<DIRECCION_SERVIDOR_APROBADA>',
   '--expected-server-port','<PUERTO_APROBADO>',
-  '--confirm-production','artecnologia')
+  '--confirm-production','calidad')
 
 node context/database/migrations/prod/preflight_logistica_prod.js @target
 
@@ -182,3 +182,38 @@ esquemas public. Los XLSX de prueba son sinteticos en memoria; no se importa
 el historico real. Se comparan filas y secuencias de las cinco tablas protegidas
 antes/despues. La prueba de escritura positiva del destino PROD real queda
 deliberadamente pendiente del cutover autorizado.
+
+## Identidad y ensayo de transferencia (2026-10-22)
+
+PROD exige exclusivamente `APP_ENV=production PGDATABASE=calidad` y confirmacion
+`calidad`. `artecnologia` queda como origen/rollback con el artefacto API10
+anterior. Los siete SQL completos rechazan bases LOCAL/TEST y el rol de pruebas.
+El intento de ensayo en `calidad_test_local` queda como antecedente archivado;
+su bloqueo administrativo fue aceptado y no se creara esa base ni otra base
+de ensayo. Sus runners conservan los guards LOCAL originales y no se usaran en
+produccion. No se implementa ningun runner PREPROD. El procedimiento vigente
+es [transfer_calidad/README.md](../../transfer_calidad/README.md): migrar las
+tablas del proyecto desde artecnologia READ ONLY hacia calidad durante el
+freeze; validar el baseline; aplicar estos siete SQL; validar y entonces
+habilitar trafico API10. Hasta una operacion de cutover autorizada no ejecutar
+conexiones, restauraciones o migraciones productivas.
+
+El DDL y las ocho huellas estructurales no cambiaron al renombrar el destino.
+`logistica_schema_shape.sql` y `logistica_schema_states.json` permanecen iguales.
+Se actualizaron los hashes de los siete artefactos y todas las referencias del
+ledger en orden; nunca regenerar SQL ya aplicado. Regeneracion offline exclusiva
+para estos artefactos aun no aplicados:
+
+```powershell
+node context/database/tests/prod/regenerate_artifacts.mjs --write-unapplied-artifacts
+```
+
+| Artefacto | SHA-256 de bytes UTF-8/LF |
+|---|---|
+| 20261016_create_logistica_authorized_users.sql | `fc648e1e00f21c70bada0d7cdbd08bfcb7b6280e794ae4bbb0b05e3c2eb84844` |
+| 20261016_create_logistica_deliveries.sql | `caaf530fba5860f6e7b2e1fe0659d66bef0de1bcebafa35e6241811c31504382` |
+| 20261019_extend_logistica_delivery_evidence.sql | `25a31baa36e135424bcef69dc2ef73bec7c64d8c0cc7adcbcb4af7e50cf42f35` |
+| 20261019_add_logistica_delivery_drive_folder.sql | `6bc3c84bd0cc830467e7f0d3dc7a72065aa72c0d259d7935663a95684f8e9f25` |
+| 20261020_add_logistica_delivery_completion.sql | `9a44b2246d10d84612420f8d2cd15482238e56b4b65b3bbda96cfd5377aea8d0` |
+| 20261021_create_entregas_logistica_legacy.sql | `f9e6bf843dd9dd4c8310b1af0e6b6bb6385ab7ea7ebaf6809a229e1952d35bef` |
+| 20261021_create_logistica_legacy_owner_mapping.sql | `5a2d62dc71d4ee31daa64a2baa94f2ac84ebe209d9ce19d9c6d2fd3853803505` |

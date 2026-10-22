@@ -8,7 +8,7 @@ export function prepareDumpArgs(bytes, { mode = 'production', approvedHistorical
   if (!['production', 'local_rehearsal'].includes(mode)) throw new Error('UNAPPROVED_MODE');
   const database = mode === 'production' ? 'artecnologia' : 'artecnologia_test_local';
   const rows = [...parseSnapshot(bytes, database).values()];
-  const historical = rows.find(r => r.kind === 'scope').tables.filter(t => t.present && !core.includes(t.name)).map(t => t.name).sort();
+  const historical = rows.find(r => r.kind === 'scope').tables.filter(t => t.present && t.selected !== false && !core.includes(t.name)).map(t => t.name).sort();
   if (JSON.stringify(historical) !== JSON.stringify([...approvedHistorical].sort())) throw new Error('HISTORICAL_APPROVAL_REQUIRED');
   const names = rows.filter(r => ['table', 'sequence'].includes(r.kind)).map(r => r.name).sort();
   // El alcance conocido usa identificadores public/minusculas. Otros requieren revision.

@@ -2,10 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-const manifest = readFileSync(new URL('./manifest.psql', import.meta.url), 'utf8');
-const entries = name => manifest.match(new RegExp(String.raw`\\set ${name} '\{([^}]+)\}'`))[1].split(',');
-export const core = entries('core_tables');
-export const historical = entries('historical_tables');
+import { core, historical, entries } from './manifest.mjs';
+export { core, historical } from './manifest.mjs';
 const canonical = value => value && typeof value === 'object'
   ? Array.isArray(value) ? value.map(canonical)
     : Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])])) : value;
@@ -35,8 +33,9 @@ export function parseSnapshot(bytes, database) {
   const scope = one('scope').tables;
   check(Array.isArray(scope), 'INVALID_SCOPE');
   check(stable(scope.map(r => r.name).sort()) === stable([...core, ...historical].sort()), 'UNEXPECTED_SCOPE');
-  for (const name of core) check(scope.some(r => r.name === name && r.present === true), 'MISSING_CORE:' + name);
-  const present = scope.filter(r => r.present === true).map(r => r.name).sort();
+  for (const name of core) check(scope.some(r => r.name === name && r.present === true && r.selected !== false), 'MISSING_CORE:' + name);
+  check(scope.every(r => r.selected === undefined || typeof r.selected === 'boolean'), 'INVALID_SELECTION');
+  const present = scope.filter(r => r.present === true && r.selected !== false).map(r => r.name).sort();
   const get = kind => rows.filter(r => r.kind === kind);
   for (const kind of ['table', 'count']) {
     check(stable(get(kind).map(r => r.name).sort()) === stable(present), 'MISSING_OR_EXTRA_' + kind.toUpperCase());
@@ -71,7 +70,11 @@ export function compareSnapshots(sourceBytes, destinationBytes, { mode = 'produc
       .filter(([key]) => !['owner', 'acl'].includes(key)).map(([key, item]) => [key, structure(item)])) : value;
   for (const key of new Set([...source.keys(), ...destination.keys()])) {
     if (key === 'identity:') continue; // DB, hora y rol ya identificados; no son equivalentes entre DBs.
-    const left = source.get(key), right = destination.get(key);
+    // Explicitly excluded historical tables are reported but are not transferred.
+    // Legacy snapshots without `selected` preserve their original strict scope.
+    const comparable = row => row?.kind === 'scope' ? { ...row, tables: row.tables.map(t =>
+      t.selected === false ? { ...t, present: false } : t) } : row;
+    const left = comparable(source.get(key)), right = comparable(destination.get(key));
     if (local && stable(left) !== stable(right) && stable(structure(left)) === stable(structure(right))) permissionDifferences.push(key);
     if (stable(local ? structure(left) : left) !== stable(local ? structure(right) : right)) mismatches.push(key);
   }

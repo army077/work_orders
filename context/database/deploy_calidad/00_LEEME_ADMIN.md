@@ -3,37 +3,32 @@
 Estado: PREPARADO PARA REVISIÓN; sin ejecución en DB ni deploy. Runtime fijo:
 **Node.js v18.19.1**. No actualizar Node del servidor.
 
+Seguir el [runbook final de 11 pasos](10_RUNBOOK_CUTOVER_FINAL.md): backup confirmado
+por el administrador → transferencia → validar restore → migraciones Logística →
+validar Logística → FileZilla → npm ci → PM2 → health → Samsung (Jairo) →
+conciliación delta humana. El acceso, el backup y PM2 quedan a cargo del administrador.
+
+`calidad` ya pasó el preflight real: DESTINO_VACIO_Y_APTO=SI y cero objetos de
+aplicación. Origen y destino comparten servidor PostgreSQL 16.15 y administrador.
+No pedir otro inventario, versión ni nombre/ruta PM2. No exigir freeze total.
+
+Una sola transferencia: `node context/database/deploy_calidad/08_operar.mjs transfer`.
+Reutiliza las etapas existentes backup → export selectivo → restore en calidad.
+Dentro del snapshot READ ONLY verifica la identidad real de artecnologia y ejecuta
+01_preflight_artecnologia.sql antes del dump/export. Solo con ORIGEN_APTO=SI y
+captura completa continúa. No ejecutar 01 ni 02 como actividades previas separadas.
+El guard automático de destino/servidor/rol antes del restore permanece interno.
+
 El inventario y las siete migraciones siguen en transfer_calidad/ y migrations/prod/.
-El administrador no elige tablas, no compara conteos manualmente y no decide el
-orden. El procedimiento autorizado es **snapshot/export → restore → validación →
-cutover → CONCILIACION DELTA**. No exige un freeze total de escrituras.
+El administrador no selecciona tablas ni compara conteos, secuencias, funciones o
+triggers manualmente. El runner registra snapshot, inicio/finalización, hashes y
+recibos; los comparadores determinan RESTORE_VALIDADO=SI. Después `migrate` ejecuta
+las siete migraciones en orden fijo y comprueba cada éxito antes de enviar la
+siguiente. `validate-final` exige LOGISTICA_SCHEMA_VALIDO=SI antes de FileZilla.
+PM2 se reinicia mediante el procedimiento habitual del administrador.
 
-Datos pendientes del administrador:
-
-1. Nombre exacto del proceso API10 en PM2.
-2. Ruta real del directorio API10.
-
-Node 18.19.1, PostgreSQL 16.15/Ubuntu, HeidiSQL, FileZilla y respaldo de API10 ya
-están confirmados. El backup actualizado de artecnologia se produce y verifica
-en el bloque C; el plan de conciliación manual ya está aceptado. No pedir otra
-confirmación de freeze. Verificar el binario usado por PM2, no solo el del shell.
-
-Orden operativo:
-
-- 01_preflight_artecnologia.sql: una ejecución READ ONLY en artecnologia; 15 tablas,
-  conteos/estructura/secuencias y cuatro históricos separados pendientes.
-- 02_preflight_calidad.sql: una ejecución repetible READ ONLY en calidad vacía.
-- [05_COMANDOS_TRANSFERENCIA.md](05_COMANDOS_TRANSFERENCIA.md), A–F: el runner
-  conserva abierto un snapshot MVCC compartido por capturas y pg_dump. Registra
-  SNAPSHOT_ID, inicio/finalización, artefactos y SHA-256 en snapshot.json.
-- 03_validar_post_restore_calidad.sql: captura antes de Logística; el comparador
-  existente valida estructura/conteos y el comparador delta valida hashes por fila
-  contra delta_baseline.tsv del snapshot, sin comparar manualmente.
-- G: aplicar y verificar las siete migraciones, una por una, con sus bytes/guards.
-- 04_validar_post_logistica_calidad.sql: seis tablas, fingerprint, checksums y ledger.
-- [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md): FileZilla/PM2, después de DB validada.
-- I: capturar ambos lados y revisar CONCILIACION DELTA. No cerrar la tarea de datos
-  hasta resolver/registrar diferencias y repetir las capturas necesarias.
+Detalle de comandos y controles internos: [05_COMANDOS_TRANSFERENCIA.md](05_COMANDOS_TRANSFERENCIA.md).
+Configuración y rollback: [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md).
 
 Un NO/REVISAR, captura truncada, schema distinto, secuencia insegura o error del
 restore/migración significa DETENERSE antes del corte. El código 2 del comparador
@@ -70,8 +65,8 @@ plpgsql). No es el total de miembros de todos los catálogos del servidor. Tabla
 secuencias, vistas, rutinas, triggers y tipos propios siguen bloqueando; un ledger
 existente bloquea además de forma independiente. Un SI indica ausencia de objetos
 de aplicación en ese inventario; no certifica compatibilidad entre extensiones ni
-autoriza copiarlas, instalarlas o desinstalarlas automáticamente. Comparar sus
-metadatos entre los preflight antes de continuar el procedimiento autorizado.
+autoriza copiarlas, instalarlas o desinstalarlas automáticamente. Sus metadatos
+quedan disponibles para diagnóstico; no se añade una comparación manual obligatoria.
 
 Tests offline: `node --test context/database/deploy_calidad/*.test.mjs
 context/database/transfer_calidad/*.test.mjs` (en una sola línea desde el repositorio).

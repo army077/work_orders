@@ -4,31 +4,45 @@ Preparados; NO ejecutados en DB. Desde la raíz del checkout revisado, con clien
 PostgreSQL 16 y Node **18.19.1**. En FileZilla usar transferencia binaria para
 preservar los checksums. No subir herramientas administrativas al directorio público.
 
-## A — Preflight
+Flujo operativo: [runbook final de 11 pasos](10_RUNBOOK_CUTOVER_FINAL.md).
+El administrador confirma `BACKUP_ARTECNOLOGIA = SI` por su procedimiento habitual;
+este documento no define el mecanismo de respaldo.
+
+## A — Entorno administrativo existente
 
 ```bash
 set -euo pipefail
 umask 077
-export PGHOST='<PG_HOST>'
-export PGPORT='<PG_PORT>'
-export PGUSER='<PG_ADMIN_USER>'
-export BACKUP_DIR='<BACKUP_DIR>'
-export PGPASSFILE='<RUTA_PASSFILE_PRIVADO_EXISTENTE>'
 export APP_ENV=production
 export PGDATABASE=calidad
-node --version
-node context/database/deploy_calidad/08_operar.mjs preflight
 ```
 
+Usar PGHOST, PGPORT y PGUSER ya configurados para el servidor/administrador común,
+y la autenticación segura existente mediante PGPASSFILE o PGPASSWORD.
 BACKUP_DIR: nuevo por ventana, privado y fuera del checkout. No imprimir entornos
 ni pasar passwords por CLI. Mantener SSL y el mecanismo seguro de autenticación
 existente. También se admite PGPASSWORD suministrada por el gestor seguro.
 Los parámetros de servidor son los autorizados, con endpoint estable del cluster.
 
-Guardar preflight_origen.tsv (ORIGEN_APTO=SI) y preflight_destino.tsv
-(DESTINO_VACIO_Y_APTO=SI). HeidiSQL puede ejecutar íntegros 01 y 02, sin psql.
+`calidad` ya fue validada realmente (DESTINO_VACIO_Y_APTO=SI, objetos de aplicación=0).
+No ejecutar preflight de origen ni destino como tarea previa independiente.
+No pedir inventarios, seleccionar tablas ni revisar conteos/secuencias/funciones/
+triggers a mano. Node 18.19.1 y PostgreSQL 16.15 ya están confirmados.
 
-## B — Punto de corte identificable, sin freeze total
+## B — Transferencia única con control de origen integrado
+
+```bash
+node context/database/deploy_calidad/08_operar.mjs transfer
+```
+
+Encadena las etapas existentes C → D → E, sin duplicar su lógica. Antes del dump
+valida por conexión real que el origen es artecnologia y reutiliza íntegro
+01_preflight_artecnologia.sql dentro del snapshot READ ONLY. ORIGEN_APTO distinto
+de SI, identidad incorrecta o captura incompleta implica STOP antes del dump/export.
+Si falla cualquier etapa, no envía la siguiente ni reintenta automáticamente.
+Al terminar imprime `TRANSFERENCIA_COMPLETADA = SI` y existe restore_completed.json.
+Las secciones C–E describen sus operaciones internas: no son comandos adicionales
+para el administrador y no deben ejecutarse otra vez después de `transfer`.
 
 No exigir ESCRITORES_DETENIDOS=SI. Los usuarios pueden continuar en artecnologia
 durante la copia. El plan aceptado obliga a conservar el snapshot y conciliar el
@@ -42,11 +56,7 @@ No usar una captura previa independiente como baseline definitivo.
 
 ## C — BACKUP DE SEGURIDAD completo
 
-```bash
-node context/database/deploy_calidad/08_operar.mjs backup
-```
-
-Internamente ejecuta pg_dump --format=custom --snapshot=<SNAPSHOT_ID> con
+Etapa interna `backup` del comando `transfer`. Ejecuta pg_dump --format=custom --snapshot=<SNAPSHOT_ID> con
 --dbname=artecnologia y --file=artecnologia_seguridad.dump en BACKUP_DIR.
 El identificador solo es importable mientras vive la conexión exportadora:
 no copiar el comando interno a otra sesión ni reusar un snapshot expirado.
@@ -70,16 +80,12 @@ vigilar la duración y cancelar ante incidencias; no es un CDC continuo.
 
 ## D — EXPORT SELECTIVO PARA calidad
 
-```bash
-node context/database/deploy_calidad/08_operar.mjs export
-```
-
-Genera selectivo.toc automáticamente usando manifest.psql, prepare_dump_args.mjs
+Etapa interna `export`. Genera selectivo.toc automáticamente usando manifest.psql, prepare_dump_args.mjs
 y OIDs del catálogo capturados bajo el snapshot. Conserva el orden nativo del
 archive para funciones/defaults/PK/FK/índices/triggers y sus ACL. Excluye históricos
 pendientes y Logística. No editar el TOC manualmente ni elegir tablas.
 
-Produce el export privado reproducible con:
+Comando interno de referencia, no ejecutarlo aparte:
 
 ```bash
 pg_restore --no-password --use-list="$BACKUP_DIR/selectivo.toc" \
@@ -94,12 +100,9 @@ el contador exacto del archive incluso si una tabla quedó vacía por deletes pr
 
 ## E — Restore calidad
 
-```bash
-node context/database/deploy_calidad/08_operar.mjs restore
-```
-
-Vuelve a exigir calidad vacía y servidor/rol coincidentes con origen; verifica
-el backup/TOC/recibos. El comando exacto interno es:
+Etapa interna `restore`. Conserva el guard automático de calidad vacía y
+servidor/rol coincidentes con origen, sin pedir repetir el preflight al administrador.
+Verifica el backup/TOC/recibos. Comando interno de referencia, no ejecutarlo aparte:
 
 ```bash
 pg_restore --no-password --exit-on-error --single-transaction --dbname=calidad \

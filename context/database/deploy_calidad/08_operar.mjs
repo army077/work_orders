@@ -135,6 +135,18 @@ export async function captureInSnapshot(client,sql) {
   }
   return output;
 }
+export async function captureApprovedSource(client) {
+  const baseline=await captureInSnapshot(client,readFileSync(sqlPath('01_preflight_artecnologia.sql'),'utf8'));
+  const report=parseReport(baseline);
+  ready(report,'ORIGEN_APTO');
+  // Reject wrong identity/incomplete captures before dumping, not after export.
+  extractCapture(report,'artecnologia');
+  return baseline;
+}
+// Compose the existing stages; a rejected stage prevents all later operations.
+export async function transfer(run=main) {
+  for(const command of ['backup','export','restore']) await run(command);
+}
 function capture(name,database,path) {
   const text=native('psql',['-X','-q','-t','-A','-F','\t','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate',
     '--dbname='+database,'--file='+sqlPath(name)],{database});
@@ -153,7 +165,11 @@ function config() {
   check(!process.env.PGSERVICE && !process.env.PGOPTIONS,'AMBIGUOUS_LIBPQ_SETTINGS');
 }
 export async function main(command) {
-  check(['preflight','backup','export','restore','validate-restore','migrate','validate-final','delta'].includes(command),'COMMAND_INVALID');
+  check(['transfer','preflight','backup','export','restore','validate-restore','migrate','validate-final','delta'].includes(command),'COMMAND_INVALID');
+  if(command==='transfer') {
+    await transfer();
+    console.log('TRANSFERENCIA_COMPLETADA = SI'); return;
+  }
   config();
   const dir=resolve(process.env.BACKUP_DIR), p=name=>resolve(dir,name);
   mkdirSync(dir,{recursive:true,mode:0o700});
@@ -177,8 +193,7 @@ export async function main(command) {
       client.on('error',()=>{}); // No raw connection messages; awaited operations still fail closed.
       snapshot=await withExportedSnapshot(client,async meta=>{
         save('snapshot_started.json',{...meta,status:'STARTED',client_started_at:startedAt});
-        const baseline=await captureInSnapshot(client,readFileSync(sqlPath('01_preflight_artecnologia.sql'),'utf8'));
-        ready(parseReport(baseline),'ORIGEN_APTO');
+        const baseline=await captureApprovedSource(client);
         writeFileSync(p('origen_definitivo.tsv'),baseline,{flag:'wx',mode:0o600});
         const deltaSql=readFileSync(new URL('../transfer_calidad/capture_delta_artecnologia.sql',import.meta.url),'utf8');
         writeFileSync(p('delta_baseline.tsv'),await captureInSnapshot(client,deltaSql),{flag:'wx',mode:0o600});

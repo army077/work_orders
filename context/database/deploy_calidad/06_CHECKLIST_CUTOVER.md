@@ -1,15 +1,15 @@
 # Deploy API10 y conciliación posterior
 
+Secuencia vigente: [runbook final de 11 pasos](10_RUNBOOK_CUTOVER_FINAL.md).
 Requisitos: RESTORE_VALIDADO=SI y LOGISTICA_SCHEMA_VALIDO=SI de la misma ventana,
 snapshot.json COMPLETE y artefacto anterior respaldado. **No requiere freeze total**.
 API10 permanece en artecnologia hasta terminar la migración/validación de calidad.
 
 - [ ] API10 anterior respaldada = SI (ya confirmado), incluida su configuración.
 - [ ] Node del proceso PM2 = v18.19.1; NO actualizar Node del servidor.
-- [ ] Nombre exacto PM2 y directorio API10 confirmados.
 - [ ] Archivos subidos con FileZilla = SI: todos los de
   [07_ARCHIVOS_API10_FILEZILLA.txt](07_ARCHIVOS_API10_FILEZILLA.txt), desde context/api10/
-  hacia <DIRECTORIO_API10_REAL>, conservando rutas y usando transferencia binaria.
+  hacia el directorio API10 habitual del administrador, conservando rutas y usando transferencia binaria.
   No subir tests, entornos, credenciales, dumps ni node_modules.
 - [ ] package.json/package-lock.json/.npmrc actualizados = SI. engine-strict permanece
   activado; no usar force, legacy-peer-deps ni ignorar engines.
@@ -46,11 +46,14 @@ en vuelo. No se exige detener todos los escritores durante el snapshot. Evitar
 que nuevos clientes sigan llegando al artefacto anterior después del cutover.
 
 ```bash
-cd '<DIRECTORIO_API10_REAL>'
-node --version
-npm ci --omit=dev --engine-strict
-npm run audit:node18
-pm2 restart '<NOMBRE_EXACTO_PM2_API10>' --update-env
+npm ci --omit=dev
+```
+
+Ejecutar dentro de API10 con Node 18.19.1. Si falla: STOP, no reiniciar PM2.
+Con la configuración completa, reiniciar API10 mediante el procedimiento habitual
+del administrador. No solicitar nombre de proceso ni ruta.
+
+```bash
 curl --fail --silent --show-error --output /dev/null \
   --write-out '%{http_code}\n' http://127.0.0.1:3010/api10/health
 ```

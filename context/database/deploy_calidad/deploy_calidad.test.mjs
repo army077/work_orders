@@ -6,7 +6,7 @@ import { core, historical, rootFunctions } from '../transfer_calidad/manifest.mj
 import { NAMES, artifacts, states } from '../migrations/prod/logistica_prod_support.js';
 import { compareSnapshots, parseSnapshot } from '../transfer_calidad/compare_snapshots.mjs';
 import { prepareDumpArgs } from '../transfer_calidad/prepare_dump_args.mjs';
-import { parseReport, extractCapture, validateRestore, selectToc } from './08_operar.mjs';
+import { parseReport, extractCapture, validateRestore, selectToc, transfer, captureApprovedSource } from './08_operar.mjs';
 
 const read=name=>readFileSync(new URL(name,import.meta.url),'utf8').replaceAll('\r\n','\n');
 const sqlNames=[...generatedFiles().keys()].filter(n=>n.endsWith('.sql'));
@@ -31,6 +31,58 @@ function report(database,rows=records(database)) {
   ];
 }
 const tsv=rows=>'1\n'+rows.map(r=>[r.check,r.status,JSON.stringify(r.detail)].join('\t')).join('\n')+'\n';
+
+test('transfer composes the existing backup/export/restore once in order without a separate preflight',async()=>{
+  const calls=[];
+  await transfer(async command=>{calls.push(command);});
+  assert.deepEqual(calls,['backup','export','restore']);
+});
+test('transfer stops on each failed stage without continuing or retrying',async()=>{
+  const stages=['backup','export','restore'];
+  for(const failed of stages) {
+    const calls=[];
+    await assert.rejects(transfer(async command=>{
+      calls.push(command);
+      if(command===failed) throw new Error('STAGE_FAILED');
+    }),/STAGE_FAILED/);
+    assert.deepEqual(calls,stages.slice(0,stages.indexOf(failed)+1));
+  }
+});
+function sourceClient(rows) {
+  const queries=[];
+  return {queries,async query(sql) {
+    queries.push(sql);
+    if(sql.includes('AS database_guard')) return {rows:[{database_guard:1}]};
+    return {rows:sql.startsWith('WITH RECURSIVE')
+      ?rows.map(row=>({CHECK:row.check,ESTADO:row.status,DETALLE:row.detail})):[]};
+  }};
+}
+test('integrated source preflight accepts complete approved capture without manual review',async()=>{
+  const rows=report('artecnologia'), client=sourceClient(rows);
+  const baseline=await captureApprovedSource(client);
+  assert.deepEqual(parseReport(baseline),rows);
+  assert.equal(client.queries.filter(sql=>sql.startsWith('WITH RECURSIVE')).length,1);
+  assert.ok(client.queries.some(sql=>sql.includes("current_database() = 'artecnologia'")));
+});
+test('critical origin results, wrong identity and truncated capture prevent export/restore',async()=>{
+  const cases=[];
+  for(const status of ['NO','REVISAR',undefined]) {
+    const rows=report('artecnologia'); rows.at(-1).status=status;
+    cases.push([rows,/NO_GO_ORIGEN_APTO/]);
+  }
+  const wrong=report('artecnologia'); wrong[0].detail.database='calidad';
+  cases.push([wrong,/WRONG_DATABASE/]);
+  const incomplete=report('artecnologia'); incomplete.splice(incomplete.findIndex(row=>row.detail.kind==='complete'),1);
+  cases.push([incomplete,/INCOMPLETE/]);
+  for(const [rows,error] of cases) {
+    const calls=[];
+    await assert.rejects(transfer(async command=>{
+      calls.push(command);
+      if(command==='backup') await captureApprovedSource(sourceClient(rows));
+    }),error);
+    assert.deepEqual(calls,['backup']);
+  }
+});
 
 test('generated artifacts match authoritative sources apart from checkout line endings',()=>{
   assert.equal(core.length,15); assert.equal(historical.length,4);
@@ -161,9 +213,11 @@ test('operational commands stop/reject retries and reuse original migration appl
   assert.match(docs,/BACKUP DE SEGURIDAD/); assert.match(docs,/EXPORT SELECTIVO/);
   assert.match(docs,/No editar el TOC manualmente/);
 });
-test('fixed Node18 target, only two unknown deployment details, public values and no embedded credentials',()=>{
+test('fixed Node18 target, no redundant administrator questions, public values and no embedded credentials',()=>{
   const admin=read('00_LEEME_ADMIN.md'), checklist=read('06_CHECKLIST_CUTOVER.md');
-  assert.equal(admin.match(/^\d\. /gm).length,2);
+  const docs=[admin,checklist,read('05_COMANDOS_TRANSFERENCIA.md'),read('10_RUNBOOK_CUTOVER_FINAL.md')].join('\n');
+  assert.doesNotMatch(docs,/Datos pendientes del administrador|NOMBRE_EXACTO_PM2_API10|DIRECTORIO_API10_REAL|Nombre exacto PM2 y directorio API10 confirmados/);
+  assert.doesNotMatch(docs,/08_operar\.mjs preflight/);
   assert.match(admin,/Node.js v18.19.1/);
   for(const name of ['APP_ENV','PGHOST','PGPORT','PGUSER','PGPASSWORD','PGDATABASE','FIREBASE_LOGISTICA_PROJECT_ID',
     'GOOGLE_APPLICATION_CREDENTIALS','LOGISTICA_DRIVE_OAUTH_CREDENTIALS_PATH','LOGISTICA_DRIVE_TOKEN_PATH','LOGISTICA_DRIVE_PEDIDOS_FOLDER_ID']) assert.ok(checklist.includes(name));

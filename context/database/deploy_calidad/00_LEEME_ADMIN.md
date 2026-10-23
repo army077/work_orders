@@ -54,6 +54,34 @@ El snapshot histórico Entregas del Sheet es un flujo distinto del delta Postgre
 No se crea ni utiliza PREPROD ni una DB LOCAL.
 
 Los generadores offline y sus tests evitan duplicar inventarios/comparadores.
+
+Los preflight reportan todas las extensiones instaladas como EXTENSION_INFRA / INFO
+con nombre, schema y versión, para comparar origen y destino. Su pertenencia se
+comprueba por catálogo/OID en pg_depend y pg_extension (membership `e`), incluyendo
+objetos internos derivados (`i`, por ejemplo el array de un tipo). Una dependencia
+normal, automática o auto-extension (`n`, `a`, `x`) no convierte un objeto propio
+en infraestructura. Referencia: [pg_depend PostgreSQL 16](https://www.postgresql.org/docs/16/catalog-pg-depend.html).
+
+En 02, application_objects/unexpected_application_objects cuentan solo los objetos
+inventariados sin esa pertenencia; unexpected_objects conserva el mismo contador
+por compatibilidad. extension_objects cuenta los objetos inventariados clasificados
+como infraestructura, incluyendo las propias extensiones instaladas (también
+plpgsql). No es el total de miembros de todos los catálogos del servidor. Tablas,
+secuencias, vistas, rutinas, triggers y tipos propios siguen bloqueando; un ledger
+existente bloquea además de forma independiente. Un SI indica ausencia de objetos
+de aplicación en ese inventario; no certifica compatibilidad entre extensiones ni
+autoriza copiarlas, instalarlas o desinstalarlas automáticamente. Comparar sus
+metadatos entre los preflight antes de continuar el procedimiento autorizado.
+
+Tests offline: `node --test context/database/deploy_calidad/*.test.mjs
+context/database/transfer_calidad/*.test.mjs` (en una sola línea desde el repositorio).
+Los casos de catálogos simulados evalúan el SELECT generado usando VALUES y el
+motor SQLite en memoria integrado en Node; adaptan únicamente sintaxis y funciones
+de PostgreSQL. No abren conexiones ni ejecutan DDL y no certifican ejecución real
+en PostgreSQL. Estos casos se verificaron con Node 24 de desarrollo; si node:sqlite
+no está disponible se marcan SKIP y siguen los contratos de seguridad de SQL.
+No cambiar Node 18.19.1 del servidor ni desplegar los archivos de tests.
+
 Los scripts no aplican INSERT/UPDATE/DELETE de conciliación. Nuevas altas que
 colisionen por PK, cambios divergentes y ausencias requieren decisión humana.
 El snapshot no congela secuencias ni escrituras posteriores: el restore verifica

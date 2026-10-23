@@ -8,7 +8,22 @@ SET LOCAL statement_timeout = '120s';
 SET LOCAL lock_timeout = '5s';
 SET LOCAL row_security = off;
 SET LOCAL timezone = 'UTC';
-WITH consumers AS (
+WITH RECURSIVE installed_extensions AS (
+ SELECT e.oid,e.extname AS name,n.nspname AS schema,e.extversion AS version
+ FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace
+), extension_members(classid,objid,extension_oid) AS (
+ -- Only extension membership ('e') and internal implementation ('i') are infrastructure.
+ -- A normal dependency on an extension type/function does not imply membership.
+ SELECT d.classid,d.objid,e.oid FROM pg_depend d JOIN installed_extensions e ON e.oid=d.refobjid
+ WHERE d.refclassid='pg_extension'::regclass AND d.deptype='e' AND d.objsubid=0 AND d.refobjsubid=0
+ UNION
+ SELECT d.classid,d.objid,m.extension_oid FROM extension_members m JOIN pg_depend d
+ ON d.refclassid=m.classid AND d.refobjid=m.objid
+ WHERE d.deptype='i' AND d.objsubid=0 AND d.refobjsubid=0
+), extension_infrastructure AS (
+ SELECT 'pg_extension'::regclass::oid AS classid,oid AS objid,oid AS extension_oid FROM installed_extensions
+ UNION SELECT classid,objid,extension_oid FROM extension_members
+), consumers AS (
  SELECT d.objid AS sequence_oid, d.refobjid AS table_oid, d.refobjsubid AS attnum
  FROM pg_depend d JOIN pg_class s ON s.oid=d.objid AND s.relkind='S'
  WHERE d.classid='pg_class'::regclass AND d.refclassid='pg_class'::regclass AND d.deptype IN ('a','i')
@@ -239,7 +254,7 @@ WHERE NOT coalesce((
  coalesce(i.schema,'')='pg_catalog' OR
  (c.classid='pg_namespace'::regclass AND c.objid IN ('public'::regnamespace,'pg_catalog'::regnamespace)) OR
  (c.classid='pg_language'::regclass AND c.objid IN (SELECT oid FROM pg_language WHERE lanname IN ('internal','c','sql','plpgsql'))) OR
- (c.classid='pg_extension'::regclass AND c.objid IN (SELECT oid FROM pg_extension WHERE extname='plpgsql')) OR
+ EXISTS(SELECT FROM extension_infrastructure e WHERE e.classid=c.classid AND e.objid=c.objid) OR
  (c.classid='pg_class'::regclass AND c.objid IN (
    SELECT to_regclass(record->>'name') FROM capture WHERE record->>'kind' IN ('table','sequence')
    UNION SELECT indexrelid FROM pg_index WHERE indrelid IN (SELECT oid FROM selected))) OR
@@ -282,6 +297,8 @@ WHERE NOT coalesce((
  SELECT 0 AS position,'IDENTIDAD'::text AS "CHECK",'INFO'::text AS "ESTADO",
  jsonb_build_object('database',current_database(),'version',current_setting('server_version'),
  'timezone',current_setting('TimeZone'),'current_user',current_user) AS "DETALLE"
+ UNION ALL SELECT 1,'EXTENSION_INFRA','INFO',
+ jsonb_build_object('kind','extension','name',name,'schema',schema,'version',version) FROM installed_extensions
  UNION ALL SELECT 1,'TABLA:'||t,CASE WHEN to_regclass(t) IS NULL THEN 'NO' ELSE 'SI' END,
  jsonb_build_object('name',t,'exists',to_regclass(t) IS NOT NULL,'rows',
  (SELECT record->>'count' FROM capture WHERE record->>'kind'='count' AND record->>'name'=t)) FROM unnest(ARRAY['public.machine_family','public.machine_model','public.machine_customs','public.maintenance_template','public.template_section','public.template_task','public.template_task_inspection','public.work_order','public.work_order_task','public.work_order_customs','public.inspection_order','public.inspection_order_task','public.desviaciones_calidad','public.prod_delayments','public.plantilla_tecnicos']::text[]) t

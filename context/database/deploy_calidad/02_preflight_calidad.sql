@@ -8,25 +8,54 @@ SET LOCAL statement_timeout = '120s';
 SET LOCAL lock_timeout = '5s';
 SET LOCAL row_security = off;
 SET LOCAL timezone = 'UTC';
-WITH objects AS (
- SELECT 'relation' AS kind,n.nspname AS schema,c.relname AS name FROM pg_class c
+WITH RECURSIVE installed_extensions AS (
+ SELECT e.oid,e.extname AS name,n.nspname AS schema,e.extversion AS version
+ FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace
+), extension_members(classid,objid,extension_oid) AS (
+ -- Only extension membership ('e') and internal implementation ('i') are infrastructure.
+ -- A normal dependency on an extension type/function does not imply membership.
+ SELECT d.classid,d.objid,e.oid FROM pg_depend d JOIN installed_extensions e ON e.oid=d.refobjid
+ WHERE d.refclassid='pg_extension'::regclass AND d.deptype='e' AND d.objsubid=0 AND d.refobjsubid=0
+ UNION
+ SELECT d.classid,d.objid,m.extension_oid FROM extension_members m JOIN pg_depend d
+ ON d.refclassid=m.classid AND d.refobjid=m.objid
+ WHERE d.deptype='i' AND d.objsubid=0 AND d.refobjsubid=0
+), extension_infrastructure AS (
+ SELECT 'pg_extension'::regclass::oid AS classid,oid AS objid,oid AS extension_oid FROM installed_extensions
+ UNION SELECT classid,objid,extension_oid FROM extension_members
+), objects AS (
+ SELECT 'pg_class'::regclass::oid AS classid,c.oid AS objid,'relation' AS kind,n.nspname AS schema,c.relname AS name FROM pg_class c
  JOIN pg_namespace n ON n.oid=c.relnamespace
  WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_toast|^pg_temp_'
- UNION ALL SELECT 'routine',n.nspname,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ UNION ALL SELECT 'pg_proc'::regclass::oid,p.oid,'routine',n.nspname,p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
  WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_toast|^pg_temp_'
- UNION ALL SELECT 'trigger',n.nspname,t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+ UNION ALL SELECT 'pg_trigger'::regclass::oid,t.oid,'trigger',n.nspname,t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
  JOIN pg_namespace n ON n.oid=c.relnamespace WHERE NOT t.tgisinternal AND n.nspname NOT IN ('pg_catalog','information_schema')
- UNION ALL SELECT 'type',n.nspname,t.typname FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+ UNION ALL SELECT 'pg_type'::regclass::oid,t.oid,'type',n.nspname,t.typname FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
  WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_toast|^pg_temp_'
- UNION ALL SELECT 'extension','',extname FROM pg_extension WHERE extname<>'plpgsql'
+ UNION ALL SELECT 'pg_extension'::regclass::oid,oid,'extension',schema,name FROM installed_extensions
+), classified_objects AS (
+ SELECT o.*,e.extension_oid,x.name AS extension,x.schema AS extension_schema,x.version AS extension_version
+ FROM objects o LEFT JOIN extension_infrastructure e ON e.classid=o.classid AND e.objid=o.objid
+ LEFT JOIN installed_extensions x ON x.oid=e.extension_oid
+), application_objects AS (
+ SELECT * FROM classified_objects WHERE extension_oid IS NULL
 ), report AS (
  SELECT 0 AS position,'IDENTIDAD'::text AS "CHECK",'INFO'::text AS "ESTADO",jsonb_build_object(
  'database',current_database(),'version',current_setting('server_version'),'current_user',current_user,
  'address',host(inet_server_addr()),'port',inet_server_port(),
  'timezone',current_setting('TimeZone')) AS "DETALLE"
- UNION ALL SELECT 1,'OBJETO_INESPERADO','NO',to_jsonb(objects) FROM objects
+ UNION ALL SELECT 1,'EXTENSION_INFRA','INFO',
+ jsonb_build_object('kind','extension','name',name,'schema',schema,'version',version) FROM installed_extensions
+ UNION ALL SELECT 1,'EXTENSION_INFRA','INFO',to_jsonb(classified_objects) FROM classified_objects
+ WHERE extension_oid IS NOT NULL AND kind<>'extension'
+ UNION ALL SELECT 1,'OBJETO_INESPERADO','NO',to_jsonb(application_objects) FROM application_objects
  UNION ALL SELECT 2,'LEDGER',CASE WHEN to_regclass('public.logistica_schema_migrations') IS NULL THEN 'AUSENTE' ELSE 'NO' END,'{}'::jsonb
- UNION ALL SELECT 3,'DESTINO_VACIO_Y_APTO',CASE WHEN EXISTS(SELECT FROM objects) THEN 'NO' ELSE 'SI' END,
- jsonb_build_object('unexpected_objects',(SELECT count(*) FROM objects))
+ UNION ALL SELECT 3,'DESTINO_VACIO_Y_APTO',CASE WHEN EXISTS(SELECT FROM application_objects)
+ OR to_regclass('public.logistica_schema_migrations') IS NOT NULL THEN 'NO' ELSE 'SI' END,
+ jsonb_build_object('unexpected_objects',(SELECT count(*) FROM application_objects),
+ 'unexpected_application_objects',(SELECT count(*) FROM application_objects),
+ 'application_objects',(SELECT count(*) FROM application_objects),
+ 'extension_objects',(SELECT count(*) FROM classified_objects WHERE extension_oid IS NOT NULL))
 ) SELECT "CHECK","ESTADO","DETALLE" FROM report ORDER BY position,"CHECK";
 ROLLBACK;

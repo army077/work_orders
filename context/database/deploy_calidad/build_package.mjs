@@ -86,7 +86,7 @@ const consumers = `consumers AS (
 // Extension membership is catalog evidence, never a schema/name allowlist.
 // Internal implementation objects (e.g. an automatically created array type)
 // inherit membership. Normal, auto and auto-extension dependencies do NOT.
-const extensionCatalog = `installed_extensions AS (
+export const extensionCatalog = `installed_extensions AS (
  SELECT e.oid,e.extname AS name,n.nspname AS schema,e.extversion AS version
  FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace
 ), extension_members(classid,objid,extension_oid) AS (

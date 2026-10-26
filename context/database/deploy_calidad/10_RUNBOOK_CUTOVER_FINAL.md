@@ -1,53 +1,51 @@
-# Runbook final: cutover artecnologia → calidad
+﻿# Runbook: calidad con configuración, sin históricos
 
-**11 pasos, en orden.** Procedimiento preparado; no ejecutado durante su edición.
-Base revisada: rama `migracion-datos-historicos`, HEAD
-`18501d6be8c6ea49bc025f076bb4aa6736c2420b`.
+**5 pasos. EXPORT_CONFIG_PROD_RECIBIDO=SI.** JSON real y query ejecutado aceptados.
+No solicitar otro export por la etiqueta heredada PENDIENTE_EXPORT_CONFIG_PROD.
+El seed reproduce exactamente las 1.139 filas autorizadas. Las incidencias 39/5/9
+son WARNING por alcance limitado, sin bloqueo general del runtime:
+[17_AUDITORIA_RUNTIME_BASELINE.md](17_AUDITORIA_RUNTIME_BASELINE.md).
+Se espera BASELINE_APTO_PARA_DEPLOY=SI. Los ERROR siguen bloqueando; el alta
+manual de Logística es independiente y obligatoria para usar ese módulo.
 
-Confirmado: `calidad` ya dio `DESTINO_VACIO_Y_APTO = SI` y cero objetos de
-aplicación. Origen y destino comparten servidor PostgreSQL 16.15 y administrador.
-Node productivo: **18.19.1**. No pedir otro inventario, versión ni nombre/ruta PM2.
-El control de origen se ejecuta dentro de la transferencia; no hay preflight
-independiente ni repetición manual del preflight de calidad.
+Prerrequisitos: backup confirmado por el administrador mediante su procedimiento
+habitual, calidad existente, PostgreSQL 16.15, extensiones plpgsql/citext instaladas,
+Node **18.19.1**, acceso/permisos y respaldo de API10/configuración.
+Los SQL son autónomos para HeidiSQL, íntegros sobre calidad. Ante error/NO/salida
+incompleta: **STOP**, conservar salida; no limpiar, reparar ni reintentar a ciegas.
+Un marcador SI dentro de una transacción requiere COMMIT posterior exitoso.
 
-Comandos `node context/...`: desde la raíz del checkout administrativo, con los
-clientes PostgreSQL y dependencias ya disponibles. Usar el entorno seguro conocido
-(`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSFILE` privado o `PGPASSWORD`, `APP_ENV=production`,
-`PGDATABASE=calidad` y `BACKUP_DIR` privado, nuevo por ventana y fuera del checkout).
-Conservar el mismo `BACKUP_DIR` para transferencia, validadores, migraciones y delta.
-No imprimir entornos ni secretos. El rol administrativo no se hereda a API10.
+| PASO | ACCIÓN | RESULTADO ESPERADO |
+| --- | --- | --- |
+| 1 — Crear | Ejecutar [create_calidad.sql](create_calidad.sql). | CALIDAD_BASELINE_CREADO=SI y COMMIT exitoso; arquitectura final con ledger, negocio vacío. |
+| 2 — Seed | Ejecutar [seed_calidad_operativo.sql](seed_calidad_operativo.sql). | CALIDAD_SEED_CARGADO=SI, 1139 filas y COMMIT exitoso; IDs preservados y siete secuencias ajustadas dentro de la transacción. Esto certifica carga, no aceptación funcional. |
+| 3 — Validar | Ejecutar [validate_seed_calidad.sql](validate_seed_calidad.sql), READ ONLY; devolver salida completa. | Schema/datos/operativo SI y BASELINE_APTO_PARA_DEPLOY=SI. Las 39/5/9 permanecen como WARNING y no bloquean. ERROR o NO de esos checks: STOP. No pedir otro export ni reparar configuraciones heredadas. |
+| 4 — Alta Logística si pendiente | Si LOGISTICA_AUTH_PENDIENTE=SI, alta explícita del usuario real aprobado mediante el INSERT parametrizado de [13_SEED_OPERATIVO.md](13_SEED_OPERATIVO.md); repetir validación. | LOGISTICA_AUTH_PENDIENTE=NO; sin UID inventado/copias de usuarios. Es un bloqueo del módulo Logística, independiente del baseline apto. |
+| 5 — Deploy API10 | Administrador/backend: FileZilla → dependencias/configuración → reinicio habitual → health. Jairo: Samsung. | Validación operativa SI, HTTP 200 y prueba funcional completa. |
 
-Ante **STOP**: detenerse, conservar salidas y compartir solo metadatos; no continuar
-ni reintentar automáticamente. Con éxito, seguir al próximo paso sin otra revisión
-manual de conteos, secuencias, funciones o triggers. No se requiere freeze total:
-las diferencias posteriores al snapshot se detectan en el paso 11.
+En el PASO 5 subir exactamente
+[07_ARCHIVOS_API10_FILEZILLA.txt](07_ARCHIVOS_API10_FILEZILLA.txt), desde context/api10/
+al directorio habitual, conservando rutas/modo binario, incluidos package.json,
+package-lock.json y .npmrc. No subir SQL, fuentes JSON con personas, herramientas
+administrativas, tests, entornos, credenciales o node_modules.
+Dentro de API10: `npm ci --omit=dev`, Node 18.19.1.
+Configurar `APP_ENV=production`, `PGDATABASE=calidad`,
+`FIREBASE_LOGISTICA_PROJECT_ID=logistica-ar` y demás variables PG/Firebase/Drive
+según [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md), sin imprimir secretos.
+Configurar permisos habituales del rol API10/search_path; server.js no carga .env
+automáticamente. Reiniciar API10 mediante el procedimiento habitual del administrador.
+Comprobar `GET /api10/health`: HTTP 200, que solo acredita HTTP.
+Jairo valida login → crear entrega → foto → firma → GPS → finalizar → Mis registros;
+exigir COMPLETED, evidencia Drive y registro visible. Si falla, no aceptar el deploy.
 
-| PASO | RESPONSABLE | ACCIÓN/COMANDO | RESULTADO ESPERADO | SI FALLA |
-| --- | --- | --- | --- | --- |
-| PASO 1 — Backup | Administrador | Confirmar el respaldo mediante su procedimiento habitual, sin redefinir su mecanismo. | `BACKUP_ARTECNOLOGIA = SI`. | Sin confirmación: **STOP**. |
-| PASO 2 — Transferencia | Administrador | Ejecutar `node context/database/deploy_calidad/08_operar.mjs transfer`. Integra identidad real de `artecnologia` y [01_preflight_artecnologia.sql](01_preflight_artecnologia.sql) antes del dump/export; solo con origen apto continúa: dump/backup completo → export selectivo aprobado → restore únicamente en `calidad`. No seleccionar tablas, editar TOC ni copiar por HeidiSQL. | `TRANSFERENCIA_COMPLETADA = SI`, `restore_completed.json` y snapshot/dump identificados en `snapshot.json` (COMPLETE, inicio/final y hashes). Se conservan baseline y recibos automáticamente. | Condición crítica, captura incompleta o fallo de dump/export/restore: **STOP**, sin continuar ni reintentar a ciegas. |
-| PASO 3 — Validar restore | Administrador | Ejecutar `node context/database/deploy_calidad/08_operar.mjs validate-restore`. Ejecuta [03_validar_post_restore_calidad.sql](03_validar_post_restore_calidad.sql), capturas y comparadores automáticos contra el snapshot. | `RESTORE_VALIDADO = SI` en salida y `restore_validado.json`. | Distinto de SI o error: **STOP**. No aplicar Logística. |
-| PASO 4 — Migraciones Logística | Administrador | Ejecutar `node context/database/deploy_calidad/08_operar.mjs migrate`. Aplica las siete migraciones PROD en el [orden cerrado documentado](05_COMANDOS_TRANSFERENCIA.md#g--siete-migraciones-logística), comprobando cada éxito antes de enviar la siguiente. El administrador no decide archivos ni orden. | Siete resultados `PASS`, en orden, con recibo por migración. | Si una falla: **STOP**, no continuar ni reejecutar el lote. |
-| PASO 5 — Validar Logística | Administrador | Ejecutar `node context/database/deploy_calidad/08_operar.mjs validate-final`. Ejecuta [04_validar_post_logistica_calidad.sql](04_validar_post_logistica_calidad.sql). | `LOGISTICA_SCHEMA_VALIDO = SI` y `logistica_validada.json`; ledger 7/7 validado. | Distinto de SI o error: **STOP** antes de FileZilla. |
-| PASO 6 — FileZilla | Administrador | Subir todos los archivos de [07_ARCHIVOS_API10_FILEZILLA.txt](07_ARCHIVOS_API10_FILEZILLA.txt), desde `context/api10/` al directorio API10 habitual, conservando rutas y en modo binario. | `API10 anterior respaldada = SI` (incluida configuración); `archivos FileZilla subidos = SI`; `package.json/package-lock.json actualizados = SI`. Incluir `.npmrc`. | Si falta respaldo o un archivo: **STOP**, no reiniciar PM2. |
-| PASO 7 — npm ci | Administrador | Dentro de API10 en el servidor: `npm ci --omit=dev`, con Node **18.19.1**. Confirmar entorno de aplicación: `APP_ENV=production`, `PGDATABASE=calidad`, `FIREBASE_LOGISTICA_PROJECT_ID=logistica-ar` y variables PG/Firebase/Drive de [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md), sin imprimir secretos. | Instalación correcta y configuración disponible para el proceso. `server.js` no carga `.env` automáticamente. | Si falla instalación o configuración: **STOP**, **NO reiniciar PM2**. |
-| PASO 8 — PM2 | Administrador | Reiniciar API10 mediante su procedimiento habitual. | API10 con entorno nuevo; registrar hora del cambio de tráfico y considerar solicitudes/jobs en vuelo hacia la API anterior. | Si falla: **STOP**, conservar logs sin secretos. |
-| PASO 9 — Health | Administrador | Comprobar `GET /api10/health`. | **HTTP 200**. Solo acredita HTTP; aún no valida PostgreSQL, Firebase ni Drive. | Si no responde 200: **STOP**. |
-| PASO 10 — Samsung | **Jairo** | Con usuario autorizado: **login → crear entrega → foto → firma → GPS → finalizar → Mis registros**. | `COMPLETED`, evidencia en Drive, registro en PostgreSQL y entrega visible en Mis registros. | Si falla: **STOP** de aceptación funcional; conservar evidencias. |
-| PASO 11 — Conciliación delta | Administrador (captura); equipo de datos (resolución humana) | Después del corte: `node context/database/deploy_calidad/08_operar.mjs delta`. Compara `artecnologia` vs `calidad` y el baseline con herramientas READ ONLY existentes. | Reporte de `SOLO_ORIGEN`, `SOLO_DESTINO`, `CONTENIDO_DISTINTO`. Código 0: sin diferencias observadas; 2: pendientes/no comparables; 1: captura inválida. El equipo resuelve manualmente los casos y repite hasta cerrar. | Código 1: **STOP**, revisar captura. Código 2: no declarar cierre. No aplicar `INSERT/UPDATE/DELETE` automáticamente ni inferir deletes; revisar colisiones de PK/FK. |
+Datos iniciales: únicamente siete maestros y alta Logística posterior aprobada.
+Sin órdenes/avances/inspecciones realizadas/entregas/evidencias/históricos/legacy/
+mappings/TEST. No dump, restore, delta, migración histórica ni siete migraciones
+posteriores: la arquitectura final está incluida en create_calidad.sql.
+validate_create_calidad.sql se conserva para diagnosticar el baseline vacío antes
+del seed. El query de export se conserva como evidencia ejecutada, no se repite.
 
-El guard de destino/servidor/rol sigue siendo automático dentro de `restore`, sin
-otro paso para el administrador. La transferencia reutiliza las etapas existentes;
-no ejecutar además `backup`, `export`, `restore` o `preflight` por separado.
-Las operaciones sobre `artecnologia` son READ ONLY; restore/migraciones escriben
-únicamente en `calidad`. Los detalles técnicos están en [05_COMANDOS_TRANSFERENCIA.md](05_COMANDOS_TRANSFERENCIA.md).
-
-El histórico Sheet sigue **FUERA del primer deploy**: tras estabilizar el flujo
-moderno, snapshot final → SHA256 → auditoría delta legacy → importador PROD →
-validación → mappings aprobados, según el [procedimiento histórico](../migrations/prod/README_LOGISTICA_PROD.md#importacion-historica-futura-no-ejecutarla-durante-preparacion).
-Las migraciones crean su estructura; no importan el Sheet ni insertan mappings.
-
-Antes de nuevas escrituras de negocio puede cancelarse el corte conservando la
-API10 anterior/configuración sobre origen. Después, no volver ciegamente a origen:
-preservar ambos lados y revisar delta y efectos en Drive con el equipo.
-No compartir dumps, export SQL, passwords, tokens ni credenciales.
+Conservar salidas completas de creación/seed/validación para revisión. El seed
+no contacta artecnologia ni genera archivos de salida automáticos. Tras nuevas
+escrituras, no volver ciegamente al sistema anterior: preservar ambos lados y
+coordinar la decisión con el equipo. Ningún SQL de esta entrega se ejecutó aquí.

@@ -1,4 +1,13 @@
-# Logistica: artefactos para un cutover PROD posterior
+# Cutover limpio: NO ejecutar las siete migraciones después del baseline
+
+Para la instalación nueva de calidad seguir
+[create_calidad.sql y su runbook](../../deploy_calidad/10_RUNBOOK_CUTOVER_FINAL.md).
+El baseline ya incluye el estado final y los metadatos de las siete versiones.
+Este procedimiento incremental se conserva para trazabilidad; **NO se utiliza
+en el cutover limpio**. El histórico Sheet/mappings tampoco se importa durante
+ese despliegue. El contenido anterior se conserva debajo como referencia.
+
+# Logistica: artefactos históricos para un cutover PROD posterior
 
 Estos archivos **no autorizan un despliegue ni una importacion**. Preparacion y
 tests se realizan en LOCAL. No usan Firebase, HTTP, PM2 ni Google Drive.

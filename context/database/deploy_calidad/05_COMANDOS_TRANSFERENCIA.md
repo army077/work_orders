@@ -1,4 +1,16 @@
-# Comandos Linux: snapshot y conciliación controlada
+# ARCHIVO HISTÓRICO — transferencia NO utilizada en este cutover
+
+**NO UTILIZAR EN EL CUTOVER LIMPIO DE calidad.** No se transfieren datos de
+artecnologia. Este procedimiento se conserva solo como referencia histórica;
+los bloques siguientes, incluidos transfer, restore, siete migraciones y delta,
+no forman parte del despliegue vigente. Seguir exclusivamente
+[10_RUNBOOK_CUTOVER_FINAL.md](10_RUNBOOK_CUTOVER_FINAL.md): crear baseline limpio
+y validar con los dos SQL autónomos. No ejecutar `08_operar.mjs transfer`.
+
+El contenido técnico anterior se conserva debajo, sin reinterpretarlo como
+instrucciones actuales.
+
+# Comandos Linux históricos: snapshot y conciliación controlada
 
 Preparados; NO ejecutados en DB. Desde la raíz del checkout revisado, con clientes
 PostgreSQL 16 y Node **18.19.1**. En FileZilla usar transferencia binaria para

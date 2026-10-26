@@ -1,9 +1,17 @@
 # Deploy API10 y conciliación posterior
 
-Secuencia vigente: [runbook final de 11 pasos](10_RUNBOOK_CUTOVER_FINAL.md).
-Requisitos: RESTORE_VALIDADO=SI y LOGISTICA_SCHEMA_VALIDO=SI de la misma ventana,
-snapshot.json COMPLETE y artefacto anterior respaldado. **No requiere freeze total**.
-API10 permanece en artecnologia hasta terminar la migración/validación de calidad.
+Secuencia vigente: [runbook de 5 pasos](10_RUNBOOK_CUTOVER_FINAL.md).
+Requisitos: baseline creado, seed real aprobado y
+CALIDAD_SEED_OPERATIVO_VALIDO=SI / CALIDAD_SCHEMA_VALIDO=SI de
+validate_seed_calidad.sql; API10 anterior/configuración respaldadas.
+EXPORT_CONFIG_PROD_RECIBIDO=SI. La etiqueta heredada no bloquea ni pide otro export.
+Las incidencias heredadas 39/5/9 se reportan como WARNING y no bloquean el deploy.
+Solo los ERROR producen NO operativo; ver
+[17_AUDITORIA_RUNTIME_BASELINE.md](17_AUDITORIA_RUNTIME_BASELINE.md).
+Sin transferencia, restore, migraciones incrementales ni delta PostgreSQL.
+Solo maestros/configuración se cargan; eventos/legacy/mappings quedan vacíos. Revisar el
+[inventario de seeds](12_INVENTARIO_BASELINE_LIMPIO.md): sin usuario Logística
+activo aprobado, la prueba Samsung responderá 403. El baseline no lo crea.
 
 - [ ] API10 anterior respaldada = SI (ya confirmado), incluida su configuración.
 - [ ] Node del proceso PM2 = v18.19.1; NO actualizar Node del servidor.
@@ -61,8 +69,9 @@ curl --fail --silent --show-error --output /dev/null \
 - [ ] npm ci --omit=dev = PASS y árbol runtime Node 18.19.1 compatible.
 - [ ] Proceso PM2 reiniciado = SI con entorno nuevo, health = 200.
 - [ ] Tráfico dirigido a calidad, hora del cutover registrada.
-- [ ] Ejecutar bloque I de 05: CONCILIACION DELTA; asignar revisión y registrar
-  resoluciones; repetir hasta cerrar diferencias sin pérdidas silenciosas.
+- [ ] Prueba Samsung por Jairo tras autorización separada del usuario: login,
+  crear entrega, foto, firma, GPS, finalizar, Mis registros; COMPLETED y evidencias
+  PostgreSQL/Drive confirmadas. Health 200 por sí solo no certifica este flujo.
 
 Health valida HTTP; no acredita DB ni credenciales externas. No hacer escrituras
 reales en Firebase/Drive solo para validar el arranque. Las pruebas locales usan
@@ -70,10 +79,10 @@ transportes simulados y la aplicación real con conexiones salientes bloqueadas.
 
 Rollback antes de nuevas escrituras de negocio en calidad: mantener/restaurar
 artefacto y configuración anterior de API10 sobre artecnologia. El binario nuevo
-rechaza artecnologia por su guard. Restore/ledger no cuentan como operaciones de
-negocio nuevas. No volver ciegamente a artecnologia una vez que calidad reciba
+rechaza artecnologia por su guard. Seed/ledger no cuentan como eventos de
+negocio nuevos. No volver ciegamente a artecnologia una vez que calidad reciba
 altas/updates nuevos: preservar ambos lados, revisar delta/efectos externos y
 autorizar una reconciliación o roll-forward. No borrar ninguna DB.
 
-El snapshot final Entregas/Sheet es independiente del delta PostgreSQL.
+No importar Sheet ni mappings durante este despliegue limpio.
 Riesgos de dependencias y mitigaciones: [AUDITORIA_NODE18.md](../../api10/AUDITORIA_NODE18.md).

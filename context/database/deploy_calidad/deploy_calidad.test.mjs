@@ -221,7 +221,9 @@ test('fixed Node18 target, no redundant administrator questions, public values a
   assert.match(admin,/Node.js v18.19.1/);
   for(const name of ['APP_ENV','PGHOST','PGPORT','PGUSER','PGPASSWORD','PGDATABASE','FIREBASE_LOGISTICA_PROJECT_ID',
     'GOOGLE_APPLICATION_CREDENTIALS','LOGISTICA_DRIVE_OAUTH_CREDENTIALS_PATH','LOGISTICA_DRIVE_TOKEN_PATH','LOGISTICA_DRIVE_PEDIDOS_FOLDER_ID']) assert.ok(checklist.includes(name));
-  for(const file of readdirSync(new URL('./',import.meta.url))) {
+  const files=directory=>readdirSync(new URL(directory,import.meta.url),{withFileTypes:true})
+    .flatMap(entry=>entry.isDirectory()?files(directory+entry.name+'/'):[directory+entry.name]);
+  for(const file of files('./')) {
     if(file.endsWith('.test.mjs')) continue;
     const content=read(file);
     assert.doesNotMatch(content,/-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|postgres(?:ql)?:\/\/[^\s]+:[^\s]+@|AIza[\w-]{30,}|gh[pousr]_[\w]{30,}/);

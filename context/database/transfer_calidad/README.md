@@ -1,4 +1,13 @@
-# Transferencia controlada artecnologia → calidad
+# HISTÓRICO — transferencia NO utilizada en el cutover limpio
+
+La decisión vigente es crear calidad limpia, sin copiar artecnologia. Este
+directorio se conserva como herramienta histórica; dump/restore/comparadores/delta
+NO se utilizan en este cutover. Seguir el
+[runbook limpio](../deploy_calidad/10_RUNBOOK_CUTOVER_FINAL.md) y los SQL autónomos
+create_calidad.sql / validate_create_calidad.sql. El procedimiento que sigue
+pertenece al plan anterior y no debe ejecutarse como parte del despliegue nuevo.
+
+# Transferencia controlada histórica artecnologia → calidad
 
 Procedimiento operativo vigente: [deploy_calidad/00_LEEME_ADMIN.md](../deploy_calidad/00_LEEME_ADMIN.md).
 Runtime productivo fijo: Node 18.19.1. Producción PostgreSQL 16.15/Ubuntu.

@@ -1,86 +1,62 @@
-# Paquete administrativo: artecnologia → calidad
+﻿# calidad limpia: procedimiento vigente
 
-Estado: PREPARADO PARA REVISIÓN; sin ejecución en DB ni deploy. Runtime fijo:
-**Node.js v18.19.1**. No actualizar Node del servidor.
+**EXPORT_CONFIG_PROD_RECIBIDO=SI.** El usuario aportó el JSON productivo real y
+el query adaptado que ejecutó. La etiqueta heredada PENDIENTE_EXPORT_CONFIG_PROD
+no solicita otro export. No repetir consultas ni pedir acceso/credenciales.
 
-Seguir el [runbook final de 11 pasos](10_RUNBOOK_CUTOVER_FINAL.md): backup confirmado
-por el administrador → transferencia → validar restore → migraciones Logística →
-validar Logística → FileZilla → npm ci → PM2 → health → Samsung (Jairo) →
-conciliación delta humana. El acceso, el backup y PM2 quedan a cargo del administrador.
+Seguir el [runbook de 5 pasos](10_RUNBOOK_CUTOVER_FINAL.md): crear → seed → validar
+→ alta Logística si pendiente → deploy API10. No copiar históricos ni eventos,
+no dump/restore/delta ni siete migraciones posteriores.
 
-`calidad` ya pasó el preflight real: DESTINO_VACIO_Y_APTO=SI y cero objetos de
-aplicación. Origen y destino comparten servidor PostgreSQL 16.15 y administrador.
-No pedir otro inventario, versión ni nombre/ruta PM2. No exigir freeze total.
+[create_calidad.sql](create_calidad.sql) crea la arquitectura final: 21 tablas,
+20 secuencias, 48 índices incluidos PK/UNIQUE, 13 FK, cuatro funciones y dos
+triggers. Exige calidad/PG16, plpgsql/citext instaladas y ausencia de objetos de
+aplicación previos. No crea extensiones, roles o grants inventados. Solo carga
+el ledger con siete versiones incluidas, no ejecuta siete migraciones separadas.
 
-Una sola transferencia: `node context/database/deploy_calidad/08_operar.mjs transfer`.
-Reutiliza las etapas existentes backup → export selectivo → restore en calidad.
-Dentro del snapshot READ ONLY verifica la identidad real de artecnologia y ejecuta
-01_preflight_artecnologia.sql antes del dump/export. Solo con ORIGEN_APTO=SI y
-captura completa continúa. No ejecutar 01 ni 02 como actividades previas separadas.
-El guard automático de destino/servidor/rol antes del restore permanece interno.
+[seed_calidad_operativo.sql](seed_calidad_operativo.sql) es definitivo para el
+export aprobado: 1.139 filas de siete maestros, IDs preservados y siete secuencias
+reiniciadas transaccionalmente. Exige el baseline íntegro vacío; rechaza cargas
+parciales. No inserta eventos, históricos, legacy, mappings o usuarios Logística.
 
-El inventario y las siete migraciones siguen en transfer_calidad/ y migrations/prod/.
-El administrador no selecciona tablas ni compara conteos, secuencias, funciones o
-triggers manualmente. El runner registra snapshot, inicio/finalización, hashes y
-recibos; los comparadores determinan RESTORE_VALIDADO=SI. Después `migrate` ejecuta
-las siete migraciones en orden fijo y comprueba cada éxito antes de enviar la
-siguiente. `validate-final` exige LOGISTICA_SCHEMA_VALIDO=SI antes de FileZilla.
-PM2 se reinicia mediante el procedimiento habitual del administrador.
+[validate_seed_calidad.sql](validate_seed_calidad.sql) es READ ONLY. Comprueba
+estructura, todas las filas/conteos/relaciones/secuencias y ausencia de eventos.
+Distingue fidelidad de datos de suficiencia funcional y alta Logística pendiente.
+[validate_create_calidad.sql](validate_create_calidad.sql) se conserva únicamente
+como diagnóstico inicial antes del seed: exige negocio vacío y secuencias frescas.
 
-Detalle de comandos y controles internos: [05_COMANDOS_TRANSFERENCIA.md](05_COMANDOS_TRANSFERENCIA.md).
-Configuración y rollback: [06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md).
+**Hallazgo de la fuente aprobada:** 39 plantillas ENSAMBLE sin INSPECCION publicada
+para el mismo modelo, cinco secciones vacías y nueve plantillas sin algún código
+de liberación. La revisión del runtime las clasifica como WARNING: limitan
+inspección/liberación de esas plantillas o dejan checklists vacíos, pero permiten
+arrancar API10 y crear órdenes. Con el seed exacto se esperan
+CALIDAD_SCHEMA_VALIDO=SI / CALIDAD_SEED_DATOS_VALIDOS=SI /
+CALIDAD_SEED_OPERATIVO_VALIDO=SI / BASELINE_APTO_PARA_DEPLOY=SI.
+Solo los ERROR bloquean el baseline; no reparar las 39/5/9 para desplegar.
+Evidencia de endpoints y alcance en
+[17_AUDITORIA_RUNTIME_BASELINE.md](17_AUDITORIA_RUNTIME_BASELINE.md). Detalle e IDs en
+[16_SEED_PROD_VALIDADO_OFFLINE.md](16_SEED_PROD_VALIDADO_OFFLINE.md) y
+[15_RECEPCION_EXPORT_CONFIG_PROD.json](15_RECEPCION_EXPORT_CONFIG_PROD.json).
 
-Un NO/REVISAR, captura truncada, schema distinto, secuencia insegura o error del
-restore/migración significa DETENERSE antes del corte. El código 2 del comparador
-delta significa diferencias pendientes de revisión, no una conciliación realizada.
-Un fallo antes del corte permite mantener API10 anterior sobre artecnologia.
+Logística sigue ALTA_MANUAL_REQUERIDA. No hay UID automático. El INSERT
+parametrizado está en [13_SEED_OPERATIVO.md](13_SEED_OPERATIVO.md). El validador
+reporta LOGISTICA_AUTH_PENDIENTE por separado, sin confundir ausencia de usuario
+con corrupción estructural. Health 200 no demuestra autorización ni operación.
 
-Los cuatro SQL administrativos y las dos capturas delta son READ ONLY. Un guard
-de base/PG16 equivocada aborta su transacción. El límite 120s puede detener
-capturas grandes: revisar técnicamente, no aceptar una salida incompleta.
+Runtime **Node.js v18.19.1**, APP_ENV=production, PGDATABASE=calidad,
+FIREBASE_LOGISTICA_PROJECT_ID=logistica-ar. El administrador configura permisos
+habituales del rol API10, acceso, backup y reinicio PM2. FileZilla usa
+[07_ARCHIVOS_API10_FILEZILLA.txt](07_ARCHIVOS_API10_FILEZILLA.txt); después,
+`npm ci --omit=dev` dentro de API10. Configuración y rollback:
+[06_CHECKLIST_CUTOVER.md](06_CHECKLIST_CUTOVER.md). No imprimir secretos.
 
-Compartir TSV y reportes JSON, que contienen metadatos, conteos, hashes y PK
-numéricas/UUID necesarias. PK textuales se identifican por hash para evitar
-exponer datos personales. No se imprimen filas completas ni cuerpos de funciones.
-NO compartir dumps/export SQL, passfiles, entornos ni credenciales Firebase/Drive.
+Herramientas anteriores de transferencia, 01–04, 05_COMANDOS_TRANSFERENCIA.md,
+08_operar.mjs, 09_comparar_restore.mjs, transfer_calidad y migraciones incrementales
+se conservan, NO utilizadas en este cutover. El query del export se archiva como
+fuente ejecutada, no como otra actividad obligatoria.
 
-Los cuatro históricos PostgreSQL pendientes no se incorporan automáticamente.
-El snapshot histórico Entregas del Sheet es un flujo distinto del delta PostgreSQL.
-No se crea ni utiliza PREPROD ni una DB LOCAL.
-
-Los generadores offline y sus tests evitan duplicar inventarios/comparadores.
-
-Los preflight reportan todas las extensiones instaladas como EXTENSION_INFRA / INFO
-con nombre, schema y versión, para comparar origen y destino. Su pertenencia se
-comprueba por catálogo/OID en pg_depend y pg_extension (membership `e`), incluyendo
-objetos internos derivados (`i`, por ejemplo el array de un tipo). Una dependencia
-normal, automática o auto-extension (`n`, `a`, `x`) no convierte un objeto propio
-en infraestructura. Referencia: [pg_depend PostgreSQL 16](https://www.postgresql.org/docs/16/catalog-pg-depend.html).
-
-En 02, application_objects/unexpected_application_objects cuentan solo los objetos
-inventariados sin esa pertenencia; unexpected_objects conserva el mismo contador
-por compatibilidad. extension_objects cuenta los objetos inventariados clasificados
-como infraestructura, incluyendo las propias extensiones instaladas (también
-plpgsql). No es el total de miembros de todos los catálogos del servidor. Tablas,
-secuencias, vistas, rutinas, triggers y tipos propios siguen bloqueando; un ledger
-existente bloquea además de forma independiente. Un SI indica ausencia de objetos
-de aplicación en ese inventario; no certifica compatibilidad entre extensiones ni
-autoriza copiarlas, instalarlas o desinstalarlas automáticamente. Sus metadatos
-quedan disponibles para diagnóstico; no se añade una comparación manual obligatoria.
-
-Tests offline: `node --test context/database/deploy_calidad/*.test.mjs
-context/database/transfer_calidad/*.test.mjs` (en una sola línea desde el repositorio).
-Los casos de catálogos simulados evalúan el SELECT generado usando VALUES y el
-motor SQLite en memoria integrado en Node; adaptan únicamente sintaxis y funciones
-de PostgreSQL. No abren conexiones ni ejecutan DDL y no certifican ejecución real
-en PostgreSQL. Estos casos se verificaron con Node 24 de desarrollo; si node:sqlite
-no está disponible se marcan SKIP y siguen los contratos de seguridad de SQL.
-No cambiar Node 18.19.1 del servidor ni desplegar los archivos de tests.
-
-Los scripts no aplican INSERT/UPDATE/DELETE de conciliación. Nuevas altas que
-colisionen por PK, cambios divergentes y ausencias requieren decisión humana.
-El snapshot no congela secuencias ni escrituras posteriores: el restore verifica
-su seguridad contra las PK restauradas y la conciliación conserva ambas versiones.
-
-Compatibilidad y riesgos de dependencias: [AUDITORIA_NODE18.md](../../api10/AUDITORIA_NODE18.md).
-Detalle y límites del delta: [CONCILIACION_DELTA.md](../transfer_calidad/CONCILIACION_DELTA.md).
+Generadores offline: build_clean_baseline.mjs y build_seed_support.mjs en esta
+carpeta. Nunca conectan ni ejecutan el SQL generado. El servidor ejecuta los SQL
+autónomos, sin generadores/includes/psql obligatorios. Ante error/NO/resultado
+incompleto: STOP. Un SI dentro de transacción exige COMMIT posterior exitoso.
+No se ha ejecutado esta entrega contra PostgreSQL ni modificado ninguna DB.

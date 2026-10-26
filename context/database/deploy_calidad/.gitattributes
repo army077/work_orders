@@ -1,0 +1,4 @@
+# Preserve the exact authorized input bytes and the query receipt across checkouts.
+sources/export_config_prod_20261023.json -text
+export_seed_config_artecnologia.sql text eol=lf
+15_RECEPCION_EXPORT_CONFIG_PROD.json text eol=lf

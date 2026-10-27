@@ -147,7 +147,7 @@ BEGIN
      ELSIF type_name='boolean' AND node->>0='string' AND node->>1 IN ('true','false') THEN node:=jsonb_build_array('boolean',node->>1);
      ELSIF node->>0 IN ('string','number') AND node->>1 ~ '^-?[0-9]+([.][0-9]+)?$' AND type_name='numeric' THEN node:=jsonb_build_array('number',node->>1);
      ELSIF node->>0 IN ('string','number') AND node->>1 ~ '^-?[0-9]+$' AND type_name IN ('integer','bigint','double precision')
-      AND abs((node->>1)::numeric)<=CASE type_name WHEN 'integer' THEN 2147483647::numeric WHEN 'bigint' THEN 9223372036854775807::numeric ELSE 9007199254740991::numeric END THEN node:=jsonb_build_array('number',node->>1);
+      AND abs((node->>1)::numeric)<=(CASE type_name WHEN 'integer' THEN 2147483647::numeric WHEN 'bigint' THEN 9223372036854775807::numeric ELSE 9007199254740991::numeric END) THEN node:=jsonb_build_array('number',node->>1);
      ELSE node:=jsonb_build_array('cast',type_name,node); END IF;
     ELSE node:=jsonb_build_array(op)||children;
     END IF;

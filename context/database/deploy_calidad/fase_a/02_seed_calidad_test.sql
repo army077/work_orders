@@ -56,7 +56,7 @@ BEGIN
      ELSIF type_name='boolean' AND node->>0='string' AND node->>1 IN ('true','false') THEN node:=jsonb_build_array('boolean',node->>1);
      ELSIF node->>0 IN ('string','number') AND node->>1 ~ '^-?[0-9]+([.][0-9]+)?$' AND type_name='numeric' THEN node:=jsonb_build_array('number',node->>1);
      ELSIF node->>0 IN ('string','number') AND node->>1 ~ '^-?[0-9]+$' AND type_name IN ('integer','bigint','double precision')
-      AND abs((node->>1)::numeric)<=CASE type_name WHEN 'integer' THEN 2147483647::numeric WHEN 'bigint' THEN 9223372036854775807::numeric ELSE 9007199254740991::numeric END THEN node:=jsonb_build_array('number',node->>1);
+      AND abs((node->>1)::numeric)<=(CASE type_name WHEN 'integer' THEN 2147483647::numeric WHEN 'bigint' THEN 9223372036854775807::numeric ELSE 9007199254740991::numeric END) THEN node:=jsonb_build_array('number',node->>1);
      ELSE node:=jsonb_build_array('cast',type_name,node); END IF;
     ELSE node:=jsonb_build_array(op)||children;
     END IF;
@@ -256,11 +256,11 @@ DO $schema$ DECLARE problem text; BEGIN
  OR x.indnkeyatts IS DISTINCT FROM jsonb_array_length(i->'columns') OR x.indexprs IS NOT NULL
  OR (SELECT jsonb_agg(a.attname::text ORDER BY k.n) FROM unnest(x.indkey) WITH ORDINALITY k(attnum,n) LEFT JOIN pg_attribute a ON a.attrelid=x.indrelid AND a.attnum=k.attnum) IS DISTINCT FROM i->'columns'
  OR EXISTS(SELECT 1 FROM unnest(x.indoption) v WHERE v<>0)
- OR EXISTS(SELECT 1 FROM unnest(x.indclass,x.indcollation,x.indkey) k(opclass,collation,attnum)
+ OR EXISTS(SELECT 1 FROM unnest(x.indclass,x.indcollation,x.indkey) k(opclass,colloid,attnum)
  LEFT JOIN pg_opclass opc ON opc.oid=k.opclass LEFT JOIN pg_attribute a ON a.attrelid=x.indrelid AND a.attnum=k.attnum
  WHERE NOT opc.opcdefault OR opc.opcnamespace IS DISTINCT FROM 'pg_catalog'::regnamespace
  OR opc.opcmethod IS DISTINCT FROM c.relam OR opc.opcintype IS DISTINCT FROM CASE WHEN a.atttypid='character varying'::regtype THEN 'text'::regtype ELSE a.atttypid END
- OR k.collation IS DISTINCT FROM a.attcollation)
+ OR k.colloid IS DISTINCT FROM a.attcollation)
  UNION ALL SELECT 'MAPPING_FUNCTION_DRIFT' WHERE NOT EXISTS(
  SELECT 1 FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang
  WHERE p.oid=to_regprocedure('public.protect_logistica_legacy_owner_mapping()')

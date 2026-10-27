@@ -3,11 +3,20 @@ const r = express.Router();
 const pool = require("../db");
 
 r.get('/', async (req, res) => {
-  const section_id = Number(req.query.section_id);
-  const { rows } = await pool.query(
-    `SELECT * FROM template_task WHERE section_id=$1 ORDER BY position`, [section_id]
-  );
-  res.json(rows);
+  const raw = req.query.section_id;
+  const section_id = typeof raw === 'string' && /^[1-9]\d*$/.test(raw) ? Number(raw) : NaN;
+  if (!Number.isSafeInteger(section_id) || section_id > 2147483647) {
+    return res.status(400).json({ error: 'section_id es obligatorio y debe ser un entero positivo válido' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM template_task WHERE section_id=$1 ORDER BY position`, [section_id]
+    );
+    return res.json(rows);
+  } catch (error) {
+    console.error('tasks list failed:', error.code || 'DATABASE_ERROR');
+    return res.status(500).json({ error: 'No se pudieron consultar las tareas' });
+  }
 });
 
 // DELETE TASK

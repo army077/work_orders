@@ -95,9 +95,9 @@ test('final Logistics column layout equals the prepared seventh schema state',()
       assert.equal(wanted[4],'');assert.equal(wanted[5],'');
     }
   }
-  assert.ok(validate.includes(expected.fingerprint));
+  assert.doesNotMatch(validate,/LOGISTICA_FINAL_SCHEMA_DRIFT|fingerprint<>/);
   assert.match(validate,/SET LOCAL search_path = pg_catalog, public/);
-  assert.ok(validate.includes("replace(pg_get_triggerdef(t.oid,true),'EXECUTE FUNCTION protect_logistica_legacy_owner_mapping()','EXECUTE FUNCTION public.protect_logistica_legacy_owner_mapping()')"));
+  assert.match(validate,/TRIGGER_DRIFT/);
 });
 test('each original Logistics ADD constraint/column and index is present in the single final schema',()=>{
   for(const file of artifacts()) {
@@ -130,9 +130,9 @@ test('standalone validator is READ ONLY, guarded, rollback-only and never evalua
   assert.equal(queries[0],'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   assert.match(queries[1],/DATABASE_MUST_BE_CALIDAD/);
   assert.equal(queries.at(-1),'ROLLBACK');
-  assert.ok(queries.every(s=>/^(BEGIN\b|SET LOCAL\b|DO \$identity\$|WITH RECURSIVE\b|ROLLBACK\b)/.test(s)));
+  assert.ok(queries.every(s=>/^(BEGIN\b|SET LOCAL\b|DO \$(?:identity|semantic_expressions)\$|WITH RECURSIVE\b|ROLLBACK\b)/.test(s)));
   assert.ok(!queries.some(s=>/^(CREATE|ALTER|INSERT|UPDATE|DELETE|TRUNCATE|COPY|COMMIT)\b/i.test(s)));
   assert.doesNotMatch(validate,/SELECT\s+(?:setval|nextval|pg_advisory_xact_lock)\s*\(/i);
   assert.match(validate,/'CALIDAD_SCHEMA_VALIDO',CASE WHEN EXISTS\(SELECT FROM issues\) THEN 'NO' ELSE 'SI' END/);
-  for(const check of ['BASE_COLUMN_DRIFT','BASE_CONSTRAINT_DRIFT','BASE_INDEX_DRIFT','BASE_FUNCTION_DRIFT','SEQUENCE_DRIFT','LOGISTICA_FINAL_SCHEMA_DRIFT','LEDGER_DRIFT','TABLE_NOT_EMPTY_OR_UNSUPPORTED','UNEXPECTED_OBJECT','MISSING_OBJECT'])assert.ok(validate.includes(check));
+  for(const check of ['BASE_COLUMN_DRIFT','BASE_CONSTRAINT_DRIFT','BASE_INDEX_DRIFT','BASE_FUNCTION_DRIFT','SEQUENCE_DRIFT','SEMANTIC_EXPRESSION_DRIFT','LEDGER_DRIFT','TABLE_NOT_EMPTY_OR_UNSUPPORTED','UNEXPECTED_OBJECT','MISSING_OBJECT'])assert.ok(validate.includes(check));
 });

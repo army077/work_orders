@@ -1,6 +1,8 @@
 // Offline rendering of the approved export. Never executes the resulting SQL.
 import { readFileSync } from 'node:fs';
 import { baselineModel,checksCTEs } from './build_clean_baseline.mjs';
+import { expressionGuard } from './semantic_expressions.mjs';
+import { frozenProductionSeedChecks } from './frozen_productive_seed_checks.mjs';
 import { masters,loadApprovedSource,functionalFindings,sha256 } from './seed_source.mjs';
 
 const lit=value=>"'"+String(value).replaceAll("'","''")+"'";
@@ -48,6 +50,7 @@ export function readySeedFiles({configurationChecks,testPattern,identity,setting
  SELECT reason FROM schema_issues UNION ALL SELECT reason FROM master_data_issues
  UNION ALL SELECT reason FROM configuration_issues WHERE reason NOT IN (${functionalReasons.map(lit).join(',')})
 )`;
+ const checksForFrozenSeed=checks.replace(checksCTEs(model,{allowData}).replace('issues(reason) AS (','schema_issues(reason) AS ('),()=>frozenProductionSeedChecks(model,{allowData}).replace('issues(reason) AS (','schema_issues(reason) AS ('));
  const insertion=masters.map(name=>{
   const columns=source.definitions[name].map(c=>c.name);
   return `-- ${name}: ${source.counts[name]} approved rows; original master IDs preserved.
@@ -64,7 +67,7 @@ SET LOCAL standard_conforming_strings = on;
 ${identity('calidad')}
 LOCK TABLE ${model.tables.map(t=>'public.'+t.name).join(',')} IN ACCESS EXCLUSIVE MODE;
 ${block('baseline',`DECLARE issue text; BEGIN
- WITH RECURSIVE ${checksCTEs(model)}
+ WITH RECURSIVE ${frozenProductionSeedChecks(model)}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO issue FROM issues;
  IF issue IS NOT NULL THEN RAISE EXCEPTION 'SEED_BASELINE_INCOMPATIBLE: %',issue; END IF;
 END;`)}
@@ -75,7 +78,7 @@ ${insertion}
 ${sequences}
 
 ${block('seed_integrity',`DECLARE issue text; BEGIN
- WITH RECURSIVE ${checks}
+ WITH RECURSIVE ${checksForFrozenSeed}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO issue FROM seed_issues;
  IF issue IS NOT NULL THEN RAISE EXCEPTION 'SEED_DATA_INVALID: %',issue; END IF;
 END;`)}
@@ -96,6 +99,7 @@ BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 ${identity('calidad')}
 ${settings}
 SET LOCAL standard_conforming_strings = on;
+${expressionGuard(model)}
 WITH RECURSIVE ${checks}, inherited_warning_policy(reason,classification,affected,impact) AS (
  VALUES ${warningPolicy.map(([reason,classification,affected,impact])=>'('+[lit(reason),lit(classification),lit(JSON.stringify(affected))+'::jsonb',lit(impact)].join(',')+')').join(',\n ')}
 ), blocking_issues(reason) AS (

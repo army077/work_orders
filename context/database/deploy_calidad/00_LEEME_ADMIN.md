@@ -4,9 +4,18 @@
 el query adaptado que ejecutó. La etiqueta heredada PENDIENTE_EXPORT_CONFIG_PROD
 no solicita otro export. No repetir consultas ni pedir acceso/credenciales.
 
-Seguir el [runbook de 5 pasos](10_RUNBOOK_CUTOVER_FINAL.md): crear → seed → validar
-→ alta Logística si pendiente → deploy API10. No copiar históricos ni eventos,
+Seguir el [runbook por fases](10_RUNBOOK_CUTOVER_FINAL.md): **FASE A** arquitectura,
+seed ficticio de 14 filas, validación, pruebas y limpieza; **FASE B posterior**
+configuración real, alta Logística y despliegue definitivo. No usar el seed real
+durante FASE A. No copiar históricos ni eventos,
 no dump/restore/delta ni siete migraciones posteriores.
+
+Entrega inicial al administrador: únicamente
+[01_create_calidad.sql](fase_a/01_create_calidad.sql) y
+[02_seed_calidad_test.sql](fase_a/02_seed_calidad_test.sql). Los validadores y
+cleanup se conservan internamente. build_phase_a_delivery.mjs genera ambas copias
+desde las fuentes; no se genera ZIP. La causa exacta del falso fingerprint ya está
+demostrada: pg_temp. frente a public. en 26 índices y dos funciones de trigger.
 
 [create_calidad.sql](create_calidad.sql) crea la arquitectura final: 21 tablas,
 20 secuencias, 48 índices incluidos PK/UNIQUE, 13 FK, cuatro funciones y dos
@@ -14,10 +23,25 @@ triggers. Exige calidad/PG16, plpgsql/citext instaladas y ausencia de objetos de
 aplicación previos. No crea extensiones, roles o grants inventados. Solo carga
 el ledger con siete versiones incluidas, no ejecuta siete migraciones separadas.
 
-[seed_calidad_operativo.sql](seed_calidad_operativo.sql) es definitivo para el
+[seed_calidad_operativo.sql](seed_calidad_operativo.sql) se conserva intacto para el
 export aprobado: 1.139 filas de siete maestros, IDs preservados y siete secuencias
 reiniciadas transaccionalmente. Exige el baseline íntegro vacío; rechaza cargas
 parciales. No inserta eventos, históricos, legacy, mappings o usuarios Logística.
+**No ejecutarlo todavía:** conserva el guard textual anterior. Antes de FASE B
+debe actualizarse de forma controlada a la validación semántica, conservando sus
+datos aprobados. Su fuente histórica reproducible es frozen_productive_seed_checks.mjs.
+SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=SI; no bloquea FASE A.
+
+[seed_calidad_test.sql](seed_calidad_test.sql) y
+[validate_seed_calidad_test.sql](validate_seed_calidad_test.sql) son exclusivos de
+FASE A. [cleanup_seed_calidad_test.sql](cleanup_seed_calidad_test.sql) elimina solo
+las 14 filas originales identificadas por ID y contenido completo. Aborta ante
+cambios o referencias externas, incluidas relaciones lógicas sin FK. No elimina
+eventos creados por API ni reinicia secuencias. Ver límites y recuperación en el runbook.
+
+CREATE y los validadores usan catálogos y expresiones canónicas; no comparan el
+fingerprint textual global. La cobertura y el estado de la evidencia se describen
+en [18_VALIDACION_SEMANTICA.md](18_VALIDACION_SEMANTICA.md).
 
 [validate_seed_calidad.sql](validate_seed_calidad.sql) es READ ONLY. Comprueba
 estructura, todas las filas/conteos/relaciones/secuencias y ausencia de eventos.
@@ -55,7 +79,8 @@ Herramientas anteriores de transferencia, 01–04, 05_COMANDOS_TRANSFERENCIA.md,
 se conservan, NO utilizadas en este cutover. El query del export se archiva como
 fuente ejecutada, no como otra actividad obligatoria.
 
-Generadores offline: build_clean_baseline.mjs y build_seed_support.mjs en esta
+Generadores offline: build_clean_baseline.mjs, build_seed_support.mjs y
+build_test_seed.mjs en esta
 carpeta. Nunca conectan ni ejecutan el SQL generado. El servidor ejecuta los SQL
 autónomos, sin generadores/includes/psql obligatorios. Ante error/NO/resultado
 incompleto: STOP. Un SI dentro de transacción exige COMMIT posterior exitoso.

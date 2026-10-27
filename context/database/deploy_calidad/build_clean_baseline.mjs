@@ -3,8 +3,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { core, logistics, rootFunctions } from '../transfer_calidad/manifest.mjs';
-import { artifacts, states, shapeSql } from '../migrations/prod/logistica_prod_support.js';
+import { artifacts, states } from '../migrations/prod/logistica_prod_support.js';
 import { extensionCatalog } from './build_package.mjs';
+import { indexManifest,catalogIssues } from './semantic_catalog.mjs';
+import { expressionGuard } from './semantic_expressions.mjs';
 
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8').replaceAll('\r\n','\n');
 const lit=value=>"'"+String(value).replaceAll("'","''")+"'";
@@ -48,6 +50,8 @@ function tableModel(name,parts) {
   for(const column of columns) {
     const part=parts.find(p=>p.match(/^"?(\w+)"?/)?.[1]===column.name);
     if(/PRIMARY KEY/i.test(part))constraints.push({name:name+'_pkey',type:'p',columns:[column.name]});
+    const check=part.match(/\bCHECK\s*(\([\s\S]+\))$/i);
+    if(check)constraints.push({name:name+'_'+column.name+'_check',type:'c',columns:[],definition:'CHECK '+check[1]});
   }
   for(const part of parts.filter(p=>/^(CONSTRAINT|PRIMARY KEY|UNIQUE|CHECK|FOREIGN KEY)\b/i.test(p))) {
     const named=part.match(/^CONSTRAINT\s+"?(\w+)"?\s+([\s\S]+)$/i);
@@ -117,16 +121,19 @@ export function baselineModel() {
     const owner=name==='move_section'?'p_template_id':'p_section_id';
     let body=source.trim().replace(/\b(FROM|UPDATE) (?!public\.)(template_\w+)/g,'$1 public.$2');
     if(!body.endsWith(';'))body+=';';
-    return {name,body,hash:hash(body),ddl:`CREATE FUNCTION public.${name}(${owner} integer, p_id integer, p_newpos integer)\nRETURNS void LANGUAGE plpgsql VOLATILE SECURITY INVOKER\nSET search_path = pg_catalog\nAS $move$${body}$move$`};
+    return {name,body,argnames:[owner,'p_id','p_newpos'],hash:hash(body),ddl:`CREATE FUNCTION public.${name}(${owner} integer, p_id integer, p_newpos integer)\nRETURNS void LANGUAGE plpgsql VOLATILE SECURITY INVOKER\nSET search_path = pg_catalog\nAS $move$${body}$move$`};
   });
   const base=ordered.filter(t=>core.includes('public.'+t.name));
   const baseIndexes=base.flatMap(t=>[
     ...t.constraints.filter(c=>['p','u'].includes(c.type)).map(c=>({name:c.name,table:t.name,definition:`CREATE UNIQUE INDEX ${c.name} ON public.${t.name} USING btree (${c.columns.join(', ')})`})),
     ...indexes.filter(sql=>sql.includes(`ON public.${t.name} `)).map(sql=>({name:sql.match(/INDEX (\w+)/)[1],table:t.name,definition:sql.replace(' (',' USING btree (')})),
   ]);
-  return {tables:ordered,indexes,aux,functions,base,baseIndexes,
+  const model={tables:ordered,indexes,aux,functions,base,baseIndexes,
     sequences:ordered.flatMap(t=>t.columns.filter(c=>c.serial).map(c=>({name:t.name+'_'+c.name+'_seq',table:t.name,column:c.name,type:c.type}))),
     files:artifacts().map(f=>({name:f.name,sha256:f.sha256})),logisticsFingerprint:states().at(-1).fingerprint};
+  model.semanticIndexes=indexManifest(model);
+  model.mappingFunctionHash=hash(aux.find(s=>s.startsWith('CREATE FUNCTION')).match(/AS \$\$([\s\S]+)\$\$$/)[1]);
+  return model;
 }
 
 const userNamespace=`n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_toast|^pg_temp_'`;
@@ -153,14 +160,13 @@ function identityGuard() {
  IF current_setting('server_version_num')::int / 10000 <> 16 THEN RAISE EXCEPTION 'POSTGRESQL_16_REQUIRED'; END IF;
 END; $identity$;`;
 }
-const sqlNormalize=expression=>`regexp_replace(replace(${expression},'"',''),'[[:space:]]','','g')`;
-const defaultNormalize=expression=>sqlNormalize(`regexp_replace(coalesce(${expression},'NULL'),'::(character varying(?:\\([0-9]+\\))?|timestamp (?:with|without) time zone|double precision|text|jsonb|integer|numeric|boolean)','', 'g')`);
 export function checksCTEs(model,{allowData=[]}={}) {
   const emptyCheck=allowData.length
     ? `name NOT IN (${['logistica_schema_migrations',...allowData].map(lit).join(',')})`
     : `name<>'logistica_schema_migrations'`;
   const freshCheck=allowData.length?`s->>'table' NOT IN (${allowData.map(lit).join(',')}) AND (`:'';
-  const expected={base:model.base.map(t=>({name:t.name,columns:t.columns,constraints:t.constraints})),indexes:model.baseIndexes,functions:model.functions.map(f=>({name:f.name,hash:f.hash})),sequences:model.sequences,ledger:model.files};
+  const expected={base:model.tables.map(t=>({name:t.name,columns:t.columns,constraints:t.constraints})),indexes:model.semanticIndexes,functions:model.functions.map(f=>({name:f.name,hash:f.hash,argnames:f.argnames})),sequences:model.sequences,ledger:model.files,
+    mappingFunctionHash:model.mappingFunctionHash,triggers:[{name:'logistica_legacy_owner_mapping_row_guard',type:31},{name:'logistica_legacy_owner_mapping_truncate_guard',type:34}]};
   const expectedObjects=[
     ...model.tables.flatMap(t=>[['pg_class',t.name],['pg_type',t.name],['pg_type','_'+t.name]]),
     ...model.sequences.map(s=>['pg_class',s.name]),
@@ -169,13 +175,6 @@ export function checksCTEs(model,{allowData=[]}={}) {
     ...model.functions.map(f=>['pg_proc',f.name]),['pg_proc','protect_logistica_legacy_owner_mapping'],
     ['pg_trigger','logistica_legacy_owner_mapping_row_guard'],['pg_trigger','logistica_legacy_owner_mapping_truncate_guard'],
   ];
-  // Prepared states used temporary relations visible without a namespace, but
-  // temporary functions are not implicitly visible. Make public relations visible
-  // and retain the explicit function namespace used by those reference states.
-  const logisticShape=shapeSql.replace('$1::text',"'public'::text")
-    .replace('p.prosrc,',"replace(p.prosrc,chr(13),''),")
-    .replace('pg_get_triggerdef(t.oid,true)',"replace(pg_get_triggerdef(t.oid,true),'EXECUTE FUNCTION protect_logistica_legacy_owner_mapping()','EXECUTE FUNCTION public.protect_logistica_legacy_owner_mapping()')")
-    .trim().replace(/;$/,'');
   return `${inventoryCTEs()}, expected AS (SELECT ${lit(JSON.stringify(expected))}::jsonb AS value),
  expected_objects(catalog,name) AS (VALUES ${expectedObjects.map(([cat,name])=>`(${lit(cat)},${lit(name)})`).join(',')}),
  expected_tables(name) AS (VALUES ${model.tables.map(t=>`(${lit(t.name)})`).join(',')}),
@@ -202,7 +201,6 @@ export function checksCTEs(model,{allowData=[]}={}) {
  THEN 'SELECT migration_name,migration_sha256,applied_at::text,applied_by FROM public.logistica_schema_migrations'
  ELSE 'SELECT NULL::text AS migration_name,NULL::text AS migration_sha256,NULL::text AS applied_at,NULL::text AS applied_by WHERE false' END,
  false,false,'') COLUMNS migration_name text PATH 'migration_name',migration_sha256 text PATH 'migration_sha256',applied_at text PATH 'applied_at',applied_by text PATH 'applied_by') x),
- logistics_shape AS (${logisticShape}),
  issues(reason) AS (
  SELECT 'MISSING_EXTENSION:'||required.name FROM unnest(ARRAY['plpgsql','citext']) required(name) WHERE NOT EXISTS(SELECT FROM installed_extensions e WHERE e.name=required.name)
  UNION ALL SELECT 'UNEXPECTED_OBJECT:'||schema||'.'||name FROM application_objects o WHERE schema<>'public' OR NOT EXISTS(SELECT FROM expected_objects e WHERE e.catalog::regclass=o.classid AND e.name=o.name)
@@ -213,30 +211,27 @@ export function checksCTEs(model,{allowData=[]}={}) {
  LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
  WHERE a.attnum IS DISTINCT FROM position::int OR format_type(a.atttypid,a.atttypmod) IS DISTINCT FROM c->>'type'
  OR a.attnotnull IS DISTINCT FROM (c->>'not_null')::boolean OR a.attidentity<>'' OR a.attgenerated<>''
- OR a.attcollation IS DISTINCT FROM (SELECT typcollation FROM pg_type WHERE oid=a.atttypid)
- OR (NOT (c->>'serial')::boolean AND ${defaultNormalize('pg_get_expr(d.adbin,d.adrelid)')} IS DISTINCT FROM ${defaultNormalize("c->>'default'")})
+ OR a.attcollation IS DISTINCT FROM CASE WHEN c->>'collation' IS NOT NULL THEN to_regcollation(format('%I',c->>'collation'))::oid ELSE (SELECT typcollation FROM pg_type WHERE oid=a.atttypid) END
  UNION ALL SELECT 'EXTRA_BASE_COLUMNS:'||(t->>'name') FROM base_tables WHERE (SELECT count(*) FROM pg_attribute WHERE attrelid=to_regclass('public.'||(t->>'name')) AND attnum>0 AND NOT attisdropped)<>jsonb_array_length(t->'columns')
  UNION ALL SELECT 'BASE_CONSTRAINT_DRIFT:'||table_name||'.'||(k->>'name') FROM constraints e LEFT JOIN pg_constraint a ON a.conrelid=to_regclass('public.'||table_name) AND a.conname=k->>'name'
  WHERE a.oid IS NULL OR a.contype::text<>k->>'type' OR NOT a.convalidated OR a.condeferrable OR a.condeferred
  OR (k->>'type'<>'c' AND (SELECT jsonb_agg(v.attname::text ORDER BY u.position) FROM unnest(a.conkey) WITH ORDINALITY u(attnum,position) JOIN pg_attribute v ON v.attrelid=a.conrelid AND v.attnum=u.attnum) IS DISTINCT FROM k->'columns')
  OR (k->>'type'='f' AND (a.confrelid IS DISTINCT FROM to_regclass('public.'||(k->>'reference')) OR a.confupdtype::text<>k->>'update' OR a.confdeltype::text<>k->>'delete' OR a.confmatchtype<>'s'
  OR (SELECT jsonb_agg(v.attname::text ORDER BY u.position) FROM unnest(a.confkey) WITH ORDINALITY u(attnum,position) JOIN pg_attribute v ON v.attrelid=a.confrelid AND v.attnum=u.attnum) IS DISTINCT FROM k->'reference_columns'))
- OR (k->>'type'='c' AND regexp_replace(${defaultNormalize('pg_get_constraintdef(a.oid,true)')},'[()]','','g') IS DISTINCT FROM regexp_replace(${defaultNormalize("k->>'definition'")},'[()]','','g'))
  UNION ALL SELECT 'EXTRA_BASE_CONSTRAINTS:'||(t->>'name') FROM base_tables WHERE (SELECT count(*) FROM pg_constraint WHERE conrelid=to_regclass('public.'||(t->>'name')))<>jsonb_array_length(t->'constraints')
  UNION ALL SELECT 'BASE_INDEX_DRIFT:'||(i->>'name') FROM indexes LEFT JOIN pg_class c ON c.oid=to_regclass('public.'||(i->>'name')) LEFT JOIN pg_index x ON x.indexrelid=c.oid
- WHERE c.oid IS NULL OR x.indrelid IS DISTINCT FROM to_regclass('public.'||(i->>'table')) OR NOT x.indisvalid OR NOT x.indisready OR ${sqlNormalize('pg_get_indexdef(c.oid)')} IS DISTINCT FROM ${sqlNormalize("i->>'definition'")}
+ WHERE c.oid IS NULL OR x.indrelid IS DISTINCT FROM to_regclass('public.'||(i->>'table')) OR NOT x.indisvalid OR NOT x.indisready
  UNION ALL SELECT 'BASE_FUNCTION_DRIFT:'||(f->>'name') FROM functions LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||(f->>'name')||'(integer,integer,integer)')
  WHERE p.oid IS NULL OR p.prokind<>'f' OR p.prorettype<>'void'::regtype OR p.prosecdef OR p.proisstrict OR p.proleakproof OR p.proparallel<>'u' OR p.provolatile<>'v' OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog']::text[] OR p.prolang<>(SELECT oid FROM pg_language WHERE lanname='plpgsql') OR encode(sha256(convert_to(replace(p.prosrc,chr(13),''),'UTF8')),'hex') IS DISTINCT FROM f->>'hash'
+ OR to_jsonb(p.proargnames) IS DISTINCT FROM f->'argnames' OR p.pronargs<>3 OR p.proargmodes IS NOT NULL OR p.provariadic<>0 OR p.prosupport<>0
  UNION ALL SELECT 'EXTRA_BASE_FUNCTION_OVERLOAD:'||p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN (${model.functions.map(f=>lit(f.name)).join(',')}) AND p.oid IS DISTINCT FROM to_regprocedure('public.'||p.proname||'(integer,integer,integer)')
  UNION ALL SELECT 'SEQUENCE_DRIFT:'||(s->>'name') FROM sequences LEFT JOIN pg_class c ON c.oid=to_regclass('public.'||(s->>'name')) LEFT JOIN pg_sequence q ON q.seqrelid=c.oid
  WHERE c.relkind IS DISTINCT FROM 'S' OR q.seqtypid IS DISTINCT FROM (s->>'type')::regtype OR q.seqstart<>1 OR q.seqincrement<>1 OR q.seqmin<>1 OR q.seqmax<>CASE WHEN s->>'type'='integer' THEN 2147483647::bigint ELSE 9223372036854775807::bigint END OR q.seqcache<>1 OR q.seqcycle
- OR pg_get_serial_sequence('public.'||(s->>'table'),s->>'column') IS DISTINCT FROM 'public.'||(s->>'name')
+ OR to_regclass(pg_get_serial_sequence('public.'||(s->>'table'),s->>'column')) IS DISTINCT FROM to_regclass('public.'||(s->>'name'))
  OR c.relowner IS DISTINCT FROM (SELECT relowner FROM pg_class WHERE oid=to_regclass('public.'||(s->>'table')))
  OR NOT EXISTS(SELECT FROM pg_depend d JOIN pg_attribute a ON a.attrelid=d.refobjid AND a.attnum=d.refobjsubid WHERE d.classid='pg_class'::regclass AND d.objid=c.oid AND d.refclassid='pg_class'::regclass AND d.refobjid=to_regclass('public.'||(s->>'table')) AND a.attname=s->>'column' AND d.deptype='a')
- OR (SELECT replace(pg_get_expr(d.adbin,d.adrelid),'public.','') FROM pg_attrdef d JOIN pg_attribute a ON a.attrelid=d.adrelid AND a.attnum=d.adnum WHERE d.adrelid=to_regclass('public.'||(s->>'table')) AND a.attname=s->>'column') IS DISTINCT FROM format('nextval(%L::regclass)',s->>'name')
  UNION ALL SELECT 'SEQUENCE_NOT_FRESH:'||(s->>'name') FROM sequence_state WHERE ${freshCheck}last_value::bigint IS DISTINCT FROM 1 OR is_called::boolean IS DISTINCT FROM false${allowData.length?')':''}
- UNION ALL SELECT 'UNEXPECTED_BASE_TRIGGER:'||tgname FROM pg_trigger WHERE NOT tgisinternal AND tgrelid IN (SELECT to_regclass('public.'||(t->>'name')) FROM base_tables)
- UNION ALL SELECT 'LOGISTICA_FINAL_SCHEMA_DRIFT' FROM logistics_shape WHERE fingerprint<>${lit(model.logisticsFingerprint)}
+${catalogIssues()}
  UNION ALL SELECT 'LEDGER_DRIFT' WHERE (SELECT count(*) FROM ledger)<>7 OR EXISTS(SELECT FROM ledger_expected e FULL JOIN ledger l ON l.migration_name=e.f->>'name' WHERE e.f IS NULL OR l.migration_name IS NULL OR l.migration_sha256 IS DISTINCT FROM e.f->>'sha256' OR l.applied_at IS NULL OR l.applied_by IS NULL)
  UNION ALL SELECT 'LEDGER_ORDER_DRIFT' WHERE EXISTS(SELECT FROM ledger_expected a JOIN ledger x ON x.migration_name=a.f->>'name' JOIN ledger_expected b ON b.position>a.position JOIN ledger y ON y.migration_name=b.f->>'name' WHERE x.applied_at::timestamptz>=y.applied_at::timestamptz)
  UNION ALL SELECT 'UNSUPPORTED_RULE_POLICY_OR_INHERITANCE' WHERE EXISTS(SELECT FROM pg_policy WHERE polrelid IN (SELECT oid FROM counts)) OR EXISTS(SELECT FROM pg_rewrite WHERE ev_class IN (SELECT oid FROM counts)) OR EXISTS(SELECT FROM pg_inherits WHERE inhrelid IN (SELECT oid FROM counts) OR inhparent IN (SELECT oid FROM counts))
@@ -251,6 +246,7 @@ export function cleanFiles() {
   const baseline=header+`-- Clean installation only. Never execute incremental migrations after this baseline.
 BEGIN;
 SET LOCAL search_path = pg_catalog, public;
+SET LOCAL standard_conforming_strings = on;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '120s';
 SET LOCAL timezone = 'UTC';
@@ -278,6 +274,8 @@ INSERT INTO public.logistica_schema_migrations(migration_name,migration_sha256,a
 ${ledger};
 COMMENT ON TABLE public.logistica_schema_migrations IS 'Clean baseline includes the seven recorded schema versions; business tables start empty. Do not run incremental migrations again.';
 
+${expressionGuard(model)}
+
 DO $validate$ DECLARE issue text; BEGIN
  WITH RECURSIVE ${checks}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO issue FROM issues;
@@ -291,10 +289,12 @@ COMMIT;
   const validation=header+`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 ${identityGuard()}
 SET LOCAL search_path = pg_catalog, public;
+SET LOCAL standard_conforming_strings = on;
 SET LOCAL statement_timeout = '120s';
 SET LOCAL lock_timeout = '5s';
 SET LOCAL row_security = off;
 SET LOCAL timezone = 'UTC';
+${expressionGuard(model)}
 WITH RECURSIVE ${checks}, report AS (
  SELECT 0 AS position,'EXTENSION_INFRA'::text AS "CHECK",'INFO'::text AS "ESTADO",jsonb_build_object('name',name,'schema',schema,'version',version) AS "DETALLE" FROM installed_extensions
  UNION ALL SELECT 1,'INCIDENCIA','NO',jsonb_build_object('reason',reason) FROM issues

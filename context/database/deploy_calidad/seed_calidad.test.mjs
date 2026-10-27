@@ -75,7 +75,7 @@ for(const [name,sql,database] of [['export',exportSQL,'artecnologia'],['validati
   const queries=top(sql);
   assert.equal(queries[0],'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   assert.equal(queries.at(-1),'ROLLBACK');
-  assert.ok(queries.every(s=>/^(BEGIN\b|DO \$identity\$|SET LOCAL\b|WITH\b|ROLLBACK\b)/.test(s)));
+  assert.ok(queries.every(s=>/^(BEGIN\b|DO \$(?:identity|semantic_expressions)\$|SET LOCAL\b|WITH\b|ROLLBACK\b)/.test(s)));
   if(name==='export') {
    assert.match(sql,/ec\.database_name = 'artecnologia'/);
    assert.match(sql,/ec\.major_version = 16/);assert.match(sql,/ec\.read_only_mode = 'on'/);

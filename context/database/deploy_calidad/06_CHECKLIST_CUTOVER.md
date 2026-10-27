@@ -1,6 +1,11 @@
 # Deploy API10 y conciliación posterior
 
-Secuencia vigente: [runbook de 5 pasos](10_RUNBOOK_CUTOVER_FINAL.md).
+Secuencia vigente: [runbook por fases](10_RUNBOOK_CUTOVER_FINAL.md).
+Este checklist corresponde al despliegue definitivo de **FASE B**. Primero
+completar FASE A, limpiar las filas TEST y resolver cualquier dependencia creada
+por CRUD mediante un procedimiento aprobado aparte. El cleanup no borra eventos.
+El seed productivo conservado mantiene el guard antiguo: actualizar ese guard
+controladamente antes de ejecutarlo; no iniciar FASE B con los bytes actuales.
 Requisitos: baseline creado, seed real aprobado y
 CALIDAD_SEED_OPERATIVO_VALIDO=SI / CALIDAD_SCHEMA_VALIDO=SI de
 validate_seed_calidad.sql; API10 anterior/configuración respaldadas.

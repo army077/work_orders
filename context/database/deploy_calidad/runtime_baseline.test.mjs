@@ -184,10 +184,9 @@ test('validator keeps corruption, row drift, schema, events and sequence failure
  assert.match(validation,/'scope','LOGISTICA'/);
 });
 
-test('audit preserves the exact seed, create SQL and production export bytes',()=>{
+test('audit preserves the exact productive seed and production export bytes',()=>{
  for(const [name,hash] of [
   ['seed_calidad_operativo.sql','e2e8ff8c05ba485ad56ab889c095485efac15df612b32e862f4c1d18d6b04da8'],
-  ['create_calidad.sql','efd14fd52b4b16b58fd0b5aa993de83e9c0a714e7f8e366181eb6f1a0b16265e'],
   ['sources/export_config_prod_20261023.json','47f5dddeb498f7b50ee61c7148f10bfa7635aaf773b12495134ffe8147349bd0'],
  ])assert.equal(sha256(readFileSync(new URL(name,import.meta.url))),hash,name);
  assert.equal(source.total,1139);

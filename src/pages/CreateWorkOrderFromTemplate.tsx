@@ -121,7 +121,7 @@ export default function CreateWorkOrderFromTemplate() {
         setTechsError(null);
         const data = await getApi5Technicians<Technician>();
         if (!cancel) setTechs(data.filter(t => (t.estatus || "").toLowerCase() === "activo"));
-        await fetchUsuarios();
+        if (import.meta.env.VITE_APP_ENV === "production") await fetchUsuarios();
       } catch (e: any) {
         if (!cancel) setTechsError(e?.message || "No se pudieron cargar los técnicos");
       } finally {

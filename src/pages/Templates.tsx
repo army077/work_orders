@@ -48,7 +48,7 @@ export default function Templates() {
   });
 
 
-  const { mutate: updateTemplate, isLoading: updating } = useCustomMutation();
+  const { mutateAsync: updateTemplate, isLoading: updating } = useCustomMutation();
 
   const handleStartEdit = (template: Template) => {
     setEditingId(template.id);
@@ -67,21 +67,11 @@ export default function Templates() {
         meta: { headers: { "Content-Type": "application/json" } },
       });
 
-      // Actualiza localmente
-      if (data?.data) {
-        const newList = data.data.map((t) =>
-          t.id === template.id ? { ...t, name: newName } : t
-        );
-        data.data = newList;
-      }
-
       setEditingId(null);
       setEditedName("");
 
       alert("✅ Nombre actualizado");
       await refetch();
-
-      location.reload();
     } catch (error: any) {
       console.error("❌ Error guardando nombre:", error);
       alert(`Error al guardar: ${error.message || "Desconocido"}`);

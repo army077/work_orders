@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useList, useCreate, useCustomMutation, useUpdate } from "@refinedev/core";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useList, useCreate, useCustomMutation, useUpdate, useDataProvider } from "@refinedev/core";
 import {
     DndContext,
     closestCenter,
@@ -15,6 +15,8 @@ import {
     arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { retryApiQuery } from "../services/apiResponse";
+import { deleteEmptySection } from "../services/sectionDeletion";
 
 type Template = { id: number; name: string; model_name?: string; version: number; is_published: boolean; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -24,9 +26,12 @@ const SortableRow: React.FC<{
     title: string;
     onTitleChange: (v: string) => void;
     onSave: () => void;
+    onDelete: () => void;
     saving?: boolean;
-}> = ({ id, title, onTitleChange, onSave, saving }) => {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    deleting: boolean;
+    disabled: boolean;
+}> = ({ id, title, onTitleChange, onSave, onDelete, saving, deleting, disabled }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled });
     const style = { transform: CSS.Transform.toString(transform), transition };
 
     return (
@@ -36,11 +41,15 @@ const SortableRow: React.FC<{
                 value={title}
                 onChange={(e) => onTitleChange(e.target.value)}
                 placeholder="Section title"
+                disabled={disabled}
             />
             <div className="right" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span className="badge">#{id}</span>
-                <button className="btn btn--ok" onClick={onSave} disabled={saving}>
+                <button className="btn btn--ok" onClick={onSave} disabled={saving || disabled}>
                     {saving ? "…" : "Guardar"}
+                </button>
+                <button className="btn btn--danger" onClick={onDelete} disabled={saving || disabled}>
+                    {deleting ? "Eliminando…" : "Eliminar"}
                 </button>
             </div>
         </div>
@@ -48,14 +57,15 @@ const SortableRow: React.FC<{
 };
 
 export default function SectionsBuilder() {
+    const getDataProvider = useDataProvider();
     const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
     const { data: tpls } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 } });
 
-    const { data: sectionsRes, refetch } = useList<Section>({
+    const { data: sectionsRes, refetch, error: sectionsError, isLoading: loadingSections } = useList<Section>({
         resource: "sections",
         filters: [{ field: "template_id", operator: "eq", value: selectedTemplate ?? -1 }],
         pagination: { pageSize: 500 },
-        queryOptions: { enabled: !!selectedTemplate },
+        queryOptions: { enabled: !!selectedTemplate, retry: retryApiQuery },
     });
 
     const sections = useMemo(
@@ -72,6 +82,30 @@ export default function SectionsBuilder() {
     const [savingMap, setSavingMap] = useState<Record<number, boolean>>({});
 
     const [draft, setDraft] = useState<Record<number, string>>({});
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+    const deletingRef = useRef(false);
+    const [deleteError, setDeleteError] = useState("");
+    const [deleteSuccess, setDeleteSuccess] = useState("");
+
+    const onDeleteSection = async (section: Section) => {
+        if (deletingRef.current || savingTitle || savingOrder) return;
+        if (!window.confirm(`¿Eliminar la sección "${section.title}" (#${section.id})? Solo se eliminan secciones sin actividades ni puntos de inspección.`)) return;
+        deletingRef.current = true;
+        setDeletingId(section.id);
+        setDeleteError("");
+        setDeleteSuccess("");
+        try {
+            await deleteEmptySection(section.id, getDataProvider());
+            setDeleteSuccess(`Sección #${section.id} eliminada.`);
+            await refetch();
+        } catch (error) {
+            const detail = error && typeof error === "object" && "message" in error ? error.message : null;
+            setDeleteError(typeof detail === "string" ? detail : "No se pudo eliminar la sección.");
+        } finally {
+            deletingRef.current = false;
+            setDeletingId(null);
+        }
+    };
 
     useEffect(() => {
         const map: Record<number, string> = {};
@@ -80,18 +114,21 @@ export default function SectionsBuilder() {
     }, [sections]);
 
     const onAddSection = () => {
-        if (!selectedTemplate) return;
+        if (!selectedTemplate || deletingRef.current) return;
+        const title = prompt("Título de la nueva sección", "New Section")?.trim();
+        if (!title) return;
         const nextPos = (sections?.length ?? 0) + 1;
         createSection(
             {
                 resource: "sections",
-                values: { template_id: selectedTemplate, title: "New Section", position: nextPos },
+                values: { template_id: selectedTemplate, title, position: nextPos },
             },
             { onSuccess: () => refetch() }
         );
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
+        if (deletingRef.current) return;
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
@@ -121,6 +158,7 @@ export default function SectionsBuilder() {
     };
 
     const onSaveTitle = (id: number) => {
+        if (deletingRef.current) return;
         const newTitle = draft[id];
         if (!newTitle?.trim()) return alert("El título no puede estar vacío");
         setSavingMap((m) => ({ ...m, [id]: true }));
@@ -151,7 +189,11 @@ export default function SectionsBuilder() {
                 <div className="row cols-2">
                     <div>
                         <label>Elegir plantilla</label>
-                        <select value={selectedTemplate ?? ""} onChange={(e) => setSelectedTemplate(Number(e.target.value) || null)}>
+                        <select value={selectedTemplate ?? ""} disabled={deletingId !== null} onChange={(e) => {
+                            setSelectedTemplate(Number(e.target.value) || null);
+                            setDeleteError("");
+                            setDeleteSuccess("");
+                        }}>
                             <option value="">— seleccionar —</option>
                             {(tpls?.data ?? []).map((t) => (
                                 <option key={t.id} value={t.id}>
@@ -163,7 +205,7 @@ export default function SectionsBuilder() {
                     <div>
                         <label>Acciones</label>
                         <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={onAddSection} style={{backgroundColor:"#8B0000"}}>+ Añadir sección</button>
+                            <button onClick={onAddSection} disabled={deletingId !== null} style={{backgroundColor:"#8B0000"}}>+ Añadir sección</button>
                             {savingOrder ? <span className="badge">Guardando orden…</span> : null}
                         </div>
                     </div>
@@ -171,6 +213,11 @@ export default function SectionsBuilder() {
 
                 <br></br>
 
+                {sectionsError && <div role="alert">No se pudieron cargar las secciones: {sectionsError.message}</div>}
+                {deleteError && <div role="alert">No se pudo eliminar la sección: {deleteError}</div>}
+                {deletingId !== null && <div role="status">Verificando y eliminando sección…</div>}
+                {deleteSuccess && <div role="status">{deleteSuccess}</div>}
+                {selectedTemplate && loadingSections ? <div role="status">Cargando secciones…</div> : null}
                 {!selectedTemplate ? (
                     <div className="badge">Selecciona una plantilla</div>
                 ) : (
@@ -187,7 +234,10 @@ export default function SectionsBuilder() {
                                         title={draft[s.id] ?? s.title}
                                         onTitleChange={(v) => onTitleInlineChange(s.id, v)}
                                         onSave={() => onSaveTitle(s.id)}
+                                        onDelete={() => onDeleteSection(s)}
                                         saving={savingMap[s.id]}
+                                        deleting={deletingId === s.id}
+                                        disabled={deletingId !== null || savingTitle || savingOrder}
                                     />
                                 ))}
                             </div>

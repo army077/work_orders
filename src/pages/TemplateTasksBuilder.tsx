@@ -13,6 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Dialog, Box, Typography, Button } from "@mui/material"
 import axios from 'axios'
 import * as XLSX from 'xlsx';
+import { retryApiQuery } from "../services/apiResponse";
 
 type Template = { id: number; name: string; template_type: string; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -189,16 +190,16 @@ export default function TemplateTasksBuilder() {
   const { data: templates } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 } });
   const selectedTemplate = templates?.data.find(t => t.id === templateId);
   const isInspectionTemplate = selectedTemplate?.template_type === "INSPECCION";
-  const { data: sectionsRes } = useList<Section>({
+  const { data: sectionsRes, error: sectionsError, isLoading: loadingSections } = useList<Section>({
     resource: "sections",
     filters: [{ field: "template_id", operator: "eq", value: templateId ?? -1 }],
-    queryOptions: { enabled: !!templateId },
+    queryOptions: { enabled: !!templateId, retry: retryApiQuery },
     pagination: { pageSize: 500 },
   });
-  const { data: tasksRes, refetch } = useList<any>({
+  const { data: tasksRes, refetch, error: tasksError, isLoading: loadingTasks } = useList<any>({
     resource: isInspectionTemplate ? "quality/template_task_inspection" : "tasks",
     filters: [{ field: "section_id", operator: "eq", value: sectionId ?? -1 }],
-    queryOptions: { enabled: !!sectionId },
+    queryOptions: { enabled: !!sectionId, retry: retryApiQuery },
     pagination: { pageSize: 1000 },
   });
 
@@ -250,13 +251,15 @@ export default function TemplateTasksBuilder() {
     const nextPos = (tasks?.length ?? 0) + 1;
 
     if (isInspectionTemplate) {
+      const revisionPoint = prompt("Punto de revisión nuevo", "Nuevo punto de revisión")?.trim();
+      if (!revisionPoint) return;
       // 🧩 Inserta en tabla de inspección
       createTask(
         {
           resource: "quality/template_task_inspection",
           values: {
             section_id: sectionId,
-            revision_point: "Nuevo punto de revisión",
+            revision_point: revisionPoint,
             specs: "Nueva especificación",
             suggestions: "Nueva sugerencia",
             position: nextPos,
@@ -265,14 +268,18 @@ export default function TemplateTasksBuilder() {
         { onSuccess: () => refetch() }
       );
     } else {
+      const title = prompt("Título de la nueva actividad", "New Task")?.trim();
+      if (!title) return;
+      const code = prompt("Código de la nueva actividad", "");
+      if (code === null) return;
       // 🧩 Inserta en tabla normal
       createTask(
         {
           resource: "tasks",
           values: {
             section_id: sectionId,
-            title: "New Task",
-            code: "",
+            title,
+            code: code.trim(),
             expected_minutes: 0,
             position: nextPos,
           },
@@ -612,6 +619,10 @@ export default function TemplateTasksBuilder() {
       </div>
 
       <br />
+
+      {sectionsError && <div role="alert">No se pudieron cargar las secciones: {sectionsError.message}</div>}
+      {tasksError && <div role="alert">No se pudieron cargar las actividades: {tasksError.message}</div>}
+      {(templateId && loadingSections) || (sectionId && loadingTasks) ? <div role="status">Cargando actividades…</div> : null}
 
       {!sectionId ? (
         <div className="badge">Selecciona sección</div>

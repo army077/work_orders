@@ -45,12 +45,14 @@ Flujo completo del equipo técnico:
    probar las liberaciones de «Inspección de ensamble» y «Inspección de pintura».
    Usar únicamente información ficticia. Una prueba autenticada de Logística
    requiere alta explícita aparte; este seed no crea UID ni usuario Logística.
-6. Limpieza interna mediante cleanup_seed_calidad_test.sql, cuando se autorice
-   ese paso. Bloquea las tablas dentro de su transacción y borra únicamente las
-   14 filas originales por ID + contenido completo, en orden FK. No usa TRUNCATE.
-7. Exigir TEST_LOCAL_RESTANTES=0 y COMMIT exitoso. El contador cubre los IDs de
-   este manifiesto, no otros datos creados por API. Repetir validate_create para
-   comprobar negocio vacío y secuencias frescas antes del siguiente paso.
+6. Cierre preparado en [20_CLEANUP_FINAL_FASE_A.md](20_CLEANUP_FINAL_FASE_A.md):
+   bloquear escritores y ejecutar primero cleanup_runtime_test_calidad.sql con
+   el journal final de 20 filas. Validar runtime=0 mediante el checkpoint READ ONLY.
+   Solo entonces ejecutar cleanup_seed_calidad_test.sql para las 14 filas originales.
+7. Exigir TEST_LOCAL_RESTANTES=0 con COMMIT y ejecutar el checkpoint READ ONLY
+   validate_test_cleanup_calidad.sql. Después ejecutar el reset separado de las
+   siete secuencias TEST, protegido por tablas vacías. Finalmente validate_create:
+   CALIDAD_SCHEMA_VALIDO=SI, application_rows=0 y ledger_rows=7. No ejecutar Fase B.
 
 Los tres archivos internos no se incluyen en la entrega inicial al administrador.
 Los SQL 01/02 ya contienen los guards necesarios para bloquear sus errores.
@@ -68,8 +70,9 @@ sin FK y referencias de técnicos por correo. Conservar la salida e identificar
 los IDs de esas operaciones; resolverlos mediante un procedimiento aparte,
 revisado y autorizado. No quitar guards ni convertirlo en un borrado por prefijos.
 Los eventos creados por API no pertenecen a este seed y no se borran aquí.
-CRUD también puede avanzar secuencias; el cleanup no las rebobina. Un fallo de
-SEQUENCE_NOT_FRESH requiere revisión explícita antes de FASE B.
+CRUD avanzó siete secuencias; los cleanups no las rebobinan. La revisión final
+prepara reset_sequences_after_test_calidad.sql para volver al baseline exacto
+después de borrar runtime y seed, con todas las tablas de aplicación vacías.
 
 ## FASE B — Producción posterior
 

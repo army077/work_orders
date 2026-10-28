@@ -1,17 +1,20 @@
 // Authoring only. No SQL execution or HTTP calls. The journal is supplied AFTER
-// manual CRUD testing; the checked-in SQL has reviewed=false and aborts by default.
+// manual CRUD testing. No manifest generates a disabled SQL; final reviewed IDs
+// authorize preparation only, never execution.
 import { readFileSync,writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { baselineModel,checksCTEs } from './build_clean_baseline.mjs';
 import { expressionGuard } from './semantic_expressions.mjs';
 import { testData } from './build_test_seed.mjs';
+import { advancedTestTables,finalCleanupFiles,assertSeedOnly } from './phase_a_cleanup_support.mjs';
 export const runtimeMarker='TEST_LOCAL_CRUD_20261027_';
+export const frontendMarker='TEST_LOCAL_CRUD_FRONT_20261027_';
 export const cleanupOrder=['inspection_order_task','inspection_order','work_order_task','work_order','template_task_inspection','template_task','template_section','maintenance_template','machine_model','machine_family'];
 export const emptyRuntimeJournal=()=>({reviewed:false,marker:runtimeMarker,ids:Object.fromEntries(cleanupOrder.map(t=>[t,[]]))});
 const lit=v=>"'"+String(v).replaceAll("'","''")+"'";
-const marked=v=>typeof v==='string'&&v.startsWith(runtimeMarker);
-function ownership(row,table,ids) {
+function ownership(row,table,ids,prefix) {
+ const marked=v=>typeof v==='string'&&v.startsWith(prefix);
  const owns=(t,id)=>ids[t].includes(id);
  switch(table) {
   case 'machine_family':return marked(row.name);
@@ -27,7 +30,7 @@ function ownership(row,table,ids) {
   default:return false;
  }
 }
-export function runtimeCleanupIssues(actual,journal) {
+export function runtimeCleanupIssues(actual,journal,{afterCleanup=false}={}) {
  const issues=[];
  if(journal.reviewed!==true||journal.marker!==runtimeMarker||!journal.ids)return ['RUNTIME_JOURNAL_REVIEW_REQUIRED'];
  if(Object.keys(journal.ids).some(t=>!cleanupOrder.includes(t)))return ['RUNTIME_JOURNAL_UNKNOWN_TABLE'];
@@ -35,6 +38,11 @@ export function runtimeCleanupIssues(actual,journal) {
   const ids=journal.ids[t];
   if(!Array.isArray(ids)||ids.some(id=>!Number.isSafeInteger(id)||id<=0||id>2147483647)||new Set(ids).size!==ids.length)return ['RUNTIME_JOURNAL_INVALID_IDS:'+t];
   if(ids.some(id=>testData[t]?.some(r=>r.id===id)))issues.push('ORIGINAL_SEED_ID_FORBIDDEN:'+t);
+  for(const id of ids) {
+   const prefix=journal.origins?.[t]?.[id]??runtimeMarker;
+   if(![runtimeMarker,frontendMarker].includes(prefix))issues.push('RUNTIME_MARKER_UNAPPROVED:'+t+':'+id);
+   if(!afterCleanup&&!(actual[t]??[]).some(r=>r.id===id))issues.push('RUNTIME_REGISTERED_ROW_MISSING:'+t+':'+id);
+  }
  }
  if(!cleanupOrder.some(t=>journal.ids[t].length))issues.push('RUNTIME_JOURNAL_EMPTY');
  for(const [t,rows] of Object.entries(testData))for(const seed of rows) {
@@ -47,7 +55,7 @@ export function runtimeCleanupIssues(actual,journal) {
    const seed=testData[t]?.find(e=>e.id===r.id);
    if(seed)continue;
    if(!cleanupOrder.includes(t)||!journal.ids[t].includes(r.id))issues.push('UNREGISTERED_DATA:'+t+':'+r.id);
-   else if(!ownership(r,t,journal.ids))issues.push('RUNTIME_OWNERSHIP_MISMATCH:'+t+':'+r.id);
+   else if(afterCleanup||!ownership(r,t,journal.ids,journal.origins?.[t]?.[r.id]??runtimeMarker))issues.push('RUNTIME_OWNERSHIP_MISMATCH:'+t+':'+r.id);
   }
  }
  // Logical relationships are not all backed by FK constraints in this schema.
@@ -72,11 +80,12 @@ export function runtimeCleanupFiles(journal=emptyRuntimeJournal()) {
  WHEN 'inspection_order_task' THEN (manifest->'ids'->'inspection_order') @> jsonb_build_array((row_data->>'inspection_order_id')::int)
  ELSE false END`;
  const allRows=tables.filter(t=>t!=='logistica_schema_migrations').map(t=>`SELECT ${lit(t)}::text AS table_name,to_jsonb(a) AS record FROM ONLY public.${t} a`).join('\n UNION ALL ');
- // The same complete row scan is used before and after deletes. The latter
- // additionally rejects every non-seed row before any sequence can be restarted.
+ // The same complete row scan is used before and after deletes; the latter
+ // rejects every non-seed row. Sequence restoration is a separate empty-DB step.
  const sql=`-- GENERATED OFFLINE by build_runtime_cleanup.mjs. DO NOT execute before review.
 -- Only the original 14 seed rows, the system ledger and journaled CRUD rows may
--- exist. ANY unrelated row aborts the entire transaction before DELETE/RESTART.
+-- exist. ANY unrelated row aborts the entire transaction before DELETE.
+-- No sequence changes here. Reset is separate, only AFTER both cleanups.
 -- Generate with --manifest a reviewed local JSON journal. Never infer IDs by LIKE.
 BEGIN;
 SET LOCAL search_path = pg_catalog, public;
@@ -95,11 +104,11 @@ DO $runtime_cleanup$
 DECLARE
  manifest jsonb:=${lit(JSON.stringify(journal))}::jsonb;
  seed jsonb:=${lit(JSON.stringify(testData))}::jsonb;
- prefix constant text:=${lit(runtimeMarker)};
+ prefix text;
  crud_table_name text; row_data jsonb; expected_row jsonb; id_value jsonb;
- owned_ids int[]; problem text; remaining bigint; pass int;
+ owned_ids int[]; problem text; pass int;
 BEGIN
- IF manifest->'reviewed' IS DISTINCT FROM 'true'::jsonb OR manifest->>'marker' IS DISTINCT FROM prefix OR jsonb_typeof(manifest->'ids') IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_REVIEW_REQUIRED'; END IF;
+ IF manifest->'reviewed' IS DISTINCT FROM 'true'::jsonb OR manifest->>'marker' IS DISTINCT FROM ${lit(runtimeMarker)} OR jsonb_typeof(manifest->'ids') IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_REVIEW_REQUIRED'; END IF;
  IF EXISTS(SELECT 1 FROM jsonb_object_keys(manifest->'ids') k WHERE NOT (k=ANY(ARRAY[${cleanupOrder.map(lit).join(',')}])) THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_UNKNOWN_TABLE'; END IF;
  FOREACH crud_table_name IN ARRAY ARRAY[${cleanupOrder.map(lit).join(',')}] LOOP
   IF jsonb_typeof(manifest->'ids'->crud_table_name) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_INVALID_IDS: %',crud_table_name; END IF;
@@ -107,11 +116,15 @@ BEGIN
    IF jsonb_typeof(id_value)<>'number' OR id_value::text !~ '^[1-9][0-9]*$' THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_INVALID_ID'; END IF;
    IF (id_value::text)::numeric>2147483647 THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_ID_OUT_OF_RANGE'; END IF;
    IF EXISTS(SELECT 1 FROM jsonb_array_elements(coalesce(seed->crud_table_name,'[]'::jsonb)) e WHERE e->'id'=id_value) THEN RAISE EXCEPTION 'ORIGINAL_SEED_ID_FORBIDDEN: %',crud_table_name; END IF;
+   prefix:=coalesce(manifest->'origins'->crud_table_name->>(id_value::text),${lit(runtimeMarker)});
+   IF prefix NOT IN (${lit(runtimeMarker)},${lit(frontendMarker)}) THEN RAISE EXCEPTION 'RUNTIME_MARKER_UNAPPROVED'; END IF;
+   EXECUTE format('SELECT to_jsonb(a) FROM ONLY public.%I a WHERE id=$1',crud_table_name) INTO row_data USING (id_value::text)::int;
+   IF row_data IS NULL THEN RAISE EXCEPTION 'RUNTIME_REGISTERED_ROW_MISSING: % %',crud_table_name,id_value; END IF;
   END LOOP;
   IF (SELECT count(*)<>count(DISTINCT value) FROM jsonb_array_elements(manifest->'ids'->crud_table_name)) THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_DUPLICATE_ID'; END IF;
  END LOOP;
  IF NOT EXISTS(SELECT 1 FROM jsonb_each(manifest->'ids') e WHERE jsonb_array_length(e.value)>0) THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_EMPTY'; END IF;
- WITH RECURSIVE ${checksCTEs(model,{allowData:tables})}
+ WITH RECURSIVE ${checksCTEs(model,{allowData:tables,allowSequenceState:advancedTestTables})}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO problem FROM issues;
  IF problem IS NOT NULL THEN RAISE EXCEPTION 'RUNTIME_SCHEMA_INVALID: %',problem; END IF;
  -- Require all 14 original seed records unchanged before performing any deletion.
@@ -128,10 +141,12 @@ BEGIN
    END IF;
    IF pass=2 THEN RAISE EXCEPTION 'RUNTIME_ROWS_REMAIN: %',crud_table_name; END IF;
    IF NOT coalesce((manifest->'ids'->crud_table_name) @> jsonb_build_array((row_data->>'id')::int),false) THEN RAISE EXCEPTION 'UNREGISTERED_DATA: %',crud_table_name; END IF;
+   prefix:=coalesce(manifest->'origins'->crud_table_name->>(row_data->>'id'),${lit(runtimeMarker)});
    IF NOT coalesce((${ownershipSQL}),false) THEN RAISE EXCEPTION 'RUNTIME_OWNERSHIP_MISMATCH: %',crud_table_name; END IF;
   END LOOP;
   IF pass=1 THEN
-   IF EXISTS(SELECT 1 FROM public.inspection_order i LEFT JOIN public.work_order w ON w.id=i.work_order_id WHERE w.id IS NULL)
+   IF EXISTS(SELECT 1 FROM public.work_order_task t LEFT JOIN public.work_order w ON w.id=t.work_order_id WHERE w.id IS NULL)
+    OR EXISTS(SELECT 1 FROM public.inspection_order i LEFT JOIN public.work_order w ON w.id=i.work_order_id WHERE w.id IS NULL)
     OR EXISTS(SELECT 1 FROM public.inspection_order_task i LEFT JOIN public.inspection_order o ON o.id=i.inspection_order_id LEFT JOIN public.template_task_inspection p ON p.id=i.template_task_inspection_id WHERE o.id IS NULL OR p.id IS NULL) THEN RAISE EXCEPTION 'RUNTIME_LOGICAL_ORPHAN'; END IF;
    FOREACH crud_table_name IN ARRAY ARRAY[${cleanupOrder.map(lit).join(',')}] LOOP
     SELECT coalesce(array_agg(value::int),ARRAY[]::int[]) INTO owned_ids FROM jsonb_array_elements_text(manifest->'ids'->crud_table_name);
@@ -139,17 +154,15 @@ BEGIN
    END LOOP;
   END IF;
  END LOOP;
- -- At this point only the unchanged seed and ledger remain. Rewind exclusively
- -- owned baseline sequences transactionally; any failure rolls back the deletes.
- ${model.sequences.map(s=>`ALTER SEQUENCE public.${s.name} RESTART WITH 1;`).join('\n ')}
- WITH RECURSIVE ${checksCTEs(model,{allowData:Object.keys(testData)})}
+ WITH RECURSIVE ${checksCTEs(model,{allowData:Object.keys(testData),allowSequenceState:advancedTestTables})}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO problem FROM issues;
  IF problem IS NOT NULL THEN RAISE EXCEPTION 'RUNTIME_POST_CLEANUP_INVALID: %',problem; END IF;
 END; $runtime_cleanup$;
+${assertSeedOnly(model)}
 SELECT 'RUNTIME_CRUD_RESTANTES' AS "CHECK",0 AS "RESTANTES",'SEMILLAS_ORIGINALES_14_CONSERVADAS' AS "ESTADO";
 COMMIT;
 `;
- return new Map([['cleanup_runtime_test_calidad.sql',sql],['runtime_crud_journal.example.json',JSON.stringify(emptyRuntimeJournal(),null,2)+'\n']]);
+ return new Map([['cleanup_runtime_test_calidad.sql',sql],['runtime_crud_journal.example.json',JSON.stringify(emptyRuntimeJournal(),null,2)+'\n'],...finalCleanupFiles()]);
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href) {
  const args=process.argv.slice(2);

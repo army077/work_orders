@@ -160,11 +160,11 @@ function identityGuard() {
  IF current_setting('server_version_num')::int / 10000 <> 16 THEN RAISE EXCEPTION 'POSTGRESQL_16_REQUIRED'; END IF;
 END; $identity$;`;
 }
-export function checksCTEs(model,{allowData=[]}={}) {
+export function checksCTEs(model,{allowData=[],allowSequenceState=allowData}={}) {
   const emptyCheck=allowData.length
     ? `name NOT IN (${['logistica_schema_migrations',...allowData].map(lit).join(',')})`
     : `name<>'logistica_schema_migrations'`;
-  const freshCheck=allowData.length?`s->>'table' NOT IN (${allowData.map(lit).join(',')}) AND (`:'';
+  const freshCheck=allowSequenceState.length?`s->>'table' NOT IN (${allowSequenceState.map(lit).join(',')}) AND (`:'';
   const expected={base:model.tables.map(t=>({name:t.name,columns:t.columns,constraints:t.constraints})),indexes:model.semanticIndexes,functions:model.functions.map(f=>({name:f.name,hash:f.hash,argnames:f.argnames})),sequences:model.sequences,ledger:model.files,
     mappingFunctionHash:model.mappingFunctionHash,triggers:[{name:'logistica_legacy_owner_mapping_row_guard',type:31},{name:'logistica_legacy_owner_mapping_truncate_guard',type:34}]};
   const expectedObjects=[
@@ -230,7 +230,7 @@ export function checksCTEs(model,{allowData=[]}={}) {
  OR to_regclass(pg_get_serial_sequence('public.'||(s->>'table'),s->>'column')) IS DISTINCT FROM to_regclass('public.'||(s->>'name'))
  OR c.relowner IS DISTINCT FROM (SELECT relowner FROM pg_class WHERE oid=to_regclass('public.'||(s->>'table')))
  OR NOT EXISTS(SELECT FROM pg_depend d JOIN pg_attribute a ON a.attrelid=d.refobjid AND a.attnum=d.refobjsubid WHERE d.classid='pg_class'::regclass AND d.objid=c.oid AND d.refclassid='pg_class'::regclass AND d.refobjid=to_regclass('public.'||(s->>'table')) AND a.attname=s->>'column' AND d.deptype='a')
- UNION ALL SELECT 'SEQUENCE_NOT_FRESH:'||(s->>'name') FROM sequence_state WHERE ${freshCheck}last_value::bigint IS DISTINCT FROM 1 OR is_called::boolean IS DISTINCT FROM false${allowData.length?')':''}
+ UNION ALL SELECT 'SEQUENCE_NOT_FRESH:'||(s->>'name') FROM sequence_state WHERE ${freshCheck}last_value::bigint IS DISTINCT FROM 1 OR is_called::boolean IS DISTINCT FROM false${allowSequenceState.length?')':''}
 ${catalogIssues()}
  UNION ALL SELECT 'LEDGER_DRIFT' WHERE (SELECT count(*) FROM ledger)<>7 OR EXISTS(SELECT FROM ledger_expected e FULL JOIN ledger l ON l.migration_name=e.f->>'name' WHERE e.f IS NULL OR l.migration_name IS NULL OR l.migration_sha256 IS DISTINCT FROM e.f->>'sha256' OR l.applied_at IS NULL OR l.applied_by IS NULL)
  UNION ALL SELECT 'LEDGER_ORDER_DRIFT' WHERE EXISTS(SELECT FROM ledger_expected a JOIN ledger x ON x.migration_name=a.f->>'name' JOIN ledger_expected b ON b.position>a.position JOIN ledger y ON y.migration_name=b.f->>'name' WHERE x.applied_at::timestamptz>=y.applied_at::timestamptz)

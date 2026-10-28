@@ -21,8 +21,10 @@ function fixture() {
  add('inspection_order_task',{id:1,inspection_order_id:1,template_task_inspection_id:910001,revision_point:'Inherited point'});
  return {actual,journal};
 }
-test('runtime cleanup artifacts reproduce their source and remain disabled without a reviewed ID journal',()=>{
- for(const [name,sql] of runtimeCleanupFiles())assert.equal(readFileSync(new URL(name,import.meta.url),'utf8').replaceAll('\r\n','\n'),sql);
+test('runtime cleanup artifacts reproduce the final reviewed journal; no-manifest generation remains disabled',()=>{
+ const final=JSON.parse(readFileSync(new URL('runtime_cleanup_manifest.json',import.meta.url),'utf8'));
+ for(const [name,sql] of runtimeCleanupFiles(final))assert.equal(readFileSync(new URL(name,import.meta.url),'utf8').replaceAll('\r\n','\n'),sql);
+ assert.match(runtimeCleanupFiles().get('cleanup_runtime_test_calidad.sql'),/"reviewed":false/);
  assert.deepEqual(runtimeCleanupIssues(clone(testData),emptyRuntimeJournal()),['RUNTIME_JOURNAL_REVIEW_REQUIRED']);
 });
 test('registered CRUD graph includes snapshots from seed references and removes only its own rows',()=>{
@@ -30,11 +32,11 @@ test('registered CRUD graph includes snapshots from seed references and removes 
  const remaining=Object.fromEntries(Object.entries(actual).map(([t,rows])=>[t,rows.filter(r=>!journal.ids[t]?.includes(r.id))]));
  for(const [t,rows] of Object.entries(testData))assert.deepEqual(remaining[t],rows);
  assert.equal(Object.values(remaining).flat().length,14);
- assert.deepEqual(runtimeCleanupIssues(remaining,journal),[]);
+ assert.deepEqual(runtimeCleanupIssues(remaining,journal,{afterCleanup:true}),[]);
 });
 test('IDs already deleted by the sacrificial API DELETE steps do not authorize another row',()=>{
  const {actual,journal}=fixture();journal.ids.machine_family.push(20);
- assert.deepEqual(runtimeCleanupIssues(actual,journal),[]);
+ assert.ok(runtimeCleanupIssues(actual,journal).includes('RUNTIME_REGISTERED_ROW_MISSING:machine_family:20'));
  actual.machine_family.push({id:20,name:'Other family'});
  assert.ok(runtimeCleanupIssues(actual,journal).some(i=>i.startsWith('RUNTIME_OWNERSHIP_MISMATCH')));
 });
@@ -62,17 +64,17 @@ for(const [name,change] of [
 ])test('runtime cleanup rejects '+name,()=>{
  const d=fixture();change(d);assert.ok(runtimeCleanupIssues(d.actual,d.journal).length>0);
 });
-test('SQL checks all ownership and seed before deleting and checks seed-only state before transactional sequence restoration',()=>{
+test('SQL checks all ownership and seed before deleting and never restarts sequences',()=>{
  const sql=runtimeCleanupFiles().get('cleanup_runtime_test_calidad.sql');
  const top=splitSQL(sql).map(q=>q.replace(/^(?:\s*--[^\n]*(?:\n|$))*/,''));
  assert.equal(top[0],'BEGIN');assert.equal(top.at(-1),'COMMIT');
  assert.match(sql,/DATABASE_MUST_BE_CALIDAD/);assert.match(sql,/POSTGRESQL_16_REQUIRED/);
  assert.match(sql,/"reviewed":false/);assert.match(sql,/LOCK TABLE .* IN ACCESS EXCLUSIVE MODE/);
  assert.ok(sql.indexOf('ORIGINAL_SEED_MISSING_OR_CHANGED')<sql.indexOf("EXECUTE format('DELETE"));
- assert.ok(sql.indexOf('RUNTIME_ROWS_REMAIN')<sql.indexOf('ALTER SEQUENCE'));
+ assert.match(sql,/RUNTIME_REGISTERED_ROW_MISSING/);
  assert.match(sql,/DELETE FROM public\.%I WHERE id=ANY\(\$1\)/);
  assert.doesNotMatch(sql,/\bTRUNCATE\b|\bsetval\s*\(|\bLIKE\s*'/);
- assert.equal((sql.match(/ALTER SEQUENCE public\.\w+ RESTART WITH 1;/g)??[]).length,20);
+ assert.doesNotMatch(sql,/ALTER SEQUENCE/);
  assert.ok(cleanupOrder.indexOf('inspection_order_task')<cleanupOrder.indexOf('inspection_order'));
  assert.ok(cleanupOrder.indexOf('inspection_order')<cleanupOrder.indexOf('work_order'));
  assert.ok(cleanupOrder.indexOf('template_task')<cleanupOrder.indexOf('template_section'));

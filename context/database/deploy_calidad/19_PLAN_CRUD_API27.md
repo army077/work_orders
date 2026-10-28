@@ -160,12 +160,19 @@ el administrador revise y aplique el cambio por su proceso autorizado.
 
 ## Limpieza posterior, todavía sin ejecutar
 
+**Procedimiento vigente de cierre (2026-10-28):**
+[20_CLEANUP_FINAL_FASE_A.md](20_CLEANUP_FINAL_FASE_A.md). El journal final
+consolidado contiene 20 filas pendientes; excluye las bajas de CRUD y conserva
+marcadores backend/frontend por tabla e ID. La siguiente secuencia sustituye la
+estrategia anterior de reiniciar secuencias mientras aún existía el seed.
+
 1. Completar el registro de IDs, cotejar cada respuesta y detener los escritores
    de prueba. Mantener las 14 semillas intactas. No tocar Logística.
 2. Generar cleanup_runtime_test_calidad.sql con el registro local revisado:
    `node build_runtime_cleanup.mjs --manifest RUTA_LOCAL_AL_REGISTRO.json`.
-   El generador solo escribe un archivo; no lo ejecuta. El SQL versionado por
-   defecto tiene reviewed=false y aborta. Revisar el SQL generado antes de su
+   El generador solo escribe archivos; no los ejecuta. Sin manifiesto genera
+   reviewed=false y aborta. El SQL final usa runtime_cleanup_manifest.json.
+   Revisar el SQL generado antes de su
    futura ejecución por el administrador. Versionar el SQL no autoriza su ejecución:
    exige autorización explícita, journal revisado e IDs reales registrados durante
    las pruebas CRUD, incluso si el archivo ya está publicado en Git.
@@ -177,16 +184,16 @@ el administrador revise y aplique el cambio por su proceso autorizado.
    → work_order → template_task_inspection CRUD (si los hubiera) → template_task
    CRUD → template_section CRUD → maintenance_template CRUD → machine_model CRUD
    → machine_family CRUD. No elimina técnicos, el seed ni Logística.
-5. Tras demostrar que solo quedan seed+ledger, reinicia transaccionalmente las
-   secuencias del baseline a 1. Es necesario porque CRUD consume secuencias y el
-   validador final exige SEQUENCE_NOT_FRESH ausente. Solo lo hace después de
-   rechazar todo dato ajeno; los IDs originales son explícitos y no consumieron
-   secuencias. No usa setval. Un error revierte también los DELETE y RESTART.
-6. Exigir RUNTIME_CRUD_RESTANTES=0 con COMMIT y ejecutar internamente
-   validate_seed_calidad_test.sql: SEED_TEST_VALIDO=SI certifica que quedan las
-   14 filas exactas y ninguna dependencia/evento operacional. Solo entonces ejecutar
-   cleanup_seed_calidad_test.sql, exigir TEST_LOCAL_RESTANTES=0 y COMMIT.
-7. validate_create_calidad.sql debe terminar con CALIDAD_SCHEMA_VALIDO=SI.
+5. El cleanup runtime NO reinicia secuencias. Exigir RUNTIME_CRUD_RESTANTES=0
+   con COMMIT y ejecutar validate_runtime_cleanup_calidad.sql (READ ONLY), que
+   exige las 14 semillas exactas y admite las siete secuencias TEST avanzadas.
+6. Solo entonces ejecutar cleanup_seed_calidad_test.sql y exigir
+   TEST_LOCAL_RESTANTES=0 con COMMIT. Ejecutar validate_test_cleanup_calidad.sql:
+   TEST_LOCAL_RESTANTES=0 y APPLICATION_ROWS=0, sin errores.
+7. Ejecutar el reset separado reset_sequences_after_test_calidad.sql únicamente
+   con las 20 tablas de aplicación vacías. Reinicia las siete secuencias consumidas;
+   las otras 13 deben seguir frescas. validate_create_calidad.sql debe terminar
+   con CALIDAD_SCHEMA_VALIDO=SI. Detalle y orden exacto en el procedimiento vigente.
 
 El SQL runtime nuevo solo fue revisado y probado offline con fixtures JavaScript;
 no se ejecutó ni se certifica aquí por PostgreSQL. No inferir que pasa porque el

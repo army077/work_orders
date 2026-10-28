@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { baselineModel,checksCTEs } from './build_clean_baseline.mjs';
 import { expressionGuard } from './semantic_expressions.mjs';
+import { assertSeedOnly,assertCleanupSchema } from './phase_a_cleanup_support.mjs';
 
 export const marker='TEST_LOCAL_CALIDAD_20261027';
 const id=910001;
@@ -58,7 +59,10 @@ export function testDataIssues(actual,{cleanup=false}={}) {
  return issues;
 }
 export function cleanupIssues(actual) {
- const issues=testDataIssues(actual,{cleanup:true});
+ const issues=testDataIssues(actual);
+ for(const [t,rows] of Object.entries(actual))if(t!=='logistica_schema_migrations')for(const row of rows) {
+  if(!testData[t]?.some(e=>e.id===row.id))issues.push('RUNTIME_CLEANUP_REQUIRED:'+t+':'+row.id);
+ }
  for(const [child,col,parent] of testDependencies)for(const r of actual[child]??[]) {
   if(testData[parent].some(e=>e.id===r[col])&&!testData[child]?.some(e=>e.id===r.id))issues.push('TEST_EXTERNAL_REFERENCE:'+child+'.'+col);
  }
@@ -142,6 +146,8 @@ ${settings}
 ${guard}
 ${lock}
 ${assertSchema(model,model.tables.map(t=>t.name))}
+-- This checkpoint requires exactly the original 14 seed rows, with runtime=0.
+${assertSeedOnly(model)}
 DO $ownership$ DECLARE problem text; BEGIN
  WITH ${rowCTEs()}, cleanup_issues(reason) AS (
  SELECT 'TEST_OWNERSHIP_CHANGED:'||a.name||':'||(a.record->>'id') FROM test_actual a JOIN test_expected e ON a.name=e.name AND a.record->>'id'=e.record->>'id' WHERE a.record<>e.record
@@ -155,6 +161,7 @@ DO $remaining$ DECLARE n bigint; BEGIN
  SELECT sum(x.n) INTO n FROM (${remaining}) x;
  IF n<>0 THEN RAISE EXCEPTION 'TEST_LOCAL_RESTANTES: %',n; END IF;
 END; $remaining$;
+${assertCleanupSchema(model)}
 SELECT 'TEST_LOCAL_RESTANTES' AS "CHECK",0 AS "RESTANTES";
 COMMIT;
 `;

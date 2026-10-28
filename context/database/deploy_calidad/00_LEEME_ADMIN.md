@@ -39,6 +39,12 @@ las 14 filas originales identificadas por ID y contenido completo. Aborta ante
 cambios o referencias externas, incluidas relaciones lógicas sin FK. No elimina
 eventos creados por API ni reinicia secuencias. Ver límites y recuperación en el runbook.
 
+Cierre Fase A preparado, sin ejecutar:
+[20_CLEANUP_FINAL_FASE_A.md](20_CLEANUP_FINAL_FASE_A.md). Journal consolidado de
+20 filas runtime, cleanup runtime primero, cleanup de las 14 semillas después,
+checkpoints READ ONLY y reset separado de las siete secuencias TEST únicamente
+tras comprobar las 20 tablas de aplicación vacías. Fase B sigue bloqueada.
+
 CREATE y los validadores usan catálogos y expresiones canónicas; no comparan el
 fingerprint textual global. La cobertura y el estado de la evidencia se describen
 en [18_VALIDACION_SEMANTICA.md](18_VALIDACION_SEMANTICA.md).
@@ -47,7 +53,8 @@ en [18_VALIDACION_SEMANTICA.md](18_VALIDACION_SEMANTICA.md).
 estructura, todas las filas/conteos/relaciones/secuencias y ausencia de eventos.
 Distingue fidelidad de datos de suficiencia funcional y alta Logística pendiente.
 [validate_create_calidad.sql](validate_create_calidad.sql) se conserva únicamente
-como diagnóstico inicial antes del seed: exige negocio vacío y secuencias frescas.
+como diagnóstico inicial y validación final tras el cleanup/reset de Fase A:
+exige negocio vacío y secuencias frescas.
 
 **Hallazgo de la fuente aprobada:** 39 plantillas ENSAMBLE sin INSPECCION publicada
 para el mismo modelo, cinco secciones vacías y nueve plantillas sin algún código

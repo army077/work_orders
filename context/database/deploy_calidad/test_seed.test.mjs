@@ -102,12 +102,12 @@ for(const [label,mutate] of [
  ['reserved ID collision',d=>d.machine_family[0].name='Other'],
 ])test('TEST validation rejects '+label,()=>{const d=copy();mutate(d);assert.ok(testDataIssues(d).length);});
 
-test('cleanup preserves unrelated records, rejects changed ownership and is rerunnable',()=>{
+test('cleanup aborts on unrelated records before deleting any seed row',()=>{
  const d=copy();d.machine_family.push({id:5,name:'Unrelated'});
- assert.deepEqual(cleanupIssues(d),[]);
+ assert.ok(cleanupIssues(d).includes('RUNTIME_CLEANUP_REQUIRED:machine_family:5'));
  const cleaned=Object.fromEntries(Object.entries(d).map(([t,rows])=>[t,rows.filter(r=>!testData[t].some(e=>e.id===r.id))]));
  assert.deepEqual(cleaned.machine_family,[{id:5,name:'Unrelated'}]);
- assert.deepEqual(cleanupIssues(cleaned),[]);
+ assert.ok(cleanupIssues(cleaned).includes('RUNTIME_CLEANUP_REQUIRED:machine_family:5'));
  d.machine_family[0].name='Changed';assert.ok(cleanupIssues(d).some(i=>i.startsWith('TEST_ROW_CHANGED')));
 });
 for(const [child,col,parent] of testDependencies)test('cleanup aborts for external reference '+child+'.'+col,()=>{

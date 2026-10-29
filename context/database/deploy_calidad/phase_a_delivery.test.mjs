@@ -21,5 +21,5 @@ test('administrator receives exactly two generated autonomous SQL files',()=>{
 });
 test('standalone validators and selective cleanup remain internal',()=>{
  for(const n of ['validate_create_calidad.sql','validate_seed_calidad_test.sql','cleanup_seed_calidad_test.sql'])assert.ok(read(n).length>0);
- assert.match(read('10_RUNBOOK_CUTOVER_FINAL.md').toString(),/SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=SI/);
+ assert.match(read('10_RUNBOOK_CUTOVER_FINAL.md').toString(),/SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=NO/);
 });

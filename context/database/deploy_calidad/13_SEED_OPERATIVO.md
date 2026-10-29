@@ -47,6 +47,10 @@ liberación afectadas siguen limitadas. Las plantillas 61/69 crean órdenes sin
 actividades. Evidencia y clasificación en
 [17_AUDITORIA_RUNTIME_BASELINE.md](17_AUDITORIA_RUNTIME_BASELINE.md).
 
+**Firebase válido por sí solo NO basta.** Debe existir un usuario real activo en
+`logistica_authorized_users`, con `firebase_project='logistica-ar'` y el mismo
+`firebase_uid` del token verificado. Su alta es MANUAL, separada del seed.
+
 El único usuario pendiente por decisión explícita es el de Logística. El middleware
 responde 403 mientras no exista un usuario activo aprobado, incluso con Firebase
 válido. No se copia ni inventa ningún UID.
@@ -72,8 +76,12 @@ aprobados o NULL. Sin contraseñas, tokens o personas de fixtures. La unicidad
 rechaza duplicados; no sobreescribir automáticamente. Exigir COMMIT exitoso y
 repetir validación: LOGISTICA_AUTH_PENDIENTE debe pasar a NO.
 
-Flujo: create → seed → validar → alta Logística si pendiente → deploy API10,
-condicionado a validación funcional SI; ver [runbook](10_RUNBOOK_CUTOVER_FINAL.md).
+FASE A cerrada: no repetir CREATE ni cargar TEST. Flujo posterior: seed → validar
+1.139 filas → alta manual real → validar autorización → confirmar Firebase/Drive
+→ reactivar API27 → health y pruebas reales → Flutter Release → Samsung E2E.
+Solo después evaluar la promoción /api27 → /api10; ver el orden completo y la
+configuración de API27 en el [runbook](10_RUNBOOK_CUTOVER_FINAL.md).
+Todo queda preparado para ejecución posterior por el administrador.
 No dump/restore, delta, históricos ni siete migraciones posteriores.
 
 Generación offline: `node context/database/deploy_calidad/build_seed_support.mjs`.

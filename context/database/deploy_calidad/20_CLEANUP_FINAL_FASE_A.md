@@ -1,5 +1,12 @@
 # Cleanup final de Fase A — preparado, sin ejecutar (2026-10-28)
 
+> Actualización vigente (29/10/2026): el administrador confirmó FASE A cerrada,
+> aplicación=0, TEST=0, ledger=7 y siete secuencias restauradas. API27 detenida.
+> El hotfix productivo ya está preparado: SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=NO.
+> El contenido inferior conserva la preparación histórica del cleanup, sin ordenar
+> repetirlo. El orden vigente está en [10_RUNBOOK_CUTOVER_FINAL.md](10_RUNBOOK_CUTOVER_FINAL.md).
+
+
 Rama `migracion-datos-historicos`; HEAD publicado
 `51a743fbfc5823afb075f8268522bbfcc17cb1eb`. Este documento sustituye las
 instrucciones anteriores de reset dentro del cleanup runtime. No autoriza ejecutar

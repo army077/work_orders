@@ -122,15 +122,16 @@ Los dos guards (catálogos y expresiones) forman una unidad. Los scripts autóno
 incluyen ambos antes de sus resultados de éxito. Una excepción aborta la transacción.
 No ejecutar fragmentos aislados del validador para acreditar integridad.
 
-## Seed productivo conservado y validación pendiente
+## Hotfix del seed productivo preparado
 
-seed_calidad_operativo.sql conserva exactamente sus bytes y su SHA256 anterior:
-e2e8ff8c05ba485ad56ab889c095485efac15df612b32e862f4c1d18d6b04da8.
-frozen_productive_seed_checks.mjs mantiene la fuente de sus guards antiguos;
-render_seed.mjs la usa exclusivamente para reproducir ese archivo conservado.
-validate_seed_calidad.sql sí usa la política nueva.
-**SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=SI.** Eso no bloquea FASE A,
-que solo usa CREATE y el seed TEST de 14 filas. No se corrige aún el seed real.
+SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=NO. render_seed.mjs usa ahora
+checksCTEs y expressionGuard del baseline aprobado, tanto en el seed como en
+el validador. Se retiró frozen_productive_seed_checks.mjs y su fingerprint textual.
+Los INSERT y RESTART conservan exactamente sus bytes anteriores (normalizados LF),
+con 1.139 filas e IDs intactos. La evidencia antigua de hash completo corresponde
+al seed anterior; queda superada por [21_FASE_B_HOTFIX_SEED.md](21_FASE_B_HOTFIX_SEED.md).
+Fase B está preparada, sin ejecutar SQL ni conectar al servidor. Las pruebas
+opcionales que ejecutan SQL permanecen desactivadas.
 
 ## Entrega FASE A
 

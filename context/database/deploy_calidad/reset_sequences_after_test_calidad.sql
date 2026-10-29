@@ -256,11 +256,11 @@ DO $cleanup_schema$ DECLARE problem text; BEGIN
  OR x.indnkeyatts IS DISTINCT FROM jsonb_array_length(i->'columns') OR x.indexprs IS NOT NULL
  OR (SELECT jsonb_agg(a.attname::text ORDER BY k.n) FROM unnest(x.indkey) WITH ORDINALITY k(attnum,n) LEFT JOIN pg_attribute a ON a.attrelid=x.indrelid AND a.attnum=k.attnum) IS DISTINCT FROM i->'columns'
  OR EXISTS(SELECT 1 FROM unnest(x.indoption) v WHERE v<>0)
- OR EXISTS(SELECT 1 FROM unnest(x.indclass,x.indcollation,x.indkey) k(opclass,colloid,attnum)
+ OR EXISTS(SELECT 1 FROM unnest(x.indclass,x.indcollation,x.indkey) k(opclass,collation_oid,attnum)
  LEFT JOIN pg_opclass opc ON opc.oid=k.opclass LEFT JOIN pg_attribute a ON a.attrelid=x.indrelid AND a.attnum=k.attnum
  WHERE NOT opc.opcdefault OR opc.opcnamespace IS DISTINCT FROM 'pg_catalog'::regnamespace
  OR opc.opcmethod IS DISTINCT FROM c.relam OR opc.opcintype IS DISTINCT FROM CASE WHEN a.atttypid='character varying'::regtype THEN 'text'::regtype ELSE a.atttypid END
- OR k.colloid IS DISTINCT FROM a.attcollation)
+ OR k.collation_oid IS DISTINCT FROM a.attcollation)
  UNION ALL SELECT 'MAPPING_FUNCTION_DRIFT' WHERE NOT EXISTS(
  SELECT 1 FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang
  WHERE p.oid=to_regprocedure('public.protect_logistica_legacy_owner_mapping()')
@@ -424,11 +424,11 @@ DO $cleanup_schema$ DECLARE problem text; BEGIN
  OR x.indnkeyatts IS DISTINCT FROM jsonb_array_length(i->'columns') OR x.indexprs IS NOT NULL
  OR (SELECT jsonb_agg(a.attname::text ORDER BY k.n) FROM unnest(x.indkey) WITH ORDINALITY k(attnum,n) LEFT JOIN pg_attribute a ON a.attrelid=x.indrelid AND a.attnum=k.attnum) IS DISTINCT FROM i->'columns'
  OR EXISTS(SELECT 1 FROM unnest(x.indoption) v WHERE v<>0)
- OR EXISTS(SELECT 1 FROM unnest(x.indclass,x.indcollation,x.indkey) k(opclass,colloid,attnum)
+ OR EXISTS(SELECT 1 FROM unnest(x.indclass,x.indcollation,x.indkey) k(opclass,collation_oid,attnum)
  LEFT JOIN pg_opclass opc ON opc.oid=k.opclass LEFT JOIN pg_attribute a ON a.attrelid=x.indrelid AND a.attnum=k.attnum
  WHERE NOT opc.opcdefault OR opc.opcnamespace IS DISTINCT FROM 'pg_catalog'::regnamespace
  OR opc.opcmethod IS DISTINCT FROM c.relam OR opc.opcintype IS DISTINCT FROM CASE WHEN a.atttypid='character varying'::regtype THEN 'text'::regtype ELSE a.atttypid END
- OR k.colloid IS DISTINCT FROM a.attcollation)
+ OR k.collation_oid IS DISTINCT FROM a.attcollation)
  UNION ALL SELECT 'MAPPING_FUNCTION_DRIFT' WHERE NOT EXISTS(
  SELECT 1 FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang
  WHERE p.oid=to_regprocedure('public.protect_logistica_legacy_owner_mapping()')

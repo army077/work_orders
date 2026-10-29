@@ -1,5 +1,9 @@
 # Aptitud del baseline según el runtime
 
+> Nota vigente: el hash completo del seed registrado en esta auditoría corresponde
+> al archivo anterior al hotfix semántico. Sus 1.139 filas y los reinicios de
+> secuencias se preservaron. Ver [21_FASE_B_HOTFIX_SEED.md](21_FASE_B_HOTFIX_SEED.md).
+
 Revisión local del 2026-10-26, rama `migracion-datos-historicos`.
 BASELINE_APTO_PARA_DEPLOY = SI. Arquitectura completa = SI. Seed íntegro = SI.
 Conclusión sobre los artefactos y el código disponibles; no es una validación

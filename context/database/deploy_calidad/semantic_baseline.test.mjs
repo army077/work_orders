@@ -2,7 +2,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { baselineModel,cleanFiles,checksCTEs,splitSQL } from './build_clean_baseline.mjs';
 import { canonicalExpression,expressionInputs,expressionGuard } from './semantic_expressions.mjs';
 import { seedFiles } from './build_seed_support.mjs';
@@ -73,8 +72,10 @@ test('expression evaluator is an anonymous read-only guard and remains before CO
  }
  assert.ok(seedFiles().get('validate_seed_calidad.sql').includes(guard));
 });
-test('frozen future productive seed remains byte-for-byte intact and reproducible',()=>{
- const bytes=readFileSync(new URL('seed_calidad_operativo.sql',import.meta.url));
- assert.equal(createHash('sha256').update(bytes).digest('hex'),'e2e8ff8c05ba485ad56ab889c095485efac15df612b32e862f4c1d18d6b04da8');
- assert.equal(seedFiles().get('seed_calidad_operativo.sql'),bytes.toString().replaceAll('\r\n','\n'));
+test('productive seed uses the approved semantic guards and remains reproducible',()=>{
+ const sql=readFileSync(new URL('seed_calidad_operativo.sql',import.meta.url),'utf8').replaceAll('\r\n','\n');
+ assert.equal(seedFiles().get('seed_calidad_operativo.sql'),sql);
+ assert.ok(sql.includes(expressionGuard(model)));
+ assert.ok(sql.includes(checksCTEs(model)));
+ assert.doesNotMatch(sql,/LOGISTICA_FINAL_SCHEMA_DRIFT|pg_get_indexdef|pg_get_triggerdef/);
 });

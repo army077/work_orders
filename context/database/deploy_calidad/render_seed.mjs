@@ -2,7 +2,6 @@
 import { readFileSync } from 'node:fs';
 import { baselineModel,checksCTEs } from './build_clean_baseline.mjs';
 import { expressionGuard } from './semantic_expressions.mjs';
-import { frozenProductionSeedChecks } from './frozen_productive_seed_checks.mjs';
 import { masters,loadApprovedSource,functionalFindings,sha256 } from './seed_source.mjs';
 
 const lit=value=>"'"+String(value).replaceAll("'","''")+"'";
@@ -18,8 +17,7 @@ const functionalReasons=['TEMPLATE_WITHOUT_SECTIONS','SECTION_WITHOUT_TASKS','SE
 // the schema. Report them without inventing a new database integrity constraint.
 const informationalReasons=['TECHNICIAN_REQUIRED_FIELDS','DUPLICATE_TECHNICIAN_EMAIL'];
 // Runtime audit: these inherited configurations limit individual flows, not
-// startup or order creation. Keep this policy validator-only: seed bytes stay
-// unchanged, including their existing transactional integrity checks.
+// startup or order creation. Integrity errors remain blocking in both artifacts.
 export const inheritedWarningReasons=['ASSEMBLY_INSPECTION_CONFIG_MISSING','SECTION_WITHOUT_TASKS','ASSEMBLY_RELEASE_CODE_MISSING'];
 export function readySeedFiles({configurationChecks,testPattern,identity,settings}) {
  const source=loadApprovedSource(),model=baselineModel(),allowData=[...masters,'logistica_authorized_users'];
@@ -29,6 +27,7 @@ export function readySeedFiles({configurationChecks,testPattern,identity,setting
 -- Source SHA256: ${source.hash}. EXPORT_CONFIG_PROD_RECIBIDO = SI.
 -- The legacy JSON status label does not request another export.
 -- logistica_authorized_users = ALTA_MANUAL_REQUERIDA; no automatic user.
+-- Schema policy: shared checksCTEs + expressionGuard from the approved clean baseline.
 `;
  const sequenceChecks=masters.map(name=>`SELECT 'MASTER_SEQUENCE_STATE:${name}' WHERE EXISTS(SELECT 1 FROM sequence_state WHERE s->>'table'=${lit(name)} AND (last_value::bigint IS DISTINCT FROM ${source.maxIds[name]+1} OR is_called::boolean IS DISTINCT FROM false))`).join('\n UNION ALL ');
  const testChecks=allowData.map(name=>`SELECT 'TEST_MARKER:${name}' WHERE EXISTS(SELECT 1 FROM public.${name} a WHERE to_jsonb(a)::text ~* ${lit(testPattern)})`).join('\n UNION ALL ');
@@ -50,7 +49,6 @@ export function readySeedFiles({configurationChecks,testPattern,identity,setting
  SELECT reason FROM schema_issues UNION ALL SELECT reason FROM master_data_issues
  UNION ALL SELECT reason FROM configuration_issues WHERE reason NOT IN (${functionalReasons.map(lit).join(',')})
 )`;
- const checksForFrozenSeed=checks.replace(checksCTEs(model,{allowData}).replace('issues(reason) AS (','schema_issues(reason) AS ('),()=>frozenProductionSeedChecks(model,{allowData}).replace('issues(reason) AS (','schema_issues(reason) AS ('));
  const insertion=masters.map(name=>{
   const columns=source.definitions[name].map(c=>c.name);
   return `-- ${name}: ${source.counts[name]} approved rows; original master IDs preserved.
@@ -66,8 +64,9 @@ ${settings}
 SET LOCAL standard_conforming_strings = on;
 ${identity('calidad')}
 LOCK TABLE ${model.tables.map(t=>'public.'+t.name).join(',')} IN ACCESS EXCLUSIVE MODE;
+${expressionGuard(model)}
 ${block('baseline',`DECLARE issue text; BEGIN
- WITH RECURSIVE ${frozenProductionSeedChecks(model)}
+ WITH RECURSIVE ${checksCTEs(model)}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO issue FROM issues;
  IF issue IS NOT NULL THEN RAISE EXCEPTION 'SEED_BASELINE_INCOMPATIBLE: %',issue; END IF;
 END;`)}
@@ -78,7 +77,7 @@ ${insertion}
 ${sequences}
 
 ${block('seed_integrity',`DECLARE issue text; BEGIN
- WITH RECURSIVE ${checksForFrozenSeed}
+ WITH RECURSIVE ${checks}
  SELECT string_agg(reason,', ' ORDER BY reason) INTO issue FROM seed_issues;
  IF issue IS NOT NULL THEN RAISE EXCEPTION 'SEED_DATA_INVALID: %',issue; END IF;
 END;`)}
@@ -88,7 +87,7 @@ COMMIT;
 `;
  const findings=functionalFindings(source.tables);
  const warningPolicy=[
-  ['ASSEMBLY_INSPECTION_CONFIG_MISSING','BLOQUEADOR_FLUJO_ESPECIFICO',findings.assembly_without_inspection,'Order creation and existing activities continue; POST /api10/quality/inspection/request returns 404 for these models.'],
+  ['ASSEMBLY_INSPECTION_CONFIG_MISSING','BLOQUEADOR_FLUJO_ESPECIFICO',findings.assembly_without_inspection,'Order creation and existing activities continue; POST quality/inspection/request returns 404 for these models.'],
   ['SECTION_WITHOUT_TASKS','ADVERTENCIA_HEREDADA',findings.empty_sections,'Order creation succeeds; empty sections produce no activities or checklist group. Templates 61/69 have no activities at all; their checklist reset returns 404.'],
   ['ASSEMBLY_RELEASE_CODE_MISSING','BLOQUEADOR_FLUJO_ESPECIFICO',findings.assembly_missing_release_codes,'Order creation and existing activities continue; quality release returns 404 and inspection completion 409 if the required release task is absent.'],
  ];

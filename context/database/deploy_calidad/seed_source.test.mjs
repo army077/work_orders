@@ -39,7 +39,7 @@ for(const [name,change,reason] of [
  const copy=structuredClone(source.data);change(copy);assert.throws(()=>validateExport(copy),reason);
 });
 test('preserved master rows and original IDs are represented exactly once by generated inserts',()=>{
- const sql=readFileSync(new URL('seed_calidad_operativo.sql',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('seed_calidad_operativo.sql',import.meta.url),'utf8').replaceAll('\r\n','\n');
  const statements=splitSQL(sql).map(s=>s.replace(/^(?:\s*--[^\n]*(?:\n|$))*/,'').trim()).filter(s=>s.startsWith('INSERT INTO'));
  assert.equal(statements.length,7);let total=0;
  for(const [i,name] of Object.keys(source.counts).entries()) {

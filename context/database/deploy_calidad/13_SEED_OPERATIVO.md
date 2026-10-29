@@ -1,5 +1,10 @@
 ﻿# Configuración operativa de calidad
 
+Estado vigente confirmado por el administrador: seed productivo EJECUTADO Y
+VALIDADO (1.139 filas, schema/datos/operativo/deploy=SI), sin ERROR ni NO-GO.
+No volver a ejecutar el seed. LOGISTICA_AUTH_PENDIENTE=SI; API27 detenida.
+Siguiente bloque preparado: [autorización + Firebase + Drive + API27](22_API27_AUTORIZACION_FIREBASE_DRIVE.md).
+
 **EXPORT_CONFIG_PROD_RECIBIDO = SI.** El usuario entregó el JSON real autorizado
 y el query adaptado realmente ejecutado. La etiqueta heredada
 status=PENDIENTE_EXPORT_CONFIG_PROD no implica que falte otro export.
@@ -55,30 +60,24 @@ El único usuario pendiente por decisión explícita es el de Logística. El mid
 responde 403 mientras no exista un usuario activo aprobado, incluso con Firebase
 válido. No se copia ni inventa ningún UID.
 
-Alta manual posterior: INSERT parametrizado para el cliente PostgreSQL del
-administrador; no ejecutar placeholders literales en HeidiSQL.
-
-```sql
-BEGIN;
-DO $$ BEGIN
- IF current_database() IS DISTINCT FROM 'calidad' THEN
-  RAISE EXCEPTION 'DATABASE_MUST_BE_CALIDAD';
- END IF;
-END; $$;
-INSERT INTO public.logistica_authorized_users
- (firebase_project,firebase_uid,email,display_name,is_active)
-VALUES ('logistica-ar',$1,$2,$3,true);
-COMMIT;
-```
+Alta manual posterior: [register_logistica_real_user.sql](register_logistica_real_user.sql),
+INSERT parametrizado con guard calidad/PG16 y COMMIT. No ejecutarlo durante esta
+preparación ni pegar placeholders literales en HeidiSQL. Se omiten id,
+created_at y updated_at porque tienen defaults; firebase_project y firebase_uid
+son obligatorios y únicos en conjunto; is_active debe ser true. email y
+display_name admiten NULL y no conceden autorización.
 
 $1: UID real aprobado de la identidad Firebase verificada. $2/$3: email/nombre
 aprobados o NULL. Sin contraseñas, tokens o personas de fixtures. La unicidad
 rechaza duplicados; no sobreescribir automáticamente. Exigir COMMIT exitoso y
-repetir validación: LOGISTICA_AUTH_PENDIENTE debe pasar a NO.
+confirmar con [validate_logistica_real_user.sql](validate_logistica_real_user.sql):
+READ ONLY, $1=el mismo UID real, resultado LOGISTICA_AUTH_ACTIVA=SI y sin devolver
+datos personales. El marcador global LOGISTICA_AUTH_PENDIENTE por sí solo no
+confirma que la identidad concreta esté autorizada.
 
-FASE A cerrada: no repetir CREATE ni cargar TEST. Flujo posterior: seed → validar
-1.139 filas → alta manual real → validar autorización → confirmar Firebase/Drive
-→ reactivar API27 → health y pruebas reales → Flutter Release → Samsung E2E.
+FASE A y carga inicial cerradas: no repetir CREATE, seed ni cargar TEST. Flujo
+posterior: confirmar PG/Firebase/Drive → alta manual real → validar autorización
+→ reactivar API27 → health y GET autenticado → E2E real. Flutter sigue pendiente.
 Solo después evaluar la promoción /api27 → /api10; ver el orden completo y la
 configuración de API27 en el [runbook](10_RUNBOOK_CUTOVER_FINAL.md).
 Todo queda preparado para ejecución posterior por el administrador.

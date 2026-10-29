@@ -1,10 +1,17 @@
-# Runbook de calidad: Fase B preparada, sin ejecutar
+# Runbook de calidad: seed validado; reactivación API27 pendiente
 
 Estado comunicado por el administrador al preparar este hotfix (29/10/2026):
-FASE A cerrada correctamente; CALIDAD_SCHEMA_VALIDO=SI, 21 tablas, siete filas
-ledger, cero filas de aplicación y TEST, siete secuencias restauradas al baseline.
-API27 está DETENIDA; /api10 productiva no fue modificada. Esta preparación es
-local/offline; no vuelve a consultar el servidor ni acredita una ejecución nueva.
+FASE A cerrada y seed productivo EJECUTADO Y VALIDADO: schema/datos/operativo y
+BASELINE_APTO_PARA_DEPLOY=SI, 1.139 filas de configuración, cero transaccionales,
+históricos y TEST/FIXTURE, sin ERROR ni NO-GO. LOGISTICA_AUTH_PENDIENTE=SI.
+API27 está DETENIDA; /api10 productiva no fue modificada. Esta actualización es
+local/offline y no vuelve a consultar el servidor.
+
+El orden vigente para el siguiente bloque es el de nueve pasos de
+[22_API27_AUTORIZACION_FIREBASE_DRIVE.md](22_API27_AUTORIZACION_FIREBASE_DRIVE.md):
+PG → Firebase → Drive → alta real manual → autorización DB → arrancar API27 →
+health → GET autenticado → mantener /api10 intacta. No repetir el seed ni reset.
+La secuencia de trece pasos inferior se conserva como antecedente del plan completo.
 
 **SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=NO.** Hotfix preparado:
 seed y validador comparten checksCTEs + expressionGuard del baseline semántico
@@ -13,7 +20,7 @@ siete next values. Ver [verificación offline](21_FASE_B_HOTFIX_SEED.md).
 
 No ejecutar nada de este runbook durante esta preparación. La sección FASE A
 siguiente conserva el procedimiento histórico: ya está cerrada; no repetir CREATE,
-seed TEST, cleanup ni reset. El orden vigente posterior es FASE B.
+seed TEST, cleanup ni reset. El orden vigente está en el documento 22 enlazado arriba.
 
 ## FASE A — Validación
 
@@ -76,7 +83,7 @@ CRUD avanzó siete secuencias; los cleanups no las rebobinan. La revisión final
 prepara reset_sequences_after_test_calidad.sql para volver al baseline exacto
 después de borrar runtime y seed, con todas las tablas de aplicación vacías.
 
-## FASE B — Orden exacto de ejecución posterior
+## FASE B — Antecedente del orden completo; seed ya ejecutado
 
 Precondiciones para el administrador: conservar el cierre de FASE A, API27
 detenida y sin escritores contra calidad, respaldos y recuperación disponibles.

@@ -1,13 +1,16 @@
 # calidad: procedimiento vigente
 
-FASE A cerrada según confirmación del administrador: CALIDAD_SCHEMA_VALIDO=SI,
-21 tablas, ledger=7, aplicación=0, TEST=0 y siete secuencias restauradas al baseline.
-API27 DETENIDA; /api10 productiva sin cambios. No repetir CREATE/TEST/cleanup.
+Estado vigente confirmado por el administrador: FASE A cerrada y seed productivo
+EJECUTADO Y VALIDADO en PostgreSQL 16.15. Schema/datos/operativo/deploy=SI,
+1.139 filas maestras, cero transaccionales/históricos/TEST/FIXTURE y ningún ERROR.
+LOGISTICA_AUTH_PENDIENTE=SI. API27 DETENIDA; /api10 productiva sin cambios.
+No repetir seed, CREATE, TEST, cleanup ni reset.
 Runtime previsto: Node.js v18.19.1; configuración aislada de API27 según el runbook.
 
 **SEED_PRODUCTIVO_REQUIERE_HOTFIX_ANTES_DE_FASE_B=NO.** El hotfix local está
-preparado; Fase B aún no se ejecuta. Seguir el orden de trece pasos del
-[runbook](10_RUNBOOK_CUTOVER_FINAL.md) y su configuración de API27.
+aplicado por el administrador. El siguiente bloque está preparado, sin ejecutar:
+[autorización real + Firebase + Drive + API27](22_API27_AUTORIZACION_FIREBASE_DRIVE.md).
+El runbook anterior conserva la secuencia histórica completa de Fase B.
 
 [seed_calidad_operativo.sql](seed_calidad_operativo.sql) exige calidad/PG16 y
 baseline semántico completo vacío. Bloquea las tablas, valida catálogos y expresiones,
@@ -36,7 +39,7 @@ create_calidad.sql y validate_create_calidad.sql son referencias del baseline va
 Los procedimientos anteriores de transferencia y el checklist de despliegue API10
 se conservan como antecedentes: no ejecutarlos durante esta Fase B inicial.
 
-Orden posterior: seed → validar → confirmar 1139 → alta manual → autorización →
-Firebase/Drive → reactivar API27 → health 200 → web real → Logística → Flutter
-Release → Samsung E2E → solo después evaluar promoción /api27 → /api10.
+Orden vigente: PG → Firebase → Drive → alta manual real → autorización DB →
+arrancar API27 → health 200 → GET autenticado → mantener /api10 intacta.
+Después se prepara E2E real y, en otra etapa, Flutter y Samsung E2E.
 Esta preparación no ejecuta SQL, conexiones, deploy, cambios productivos, commit o push.

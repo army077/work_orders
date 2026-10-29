@@ -150,7 +150,7 @@ DECLARE
  owned_ids int[]; problem text; pass int;
 BEGIN
  IF manifest->'reviewed' IS DISTINCT FROM 'true'::jsonb OR manifest->>'marker' IS DISTINCT FROM 'TEST_LOCAL_CRUD_20261027_' OR jsonb_typeof(manifest->'ids') IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_REVIEW_REQUIRED'; END IF;
- IF EXISTS(SELECT 1 FROM jsonb_object_keys(manifest->'ids') k WHERE NOT (k=ANY(ARRAY['inspection_order_task','inspection_order','work_order_task','work_order','template_task_inspection','template_task','template_section','maintenance_template','machine_model','machine_family'])) THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_UNKNOWN_TABLE'; END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_object_keys(manifest->'ids') k WHERE NOT (k=ANY(ARRAY['inspection_order_task','inspection_order','work_order_task','work_order','template_task_inspection','template_task','template_section','maintenance_template','machine_model','machine_family']))) THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_UNKNOWN_TABLE'; END IF;
  FOREACH crud_table_name IN ARRAY ARRAY['inspection_order_task','inspection_order','work_order_task','work_order','template_task_inspection','template_task','template_section','maintenance_template','machine_model','machine_family'] LOOP
   IF jsonb_typeof(manifest->'ids'->crud_table_name) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'RUNTIME_JOURNAL_INVALID_IDS: %',crud_table_name; END IF;
   FOR id_value IN SELECT value FROM jsonb_array_elements(manifest->'ids'->crud_table_name) LOOP

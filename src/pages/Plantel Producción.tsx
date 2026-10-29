@@ -1,6 +1,6 @@
 import { API10_URL } from "../config/api";
 import { apiFetch as fetch } from "../services/apiTransport";
-import { getApi5Technicians } from "../services/api5";
+import { getProductionTechnicians } from "../services/productionTechnicians";
 import React, { useState, useEffect } from "react";
 import { Menu, MenuItem, Select, Dialog, Box, Typography, List, Tab, ListItem, ListItemText, ListSubheader, Chip, Divider, Grid, Card, LinearProgress, Button, TextField, Stack, IconButton } from "@mui/material";
 import { useCustom, useList } from "@refinedev/core";
@@ -156,7 +156,7 @@ export default function PlantelProduccion() {
             try {
                 setLoadingTechs(true);
                 setTechsError(null);
-                const data = await getApi5Technicians<Technician>();
+                const data = await getProductionTechnicians<Technician>();
                 if (!cancel) setTechs(data.filter(t => (t.estatus || "").toLowerCase() === "activo"));
             } catch (e: any) {
                 if (!cancel) setTechsError(e?.message || "No se pudieron cargar los técnicos");

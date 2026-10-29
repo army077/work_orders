@@ -17,6 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { retryApiQuery } from "../services/apiResponse";
 import { deleteEmptySection } from "../services/sectionDeletion";
+import { isPositiveId } from "../services/catalogQueries";
 
 type Template = { id: number; name: string; model_name?: string; version: number; is_published: boolean; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -63,9 +64,9 @@ export default function SectionsBuilder() {
 
     const { data: sectionsRes, refetch, error: sectionsError, isLoading: loadingSections } = useList<Section>({
         resource: "sections",
-        filters: [{ field: "template_id", operator: "eq", value: selectedTemplate ?? -1 }],
+        filters: [{ field: "template_id", operator: "eq", value: selectedTemplate }],
         pagination: { pageSize: 500 },
-        queryOptions: { enabled: !!selectedTemplate, retry: retryApiQuery },
+        queryOptions: { enabled: isPositiveId(selectedTemplate), retry: retryApiQuery, keepPreviousData: false },
     });
 
     const sections = useMemo(
@@ -214,6 +215,7 @@ export default function SectionsBuilder() {
                 <br></br>
 
                 {sectionsError && <div role="alert">No se pudieron cargar las secciones: {sectionsError.message}</div>}
+                {selectedTemplate !== null && !isPositiveId(selectedTemplate) && <div role="alert">El identificador de la plantilla no es válido.</div>}
                 {deleteError && <div role="alert">No se pudo eliminar la sección: {deleteError}</div>}
                 {deletingId !== null && <div role="status">Verificando y eliminando sección…</div>}
                 {deleteSuccess && <div role="status">{deleteSuccess}</div>}

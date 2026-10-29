@@ -1,6 +1,7 @@
 import { API10_URL, IS_TEST, TEST_EXTERNAL_ADMIN_MESSAGE } from "../config/api";
 import { apiFetch as fetch } from "../services/apiTransport";
 import { addApi5Technician, getApi5Technicians, sendApi5Notification } from "../services/api5";
+import { getProductionTechnicians } from "../services/productionTechnicians";
 import React, { useMemo, useState, useEffect } from "react";
 import { useList, useCreate } from "@refinedev/core";
 import { Dialog, FormControl, InputLabel, Select, MenuItem, IconButton } from "@mui/material";
@@ -119,7 +120,15 @@ export default function CreateWorkOrderFromTemplate() {
       try {
         setLoadingTechs(true);
         setTechsError(null);
-        const data = await getApi5Technicians<Technician>();
+        if (IS_TEST) setForm(f => ({ ...f, assigned_tech_email: "", tech_support: "" }));
+        if (IS_TEST && form.template_type !== "ENSAMBLE") {
+          if (!cancel) {
+            setTechs([]);
+            setTechsError(form.template_type ? "El catálogo de técnicos de servicio en TEST está pendiente de un contrato backend aprobado." : null);
+          }
+          return;
+        }
+        const data = await (IS_TEST ? getProductionTechnicians<Technician>() : getApi5Technicians<Technician>());
         if (!cancel) setTechs(data.filter(t => (t.estatus || "").toLowerCase() === "activo"));
         if (import.meta.env.VITE_APP_ENV === "production") await fetchUsuarios();
       } catch (e: any) {
@@ -129,7 +138,7 @@ export default function CreateWorkOrderFromTemplate() {
       }
     })();
     return () => { cancel = true; };
-  }, []);
+  }, [IS_TEST ? form.template_type : null]);
 
   const fetchUsuarios = async () => {
     if (IS_TEST) return;

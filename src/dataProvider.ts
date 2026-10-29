@@ -1,31 +1,8 @@
 import { API10_URL, resolveCustomApiUrl } from "./config/api";
 import { fetchApi } from "./services/apiResponse";
+import { catalogListUrl } from "./services/catalogQueries";
 // src/dataProvider.ts
-import type {
-    DataProvider,
-    CrudFilters,
-    LogicalFilter,
-    ConditionalFilter,
-} from "@refinedev/core";
-
-/** Busca recursivamente el valor de un filtro por 'field' */
-function getFilterValue(filters: CrudFilters | undefined, targetField: string) {
-    if (!filters) return undefined;
-    const walk = (arr: CrudFilters): unknown => {
-        for (const f of arr) {
-            if ("field" in f) {
-                const lf = f as LogicalFilter;
-                if (lf.field === targetField) return lf.value;
-            } else {
-                const cf = f as ConditionalFilter;
-                const found = walk(cf.value);
-                if (found !== undefined) return found;
-            }
-        }
-        return undefined;
-    };
-    return walk(filters);
-}
+import type { DataProvider, HttpError } from "@refinedev/core";
 
 export const dataProvider: DataProvider = {
     // ------ LIST ------
@@ -33,11 +10,14 @@ export const dataProvider: DataProvider = {
         // soporta también meta.queryParams (útil con useList({ meta: { queryParams } }))
         const qp = (meta as any)?.queryParams as Record<string, any> | undefined;
 
-        if (resource === "sections") {
-            const templateId = qp?.template_id ?? getFilterValue(filters, "template_id");
-            const res = await fetchApi(`${API10_URL}/sections?template_id=${templateId}`);
+        const catalogUrl = catalogListUrl(API10_URL, resource, filters, qp);
+        if (catalogUrl) {
+            const res = await fetchApi(catalogUrl);
             const data = await res.json();
-            return { data, total: data.length ?? 0 };
+            if (!Array.isArray(data)) {
+                throw { message: `Respuesta no válida al consultar ${resource}.`, statusCode: 502 } satisfies HttpError;
+            }
+            return { data, total: data.length };
         }
 
         if (resource === "inspection") {
@@ -45,21 +25,6 @@ export const dataProvider: DataProvider = {
             const data = await res.json();
             return { data, total: data.length ?? 0 };
         }
-
-        if (resource === "tasks") {
-            const sectionId = qp?.section_id ?? getFilterValue(filters, "section_id");
-            const res = await fetchApi(`${API10_URL}/tasks?section_id=${sectionId}`);
-            const data = await res.json();
-            return { data, total: data.length ?? 0 };
-        }
-        if (resource === "quality/template_task_inspection") {
-            const sectionId = qp?.section_id ?? getFilterValue(filters, "section_id");
-            const res = await fetchApi(`${API10_URL}/quality/template_task_inspection?section_id=${sectionId}`);
-            const data = await res.json();
-            return { data, total: data.length ?? 0 };
-        }
-
-
 
         const res = await fetchApi(`${API10_URL}/${resource}`);
         const data = await res.json();

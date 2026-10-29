@@ -18,6 +18,7 @@ function load(apiUrl = 'https://test.invalid/api27') {
             };
             if (name === './apiTransport') return { apiFetch: (...args) => sandbox.fetch(...args) };
             if (name === './services/apiResponse') return modules.response;
+            if (name === './services/catalogQueries') return modules.catalog;
             throw new Error(name);
         },
         fetch: async (...args) => { calls.push(args); return respond(...args); },
@@ -26,6 +27,9 @@ function load(apiUrl = 'https://test.invalid/api27') {
     const compile = relative => '(function () {\n' + ts.transpileModule(readFileSync(new URL(relative, import.meta.url), 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText + '\n})();';
+    vm.runInContext(compile('./catalogQueries.ts'), sandbox);
+    modules.catalog = sandbox.exports;
+    sandbox.exports = {};
     vm.runInContext(compile('./apiResponse.ts'), sandbox);
     modules.response = sandbox.exports;
     sandbox.exports = {};
@@ -37,7 +41,9 @@ for (const resource of ['sections', 'tasks', 'quality/template_task_inspection']
     test(`${resource}: HTTP 400 rejects with message/status, never as list data and never retries`, async () => {
         const app = load();
         app.respond(() => new Response(JSON.stringify({ error: 'parent_id obligatorio' }), { status: 400 }));
-        await assert.rejects(app.provider.getList({ resource }), error => {
+        // A valid parent reaches the mocked backend; missing IDs now fail locally.
+        const field = resource === 'sections' ? 'template_id' : 'section_id';
+        await assert.rejects(app.provider.getList({ resource, meta: { queryParams: { [field]: 7 } } }), error => {
             assert.equal(error.statusCode, 400);
             assert.equal(error.message, 'parent_id obligatorio');
             assert.equal(app.retryApiQuery(0, error), false);

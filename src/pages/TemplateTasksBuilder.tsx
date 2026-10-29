@@ -11,9 +11,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, Box, Typography, Button } from "@mui/material"
-import { apiAxios as axios, apiFetch as fetch } from '../services/apiTransport'
+import { apiAxios as axios } from '../services/apiTransport'
 import * as XLSX from 'xlsx';
-import { retryApiQuery } from "../services/apiResponse";
+import { fetchApi, retryApiQuery } from "../services/apiResponse";
+import { isPositiveId, requirePositiveId } from "../services/catalogQueries";
 
 type Template = { id: number; name: string; template_type: string; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -169,6 +170,7 @@ export default function TemplateTasksBuilder() {
   const [isCloning, setIsCloning] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState<string>("");
   const [modelos, setModelos] = useState<Array<{ id: number; name: string }>>([]);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
   const [openFileDialog, setOpenFileDialog] = useState(false);
   const [puntos, setPuntos] = useState<Array<{ puntos_revision: string[]; especificaciones: string[]; sugerencias: string[]; categoria: string[] }>>([]);
@@ -187,24 +189,26 @@ export default function TemplateTasksBuilder() {
     (clonedTasks?.length || 0) > 0
   );
 
-  const { data: templates } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 } });
+  const { data: templates, error: templatesError, isLoading: loadingTemplates } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 }, queryOptions: { retry: retryApiQuery } });
   const selectedTemplate = templates?.data.find(t => t.id === templateId);
   const isInspectionTemplate = selectedTemplate?.template_type === "INSPECCION";
   const { data: sectionsRes, error: sectionsError, isLoading: loadingSections } = useList<Section>({
     resource: "sections",
-    filters: [{ field: "template_id", operator: "eq", value: templateId ?? -1 }],
-    queryOptions: { enabled: !!templateId, retry: retryApiQuery },
+    filters: [{ field: "template_id", operator: "eq", value: templateId }],
+    queryOptions: { enabled: isPositiveId(templateId) && !!selectedTemplate, retry: retryApiQuery, keepPreviousData: false },
     pagination: { pageSize: 500 },
   });
+  const sectionReady = isPositiveId(sectionId) && !!selectedTemplate && !sectionsError && !loadingSections &&
+    !!sectionsRes?.data.some(s => s.id === sectionId && s.template_id === templateId);
   const { data: tasksRes, refetch, error: tasksError, isLoading: loadingTasks } = useList<any>({
     resource: isInspectionTemplate ? "quality/template_task_inspection" : "tasks",
-    filters: [{ field: "section_id", operator: "eq", value: sectionId ?? -1 }],
-    queryOptions: { enabled: !!sectionId, retry: retryApiQuery },
+    filters: [{ field: "section_id", operator: "eq", value: sectionId }],
+    queryOptions: { enabled: sectionReady, retry: retryApiQuery, keepPreviousData: false },
     pagination: { pageSize: 1000 },
   });
 
-  const sections = useMemo(() => (sectionsRes?.data ?? []).sort((a, b) => a.position - b.position), [sectionsRes?.data]);
-  const tasks = useMemo(() => (tasksRes?.data ?? []).sort((a, b) => a.position - b.position), [tasksRes?.data]);
+  const sections = useMemo(() => (sectionsRes?.data ?? []).slice().sort((a, b) => a.position - b.position), [sectionsRes?.data]);
+  const tasks = useMemo(() => (sectionReady && !tasksError ? tasksRes?.data ?? [] : []).slice().sort((a, b) => a.position - b.position), [tasksRes?.data, sectionReady, tasksError]);
 
   const { mutate: createTask } = useCreate();
   const { mutate: patchReorder, isLoading: savingOrder } = useCustomMutation();
@@ -232,11 +236,14 @@ export default function TemplateTasksBuilder() {
   useEffect(() => {
     const fetchModelos = async () => {
       try {
-        const res = await fetch(`${API10_URL}/machine-models`);
+        setModelsError(null);
+        const res = await fetchApi(`${API10_URL}/machine-models`);
         const data = await res.json();
-        setModelos(Array.isArray(data) ? data : []);
+        if (!Array.isArray(data)) throw new Error("Respuesta de modelos no válida.");
+        setModelos(data);
       } catch (err) {
         console.error("Error cargando modelos:", err);
+        setModelsError(String((err as { message?: string })?.message || "No se pudieron cargar los modelos."));
         setModelos([]);
       }
     };
@@ -348,7 +355,7 @@ export default function TemplateTasksBuilder() {
 
   // 🔸 ACTUALIZA tu clonación para limpiar antes y marcar loading
   const clonacionDePlantilla = async () => {
-    if (!templateId2) {
+    if (!isPositiveId(templateId2)) {
       alert("Selecciona una plantilla para clonar");
       return;
     }
@@ -362,7 +369,7 @@ export default function TemplateTasksBuilder() {
 
       // 1) plantilla
       const response = await axios.get(
-        `${API10_URL}/templates/${templateId2}`
+        `${API10_URL}/templates/${templateId2}`, { timeout: 20000 }
       );
       setClonedTemplate(response.data);
       setSelectedModelId(response.data.model_id);
@@ -373,9 +380,14 @@ export default function TemplateTasksBuilder() {
 
       // 2) secciones
       const response1 = await axios.get(
-        `${API10_URL}/sections?template_id=${templateId2}`
+        `${API10_URL}/sections?template_id=${templateId2}`, { timeout: 20000 }
       );
       const sections = response1.data;
+      if (!Array.isArray(sections)) throw new Error("Respuesta de secciones no válida.");
+      sections.forEach(s => {
+        requirePositiveId(s.id, "section_id");
+        if (s.template_id !== templateId2) throw new Error("La sección no pertenece a la plantilla seleccionada.");
+      });
       setClonedSections(sections);
       console.log
 
@@ -386,7 +398,8 @@ export default function TemplateTasksBuilder() {
             ? `${API10_URL}/quality/template_task_inspection?section_id=${s.id}`
             : `${API10_URL}/tasks?section_id=${s.id}`;
 
-          const resp = await axios.get(url);
+          const resp = await axios.get(url, { timeout: 20000 });
+          if (!Array.isArray(resp.data)) throw new Error("Respuesta de actividades no válida.");
           return resp.data;
         })
       );
@@ -399,7 +412,7 @@ export default function TemplateTasksBuilder() {
       }
     } catch (e) {
       console.error(e);
-      alert("Error al clonar");
+      alert(`Error al clonar: ${String((e as { message?: string })?.message || e)}`);
     } finally {
       setIsCloning(false);
     }
@@ -543,7 +556,7 @@ export default function TemplateTasksBuilder() {
           position: i + 1,
         };
 
-        await fetch(`${API10_URL}/quality/template_task_inspection`, {
+        await fetchApi(`${API10_URL}/quality/template_task_inspection`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -620,11 +633,15 @@ export default function TemplateTasksBuilder() {
 
       <br />
 
+      {templatesError && <div role="alert">No se pudieron cargar las plantillas: {templatesError.message}</div>}
+      {modelsError && <div role="alert">No se pudieron cargar los modelos: {modelsError}</div>}
+      {templateId !== null && !isPositiveId(templateId) && <div role="alert">El identificador de la plantilla no es válido.</div>}
+      {sectionId !== null && !isPositiveId(sectionId) && <div role="alert">El identificador de la sección no es válido.</div>}
       {sectionsError && <div role="alert">No se pudieron cargar las secciones: {sectionsError.message}</div>}
       {tasksError && <div role="alert">No se pudieron cargar las actividades: {tasksError.message}</div>}
-      {(templateId && loadingSections) || (sectionId && loadingTasks) ? <div role="status">Cargando actividades…</div> : null}
+      {loadingTemplates || (selectedTemplate && loadingSections) || (sectionReady && loadingTasks) ? <div role="status">Cargando actividades…</div> : null}
 
-      {!sectionId ? (
+      {!sectionReady ? (
         <div className="badge">Selecciona sección</div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

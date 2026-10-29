@@ -1,7 +1,10 @@
 // src/pages/components/TemplateDetailsDrawer.tsx
 import React from "react";
-import { apiFetch as fetch } from "../../services/apiTransport";
 import { useApiUrl, useList } from "@refinedev/core";
+import { isPositiveId } from "../../services/catalogQueries";
+import { retryApiQuery } from "../../services/apiResponse";
+import { loadTemplateItems } from "../../services/templateDetails";
+import type { TemplateSection, TemplateDetailItem } from "../../services/templateDetails";
 
 export type Template = {
   id: number;
@@ -11,22 +14,6 @@ export type Template = {
   version: number;
   is_published: boolean;
   model_name?: string | null;
-};
-
-type Section = {
-  id: number;
-  template_id: number;
-  title: string;
-  position: number;
-};
-
-type Task = {
-  id: number;
-  section_id: number;
-  title: string;
-  code: string | null;
-  expected_minutes: number | null;
-  position: number;
 };
 
 type Props = {
@@ -58,60 +45,50 @@ const SkeletonCard: React.FC<{ lines?: number }> = ({ lines = 3 }) => {
 export default function TemplateDetailsDrawer({ template, onClose }: Props) {
   const apiUrl = useApiUrl();
 
-  if (!template) return null;
+  const templateId = template?.id;
+  const templateType = template?.template_type ?? "";
+  const ready = isPositiveId(templateId);
+  const inspection = templateType === "INSPECCION";
 
   const {
     data: sectionsRes,
     isLoading: loadingSections,
-    isError: errorSections,
-  } = useList<Section>({
+    error: errorSections,
+    isPreviousData,
+  } = useList<TemplateSection>({
     resource: "sections",
     pagination: { pageSize: 500, current: 1 },
-    meta: { queryParams: { template_id: template.id } },
-    queryOptions: { enabled: !!template?.id },
+    meta: { queryParams: { template_id: templateId } },
+    queryOptions: { enabled: ready, retry: retryApiQuery },
   });
 
-  const sections = React.useMemo<Section[]>(
-    () => (sectionsRes?.data ?? []).slice().sort((a, b) => a.position - b.position),
-    [sectionsRes?.data]
+  const sections = React.useMemo<TemplateSection[]>(
+    () => (!ready || loadingSections || errorSections || isPreviousData ? [] : sectionsRes?.data ?? []).slice().sort((a, b) => a.position - b.position),
+    [sectionsRes?.data, ready, loadingSections, errorSections, isPreviousData]
   );
 
-  const [tasksBySection, setTasksBySection] = React.useState<Record<number, Task[]>>({});
+  const [tasksBySection, setTasksBySection] = React.useState<Record<number, TemplateDetailItem[]>>({});
   const [loadingTasks, setLoadingTasks] = React.useState<boolean>(false);
+  const [tasksError, setTasksError] = React.useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = React.useState("");
+  const requestKey = JSON.stringify([apiUrl, templateId, templateType, sections.map(s => [s.id, s.template_id])]);
 
   React.useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
     const load = async () => {
-      if (!sections.length) {
-        setTasksBySection({});
-        return;
-      }
+      setTasksBySection({});
+      setTasksError(null);
+      if (!ready || !sections.length) { setLoadingTasks(false); return; }
       setLoadingTasks(true);
       try {
-        const results: Task[][] = await Promise.all(
-          sections.map(async (s) => {
-            const res = await fetch(`${apiUrl}/tasks?section_id=${s.id}`, {
-              method: "GET",
-              signal: controller.signal,
-              headers: { "Content-Type": "application/json" },
-            });
-            const data: Task[] = await res.json();
-            return data.slice().sort((a, b) => a.position - b.position);
-          })
-        );
-        if (!cancelled) {
-          const map: Record<number, Task[]> = {};
-          sections.forEach((s, idx) => {
-            map[s.id] = results[idx];
-          });
-          setTasksBySection(map);
-        }
-      } catch {
-        /* opcional: manejar error */
+        const map = await loadTemplateItems(apiUrl, Number(templateId), templateType, sections, controller.signal);
+        if (!cancelled) setTasksBySection(map);
+      } catch (error) {
+        if (!cancelled) setTasksError(String((error as { message?: string })?.message || "No se pudieron cargar las actividades."));
       } finally {
-        if (!cancelled) setLoadingTasks(false);
+        if (!cancelled) { setLoadingTasks(false); setLoadedKey(requestKey); }
       }
     };
 
@@ -120,10 +97,12 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
       cancelled = true;
       controller.abort();
     };
-  }, [sections, apiUrl]);
+  }, [sections, apiUrl, templateId, templateType, ready, requestKey]);
 
-  const totalMinutes = (arr: Task[]) =>
-    arr.reduce((acc, t) => acc + (t.expected_minutes ?? 0), 0);
+  const totalMinutes = (arr: TemplateDetailItem[]) =>
+    arr.reduce((acc, t) => acc + (t.kind === "task" ? t.expected_minutes ?? 0 : 0), 0);
+
+  if (!template) return null;
 
   return (
     <div
@@ -177,7 +156,9 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
         </div>
 
         {/* Body */}
-        {loadingSections ? (
+        {!ready ? (
+          <div role="alert">El identificador de la plantilla no es válido.</div>
+        ) : loadingSections || isPreviousData ? (
           // ====== SKELETON: mientras cargan secciones ======
           <div className="list" style={{ marginTop: 8 }}>
             <SkeletonCard />
@@ -185,7 +166,9 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
             <SkeletonCard />
           </div>
         ) : errorSections ? (
-          <div className="badge fail">Error cargando secciones</div>
+          <div role="alert" className="badge fail">Error cargando secciones: {errorSections.message}</div>
+        ) : tasksError && loadedKey === requestKey ? (
+          <div role="alert" className="badge fail">Error cargando actividades: {tasksError}</div>
         ) : sections.length === 0 ? (
           <div className="badge">Este template no tiene secciones.</div>
         ) : (
@@ -193,7 +176,7 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
             {sections.map((sec) => {
               const tasks = tasksBySection[sec.id] ?? [];
               const isLoadingTasksForThis =
-                loadingTasks && (!tasks || tasks.length === 0);
+                loadingTasks || loadedKey !== requestKey;
 
               return (
                 <div key={sec.id} className="card" style={{ padding: 14 }}>
@@ -211,7 +194,7 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
                     </div>
                     <div className="section-meta">
                       <span className="pill">
-                        {tasks.length} tareas · {totalMinutes(tasks)} min
+                        {inspection ? `${tasks.length} puntos de inspección` : `${tasks.length} tareas · ${totalMinutes(tasks)} min`}
                       </span>
                     </div>
                   </div>
@@ -223,7 +206,7 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
                       <SkeletonCard lines={2} />
                     </div>
                   ) : tasks.length === 0 ? (
-                    <div className="muted">Sin tareas en esta sección.</div>
+                    <div className="muted">{inspection ? "Sin puntos de inspección en esta sección." : "Sin tareas en esta sección."}</div>
                   ) : (
                     <div className="list">
                       {tasks.map((t) => (
@@ -237,13 +220,18 @@ export default function TemplateDetailsDrawer({ template, onClose }: Props) {
                         >
                           <div className="badge">#{t.position}</div>
                           <div>
-                            <div style={{ fontWeight: 600 }}>{t.title}</div>
-                            <div className="muted">
-                              {truncate(t.code, 80)} · {t.expected_minutes ?? 0} min
-                            </div>
+                            <div style={{ fontWeight: 600 }}>{t.kind === "inspection" ? t.revision_point : t.title}</div>
+                            {t.kind === "inspection" ? (
+                              <div>
+                                <div>Especificaciones: {t.specs || "—"}</div>
+                                <div>Sugerencias: {t.suggestions || "—"}</div>
+                                <div>Categoría: {t.category || "—"}</div>
+                                <div>{t.required === null ? "Requisito no especificado" : t.required ? "Obligatorio" : "Opcional"}</div>
+                              </div>
+                            ) : <div className="muted">{truncate(t.code, 80)} · {t.expected_minutes ?? 0} min</div>}
                           </div>
                           <div className="right">
-                            <span className="pill">{t.expected_minutes ?? 0} min</span>
+                            {t.kind === "task" && <span className="pill">{t.expected_minutes ?? 0} min</span>}
                           </div>
                         </div>
                       ))}

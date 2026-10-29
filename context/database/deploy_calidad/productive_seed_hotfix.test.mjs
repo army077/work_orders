@@ -81,7 +81,7 @@ test('inherited 39/5/9 remain WARNING, absent Logistics user is a separate gate'
  assert.deepEqual([findings.assembly_without_inspection.length,findings.empty_sections.length,findings.assembly_missing_release_codes.length],[39,5,9]);
  assert.match(validator,/'ADVERTENCIA_HEREDADA','WARNING'/);
  assert.match(validator,/'CALIDAD_SEED_OPERATIVO_VALIDO',CASE WHEN EXISTS\(SELECT 1 FROM blocking_issues\) THEN 'NO' ELSE 'SI' END/);
- const gate=validator.slice(validator.indexOf('blocking_issues(reason) AS ('),validator.indexOf('), authorization AS ('));
+ const gate=validator.slice(validator.indexOf('blocking_issues(reason) AS ('),validator.indexOf('), logistica_auth AS ('));
  assert.doesNotMatch(gate,/LOGISTICA|authorization|pending/);
  assert.match(gate,/SELECT reason FROM seed_issues/);
  assert.match(validator,/'INCIDENCIA_DATOS','ERROR'/);

@@ -169,13 +169,13 @@ test('technician test identities are excluded instead of becoming real seed cand
  assert.deepEqual(evaluate(data,exportCTEs()+' SELECT id FROM technicians'),[]);
 });
 test('Logistics absence is reported separately and never added as a configuration error',fixtureOptions,()=>{
- const authorization=validation.slice(validation.indexOf('authorization AS ('),validation.indexOf('), report AS ('))+')';
+ const authorization=validation.slice(validation.indexOf('logistica_auth AS ('),validation.indexOf('), report AS ('))+')';
  const data=fixture();
- assert.equal(evaluate(data,authorization+' SELECT pending FROM authorization')[0].pending,1);
+ assert.equal(evaluate(data,authorization+' SELECT pending FROM logistica_auth')[0].pending,1);
  data.logistica_authorized_users=[{id:60,firebase_project:'logistica-ar',firebase_uid:'synthetic-only',is_active:false}];
- assert.equal(evaluate(data,authorization+' SELECT pending FROM authorization')[0].pending,1);
+ assert.equal(evaluate(data,authorization+' SELECT pending FROM logistica_auth')[0].pending,1);
  data.logistica_authorized_users[0].is_active=true;
- assert.equal(evaluate(data,authorization+' SELECT pending FROM authorization')[0].pending,0);
+ assert.equal(evaluate(data,authorization+' SELECT pending FROM logistica_auth')[0].pending,0);
  assert.deepEqual(issues(data),[]);
 });
 test('populated master sequences cannot collide with the next runtime insert',fixtureOptions,()=>{

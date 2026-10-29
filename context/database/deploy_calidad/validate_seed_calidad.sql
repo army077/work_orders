@@ -372,7 +372,7 @@ WITH RECURSIVE installed_extensions AS (
 ), blocking_issues(reason) AS (
  SELECT reason FROM seed_issues
  UNION ALL SELECT reason FROM functional_issues WHERE reason NOT IN ('ASSEMBLY_INSPECTION_CONFIG_MISSING','SECTION_WITHOUT_TASKS','ASSEMBLY_RELEASE_CODE_MISSING')
-), authorization AS (
+), logistica_auth AS (
  SELECT NOT EXISTS(SELECT 1 FROM public.logistica_authorized_users WHERE firebase_project='logistica-ar' AND is_active=true AND btrim(firebase_uid)<>'') AS pending
 ), report AS (
  SELECT 0 AS position,'CALIDAD_SCHEMA_VALIDO'::text AS "CHECK",CASE WHEN EXISTS(SELECT 1 FROM schema_issues) THEN 'NO' ELSE 'SI' END AS "ESTADO",'{}'::jsonb AS "DETALLE"
@@ -382,7 +382,7 @@ WITH RECURSIVE installed_extensions AS (
  UNION ALL SELECT 2,'OBSERVACION_CONFIGURACION','WARNING',jsonb_build_object('reason',reason) FROM configuration_issues WHERE reason IN ('TECHNICIAN_REQUIRED_FIELDS','DUPLICATE_TECHNICIAN_EMAIL')
  UNION ALL SELECT 3,'CONFIGURACION_CONTEO','INFO',jsonb_build_object('table',e.key,'expected',jsonb_array_length(e.value),'actual',c.rows) FROM approved_export a,LATERAL jsonb_each(a.value) e LEFT JOIN counts c ON c.name=e.key
  UNION ALL SELECT 4,'CALIDAD_SEED_DATOS_VALIDOS',CASE WHEN EXISTS(SELECT 1 FROM seed_issues) THEN 'NO' ELSE 'SI' END,jsonb_build_object('approved_rows',1139,'source_sha256','47f5dddeb498f7b50ee61c7148f10bfa7635aaf773b12495134ffe8147349bd0')
- UNION ALL SELECT 5,'LOGISTICA_AUTH_PENDIENTE',CASE WHEN pending THEN 'SI' ELSE 'NO' END,jsonb_build_object('action',CASE WHEN pending THEN 'ALTA_MANUAL_REQUERIDA' ELSE 'AUTORIZACION_PRESENTE' END,'scope','LOGISTICA','classification','BLOQUEADOR_FLUJO_ESPECIFICO') FROM authorization
+ UNION ALL SELECT 5,'LOGISTICA_AUTH_PENDIENTE',CASE WHEN pending THEN 'SI' ELSE 'NO' END,jsonb_build_object('action',CASE WHEN pending THEN 'ALTA_MANUAL_REQUERIDA' ELSE 'AUTORIZACION_PRESENTE' END,'scope','LOGISTICA','classification','BLOQUEADOR_FLUJO_ESPECIFICO') FROM logistica_auth
  UNION ALL SELECT 6,'CALIDAD_SEED_OPERATIVO_VALIDO',CASE WHEN EXISTS(SELECT 1 FROM blocking_issues) THEN 'NO' ELSE 'SI' END,jsonb_build_object('source_status','EXPORT_CONFIG_PROD_RECIBIDO','transactional_rows',(SELECT sum(rows) FROM counts WHERE name NOT IN ('logistica_schema_migrations','machine_family','machine_model','maintenance_template','template_section','template_task','template_task_inspection','plantilla_tecnicos','logistica_authorized_users')))
  UNION ALL SELECT 7,'BASELINE_APTO_PARA_DEPLOY',CASE WHEN EXISTS(SELECT 1 FROM blocking_issues) THEN 'NO' ELSE 'SI' END,jsonb_build_object('logistics_authorization','SEPARATE_MANUAL_REQUIREMENT')
 ) SELECT "CHECK","ESTADO","DETALLE" FROM report ORDER BY position,"CHECK","DETALLE"::text;

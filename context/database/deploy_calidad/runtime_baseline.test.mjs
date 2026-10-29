@@ -160,7 +160,7 @@ test('real Logistics authorization rejects an unregistered identity before allow
 
 test('validator classifies only the audited three conditions as inherited nonblocking warnings',()=>{
  assert.deepEqual(inheritedWarningReasons,['ASSEMBLY_INSPECTION_CONFIG_MISSING','SECTION_WITHOUT_TASKS','ASSEMBLY_RELEASE_CODE_MISSING']);
- const gate=validation.slice(validation.indexOf('blocking_issues(reason) AS ('),validation.indexOf('), authorization AS ('));
+ const gate=validation.slice(validation.indexOf('blocking_issues(reason) AS ('),validation.indexOf('), logistica_auth AS ('));
  assert.match(gate,/SELECT reason FROM seed_issues/);
  assert.match(gate,/UNION ALL SELECT reason FROM functional_issues WHERE reason NOT IN/);
  assert.deepEqual([...gate.matchAll(/'([^']+)'/g)].map(m=>m[1]),inheritedWarningReasons);

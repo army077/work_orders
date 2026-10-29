@@ -11,16 +11,21 @@ function load(apiUrl = 'https://test.invalid/api27') {
     const modules = {};
     const sandbox = vm.createContext({
         exports: {}, require: name => {
-            if (name === './config/api') return { API10_URL: apiUrl };
+            if (name === './config/api' || name === '../config/api') return {
+                API10_URL: apiUrl,
+                assertTestApiUrl: url => url,
+                resolveCustomApiUrl: url => url.startsWith('http') ? url : apiUrl + url,
+            };
+            if (name === './apiTransport') return { apiFetch: (...args) => sandbox.fetch(...args) };
             if (name === './services/apiResponse') return modules.response;
             throw new Error(name);
         },
         fetch: async (...args) => { calls.push(args); return respond(...args); },
         AbortSignal, Error, Response, URL,
     });
-    const compile = relative => ts.transpileModule(readFileSync(new URL(relative, import.meta.url), 'utf8'), {
+    const compile = relative => '(function () {\n' + ts.transpileModule(readFileSync(new URL(relative, import.meta.url), 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-    }).outputText;
+    }).outputText + '\n})();';
     vm.runInContext(compile('./apiResponse.ts'), sandbox);
     modules.response = sandbox.exports;
     sandbox.exports = {};

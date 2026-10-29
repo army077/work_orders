@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, Box, Typography, Button } from "@mui/material"
-import axios from 'axios'
+import { apiAxios as axios, apiFetch as fetch } from '../services/apiTransport'
 import * as XLSX from 'xlsx';
 import { retryApiQuery } from "../services/apiResponse";
 

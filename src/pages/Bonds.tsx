@@ -18,7 +18,7 @@ import {
     CircularProgress,
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import axios from "axios";
+import { apiAxios as axios } from "../services/apiTransport";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 

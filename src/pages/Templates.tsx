@@ -8,7 +8,7 @@ import { BsSearch } from 'react-icons/bs';
 import { FaRegEdit } from 'react-icons/fa';
 import { FaSave } from 'react-icons/fa';
 import { MdDeleteForever } from "react-icons/md";
-import axios from "axios";
+import { apiAxios as axios } from "../services/apiTransport";
 
 
 type MachineModel = {

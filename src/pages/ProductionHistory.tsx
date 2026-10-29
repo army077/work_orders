@@ -26,7 +26,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { Search, AddCircle, Visibility, BorderColor } from "@mui/icons-material";
 import dayjs, { Dayjs } from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
-import axios from "axios";
+import { apiAxios as axios, apiFetch as fetch } from "../services/apiTransport";
 
 dayjs.extend(weekOfYear);
 import { IoBuildOutline } from "react-icons/io5";

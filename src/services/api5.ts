@@ -1,7 +1,7 @@
-import { API5_ENABLED, API5_URL, assertApi5WriteEnabled } from "../config/api";
+import { IS_TEST, API5_ENABLED, API5_URL, assertApi5WriteEnabled } from "../config/api";
 
 export async function getApi5Technicians<T>(): Promise<T[]> {
-    if (!API5_ENABLED) return [];
+    if (IS_TEST || !API5_ENABLED) return [];
 
     const response = await fetch(`${API5_URL}/tecnicos`);
     if (!response.ok) throw new Error(`API5: error cargando técnicos (HTTP ${response.status})`);

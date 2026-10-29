@@ -1,11 +1,10 @@
-import { API10_URL } from "../config/api";
+import { API10_URL, IS_TEST, TEST_EXTERNAL_ADMIN_MESSAGE } from "../config/api";
+import { apiFetch as fetch } from "../services/apiTransport";
 import { addApi5Technician, getApi5Technicians, sendApi5Notification } from "../services/api5";
 import React, { useMemo, useState, useEffect } from "react";
 import { useList, useCreate } from "@refinedev/core";
 import { Dialog, FormControl, InputLabel, Select, MenuItem, IconButton } from "@mui/material";
 import { FaEye } from 'react-icons/fa6';
-import { collection, getDocs, addDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase/firebase-config'
 
 type Template = { id: number; name: string; version: number; model_id: number; is_published: boolean; template_type: string; };
 
@@ -59,8 +58,6 @@ export default function CreateWorkOrderFromTemplate() {
     comments: ""
   });
 
-  //firebase
-  const operadoresCollection = collection(db, 'operadores');
   const [newTecForm, setNewTec] = useState({
     estatus: "Activo",
     sucursal: "",
@@ -80,7 +77,10 @@ export default function CreateWorkOrderFromTemplate() {
 
   //--- dialog nuevo técnico (manual) ---
   const [openDialogNewTec, setOpenDialogNewTec] = useState(false);
-  const handleOpenDialogNewTec = () => setOpenDialogNewTec(true);
+  const handleOpenDialogNewTec = () => {
+    if (IS_TEST) { alert(TEST_EXTERNAL_ADMIN_MESSAGE); return; }
+    setOpenDialogNewTec(true);
+  };
   const handleCloseDialogNewTec = () => {
     setNewTec({
       estatus: "",
@@ -132,7 +132,10 @@ export default function CreateWorkOrderFromTemplate() {
   }, []);
 
   const fetchUsuarios = async () => {
+    if (IS_TEST) return;
     try {
+      const { collection, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../firebase/firebase-config');
       const querySnapshot = await getDocs(collection(db, 'operadores'));
       const usuariosData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -256,6 +259,7 @@ export default function CreateWorkOrderFromTemplate() {
       setNewTec((f) => ({ ...f, [k]: e.target.value }));
 
   const guardarTecnico = async () => {
+    if (IS_TEST) { alert(TEST_EXTERNAL_ADMIN_MESSAGE); return false; }
     if (!confirm("¿Estás seguro que la información es correcta?")) return false;
 
     if (!newTecForm.nombre_tecnico || !newTecForm.correo_tecnico) {
@@ -340,8 +344,13 @@ export default function CreateWorkOrderFromTemplate() {
   };
 
   const handleAddOperador = async () => {
+    if (IS_TEST) { alert(TEST_EXTERNAL_ADMIN_MESSAGE); return; }
     if (newTecForm.nombre_tecnico && newTecForm.correo_tecnico && contraseña) {
       try {
+        // Load Firebase only after the TEST guard, including SDK initialization.
+        const { collection, addDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        const operadoresCollection = collection(db, 'operadores');
         // Registrar el usuario en Firebase Authentication
         const apiKey = 'AIzaSyBGB6jHNXRKIif9vUSR6ogtDIcCJpnqCrU'; // Tu API Key de Firebase
         const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
@@ -496,6 +505,7 @@ export default function CreateWorkOrderFromTemplate() {
                 type="button"
                 className="btn--clone"
                 onClick={handleOpenDialogNewTec}
+                disabled={IS_TEST}
               >
                 + Agregar técnico
               </button>
@@ -517,6 +527,7 @@ export default function CreateWorkOrderFromTemplate() {
               }
             </div>
 
+            {IS_TEST && <p role="status">{TEST_EXTERNAL_ADMIN_MESSAGE}</p>}
             {techsError && <div className="badge fail" style={{ marginTop: 6 }}>Error: {techsError}</div>}
 
           </div>
@@ -632,6 +643,7 @@ export default function CreateWorkOrderFromTemplate() {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
               className="btn--ok"
+              disabled={IS_TEST}
               onClick={async () => {
                 const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newTecForm.correo_tecnico);
 

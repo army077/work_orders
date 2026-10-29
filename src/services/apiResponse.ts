@@ -1,10 +1,13 @@
 import type { HttpError } from "@refinedev/core";
+import { assertTestApiUrl } from "../config/api";
+import { apiFetch } from "./apiTransport";
 
 /** Keep failed requests out of Refine's success/cache path. */
 export async function fetchApi(input: string, init?: RequestInit): Promise<Response> {
+    assertTestApiUrl(input);
     let response: Response;
     try {
-        response = await fetch(input, {
+        response = await apiFetch(input, {
             ...init,
             signal: init?.signal ?? AbortSignal.timeout(20000),
         });

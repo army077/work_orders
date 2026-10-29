@@ -1,4 +1,4 @@
-import { API10_URL } from "./config/api";
+import { API10_URL, resolveCustomApiUrl } from "./config/api";
 import { fetchApi } from "./services/apiResponse";
 // src/dataProvider.ts
 import type {
@@ -162,7 +162,7 @@ export const dataProvider: DataProvider = {
             (params as any).payload ??              // soporte alterno
             undefined;
 
-        const fullUrl = url!.startsWith("http") ? url! : `${API10_URL}${url}`;
+        const fullUrl = resolveCustomApiUrl(url);
         const baseHeaders = { "Content-Type": "application/json" };
         const headers = { ...baseHeaders, ...(meta?.headers || {}) };
 

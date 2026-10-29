@@ -1,5 +1,6 @@
 // src/pages/components/TemplateDetailsDrawer.tsx
 import React from "react";
+import { apiFetch as fetch } from "../../services/apiTransport";
 import { useApiUrl, useList } from "@refinedev/core";
 
 export type Template = {

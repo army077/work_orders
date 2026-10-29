@@ -1,4 +1,5 @@
-import { API10_URL } from "../config/api";
+import { API10_URL, IS_TEST } from "../config/api";
+import { apiFetch as fetch } from "../services/apiTransport";
 import { useList } from "@refinedev/core";
 import {
     Card,
@@ -628,7 +629,8 @@ export const PlantelInspeccion = () => {
                                                 gap: 2,
                                             }}
                                         >
-                                            {selectedOrder.evidencias.map((url: string, i: number) => (
+                                            {IS_TEST && <Typography>Evidencias externas deshabilitadas en TEST.</Typography>}
+                                            {(IS_TEST ? [] : selectedOrder.evidencias).map((url: string, i: number) => (
                                                 <Card
                                                     key={i}
                                                     sx={{
@@ -864,7 +866,8 @@ export const PlantelInspeccion = () => {
                                                                                                     flexWrap: "wrap"
                                                                                                 }}
                                                                                             >
-                                                                                                {d.evidencias.map((img: string, i: number) => (
+                                                                                                {IS_TEST && <Typography>Evidencias externas deshabilitadas en TEST.</Typography>}
+                                                                                                {(IS_TEST ? [] : d.evidencias).map((img: string, i: number) => (
                                                                                                     <img
                                                                                                         key={i}
                                                                                                         src={img}

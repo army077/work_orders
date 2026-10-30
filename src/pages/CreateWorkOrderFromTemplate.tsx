@@ -7,7 +7,7 @@ import { useList, useCreate } from "@refinedev/core";
 import { Dialog, FormControl, InputLabel, Select, MenuItem, IconButton } from "@mui/material";
 import { FaEye } from 'react-icons/fa6';
 
-type Template = { id: number; name: string; version: number; model_id: number; is_published: boolean; template_type: string; };
+type Template = { id: number; name: string; version: number; model_id: number; model_name?: string | null; is_published: boolean; template_type: string; };
 
 type Technician = {
   id: number;
@@ -38,7 +38,11 @@ const dateToIsoAt1600Z = (yyyyMmDd: string) =>
 
 export default function CreateWorkOrderFromTemplate() {
   const { data: tpls } = useList<Template>({ resource: "templates", pagination: { pageSize: 500 } });
-  const published = useMemo(() => (tpls?.data ?? []).filter(t => t.is_published), [tpls?.data]);
+  // Las plantillas INSPECCION no generan tareas de producción: solo se usan al solicitar inspecciones.
+  const published = useMemo(
+    () => (tpls?.data ?? []).filter(t => t.is_published && t.template_type !== "INSPECCION"),
+    [tpls?.data]
+  );
 
   // fecha default: hoy a las 16:00Z
   const today = new Date();
@@ -174,6 +178,11 @@ export default function CreateWorkOrderFromTemplate() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.template_id) return;
+    const selectedTemplate = published.find(t => t.id === Number(form.template_id));
+    if (!selectedTemplate) {
+      alert("La plantilla seleccionada no es válida para crear una orden de trabajo. Las plantillas de INSPECCION no se pueden usar aquí.");
+      return;
+    }
 
     if (!confirm("¿Estás seguro que la información es correcta?")) return;
     mutate(
@@ -410,9 +419,14 @@ export default function CreateWorkOrderFromTemplate() {
             >
               <option value="">— seleccionar —</option>
               {published.map(t => (
-                <option key={t.id} value={t.id}>{t.name} (v{t.version})</option>
+                <option key={t.id} value={t.id}>{t.name}{t.model_name ? ` — ${t.model_name}` : ""} (v{t.version})</option>
               ))}
             </select>
+            {tpls && published.length === 0 && (
+              <div className="badge fail" style={{ marginTop: 6 }}>
+                No hay plantillas publicadas disponibles para crear órdenes de trabajo.
+              </div>
+            )}
           </div>
 
           <div>
@@ -543,7 +557,7 @@ export default function CreateWorkOrderFromTemplate() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <button className='btn--ok' type="submit" disabled={isLoading}>
+          <button className='btn--ok' type="submit" disabled={isLoading || !published.some(t => t.id === Number(form.template_id))}>
             {isLoading ? "Creando…" : "Crear orden de trabajo"}
           </button>
           <button

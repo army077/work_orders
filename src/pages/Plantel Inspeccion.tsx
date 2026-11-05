@@ -502,6 +502,9 @@ export const PlantelInspeccion = () => {
                                                 <option value="jose.hernandez@asiarobotica.com">
                                                     José Hernandez Jiménez
                                                 </option>
+                                                <option value="miguel.casillas@asiarobotica.com">
+                                                    Miguel Casillas
+                                                </option>
                                             </Box>
                                         </>
                                     ) : (

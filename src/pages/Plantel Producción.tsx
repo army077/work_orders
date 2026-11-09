@@ -1,8 +1,11 @@
 import { API10_URL } from "../config/api";
 import { apiFetch as fetch } from "../services/apiTransport";
 import { getProductionTechnicians } from "../services/productionTechnicians";
-import React, { useState, useEffect } from "react";
-import { Menu, MenuItem, Select, Dialog, Box, Typography, List, Tab, ListItem, ListItemText, ListSubheader, Chip, Divider, Grid, Card, LinearProgress, Button, TextField, Stack, IconButton } from "@mui/material";
+import { fetchApi } from "../services/apiResponse";
+import { canCompleteProductionTask, completeProductionTask, isQualityRelease, productionErrorMessage } from "../services/productionProgress";
+import type { ProductionTask } from "../services/productionProgress";
+import React, { useState, useEffect, useRef } from "react";
+import { Alert, Menu, MenuItem, Select, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, List, ListItem, ListItemText, ListSubheader, Chip, Divider, Grid, Card, LinearProgress, Button, TextField, Stack, IconButton } from "@mui/material";
 import { useCustom, useList } from "@refinedev/core";
 import { MdFilterList } from 'react-icons/md';
 import { FaEye } from 'react-icons/fa6';
@@ -12,6 +15,7 @@ import Bonds from "./Bonds";
 import { MdOutlineDashboardCustomize } from 'react-icons/md';
 import LocalAtmOutlinedIcon from '@mui/icons-material/LocalAtmOutlined';
 import ProductionHistory from "./ProductionHistory";
+import ProductionInspectionRequest from "./components/ProductionInspectionRequest";
 const COLORS = {
     red: "#8B0000",
     redSoft: "#B22222",
@@ -54,12 +58,11 @@ type WorkOrder = {
     folio_sai?: string | null;
     initial_status?: string | null;
     comments?: string | null;
-    tasks?: any[]; // o tu tipo correcto de tarea si lo tienes
+    tasks?: ProductionTask[];
     customs?: any[];
 };
 
 
-type Family = { id: number; name: string };
 type Model = {
     id: number;
     name: string;
@@ -78,9 +81,7 @@ export type Template = {
     model_name?: string | null;
 };
 
-type WorkOrderWithTasks = WorkOrder & {
-    tasks?: any[]; // o tu tipo correcto de tarea si lo tienes
-};
+type WorkOrderWithTasks = WorkOrder;
 
 const STATUS_LABELS: Record<string, string> = {
     OPEN: "Abierta",
@@ -109,6 +110,13 @@ export default function PlantelProduccion() {
     const [q, setQ] = React.useState("");
 
     const [woID, setWoID] = useState<WorkOrderWithTasks | null>(null);
+    const selectedOrderId = useRef<number | null>(null);
+    const savingProgress = useRef(false);
+    const [savingTaskId, setSavingTaskId] = useState<number | null>(null);
+    const [completionTask, setCompletionTask] = useState<ProductionTask | null>(null);
+    const [minutes, setMinutes] = useState("");
+    const [detailError, setDetailError] = useState<string | null>(null);
+    const [progressFeedback, setProgressFeedback] = useState<{ severity: "success" | "warning" | "error"; text: string } | null>(null);
     const [open, setOpen] = useState(false);
     const [template, setTemplate] = useState<Template | null>(null);
     const [model, setModel] = useState<Model | null>(null);
@@ -127,7 +135,6 @@ export default function PlantelProduccion() {
         initial_status: "",
     });
     const [customSee, setCustomSee] = useState(false);
-    const [filterMenuOpen, setFilterMenuOpen] = useState(false);
     const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
     const [customs, setCustoms] = useState<any[]>([]);
     const [view, setView] = useState<"plantel" | "historial" | "bonos">("plantel");
@@ -137,15 +144,29 @@ export default function PlantelProduccion() {
 
 
     const handleOpenDialog = (id: number) => {
-        fetchWO(id);
+        selectedOrderId.current = id;
+        setWoID(null);
+        setTemplate(null);
+        setModel(null);
+        setEditMode(false);
+        setCompletionTask(null);
+        setProgressFeedback(null);
+        setDetailError(null);
+        void fetchWO(id).catch(error => {
+            if (selectedOrderId.current === id) setDetailError(productionErrorMessage(error));
+        });
         fetchCustoms(id);
         setOpen(true);
 
 
     }
-    const handleCloseDialog = () => setOpen(false);
+    const handleCloseDialog = () => {
+        if (savingProgress.current) return;
+        selectedOrderId.current = null;
+        setOpen(false);
+    };
 
-    const { data, isLoading } = useCustom<WorkOrder[]>({
+    const { data, refetch } = useCustom<WorkOrder[]>({
         url: "/work-orders?include=tasks",
         method: "get",
     });
@@ -231,23 +252,45 @@ export default function PlantelProduccion() {
 
 
     const fetchWO = async (id: number) => {
-        try {
-            const res = await fetch(`${API10_URL}/work-orders/${id}?include=tasks`);
-            const dataWO = await res.json();
-
-            const template = dataWO.template_id ? templateMap.get(dataWO.template_id) ?? null : null;
-            const model = dataWO.model_id ? modelMap.get(dataWO.model_id) ?? null : null;
-
-
-            setTemplate(template);
-            setModel(model);
-
-            setWoID(dataWO);
-        } catch (error) {
-            console.error("Error fetching work order:", error);
-            alert("Error fetching work order details.");
+        const res = await fetchApi(`${API10_URL}/work-orders/${id}?include=tasks`);
+        const dataWO: WorkOrderWithTasks = await res.json();
+        if (dataWO.id !== id || !Array.isArray(dataWO.tasks)) {
+            throw new Error("No se pudo verificar la orden y sus actividades.");
         }
-    }
+        if (selectedOrderId.current !== id) return;
+        setTemplate(dataWO.template_id ? templateMap.get(dataWO.template_id) ?? null : null);
+        setModel(dataWO.model_id ? modelMap.get(dataWO.model_id) ?? null : null);
+        setWoID(dataWO);
+    };
+
+    const saveProductionProgress = async () => {
+        if (savingProgress.current || !woID || !template || !completionTask) return;
+        savingProgress.current = true;
+        setSavingTaskId(completionTask.id);
+        setProgressFeedback(null);
+        try {
+            const task = await completeProductionTask(woID, completionTask.id, template.template_type,
+                minutes.trim() === "" ? undefined : Number(minutes));
+            // Keep a confirmed DONE locally even if the following refresh fails.
+            setWoID(current => current?.id === woID.id
+                ? { ...current, tasks: current.tasks?.map(item => item.id === task.id ? task : item) }
+                : current);
+            setCompletionTask(null);
+            const results = await Promise.allSettled([fetchWO(woID.id), (async () => {
+                const result = await refetch();
+                if (result.isError) throw result.error;
+            })()]);
+            const refreshFailed = results.some(result => result.status === "rejected");
+            setProgressFeedback(refreshFailed
+                ? { severity: "warning", text: "Actividad guardada. No se pudieron actualizar todos los datos; vuelve a abrir la orden para consultar el estado actual." }
+                : { severity: "success", text: "Actividad completada y datos actualizados." });
+        } catch (error) {
+            setProgressFeedback({ severity: "error", text: productionErrorMessage(error) });
+        } finally {
+            savingProgress.current = false;
+            setSavingTaskId(null);
+        }
+    };
 
     const toLocalDateTimeInput = (iso?: string | null) => {
         if (!iso) return "";
@@ -314,7 +357,6 @@ export default function PlantelProduccion() {
                         }}
                         onClick={e => {
                             setFilterAnchorEl(e.currentTarget);
-                            setFilterMenuOpen(true);
                         }}
                     >
                         <MdFilterList />
@@ -682,7 +724,7 @@ export default function PlantelProduccion() {
                                                     alert("Orden actualizada");
                                                     console.log("Nuevos datos:", editForm);
                                                     setEditMode(false);
-                                                    fetchWO(woID.id);
+                                                    await fetchWO(woID.id);
                                                 } catch (err) {
                                                     alert("Error actualizando la orden");
                                                 }
@@ -786,11 +828,12 @@ export default function PlantelProduccion() {
                                     )}
                                     {!editMode && (
                                         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                                            <Button variant='contained' sx={{ bgcolor: COLORS.redSoft, ml: 3, mr: 3, mb: 1, mt: 1 }} onClick={() => handleErase(woID.id)}>
+                                            <Button variant='contained' disabled={savingTaskId !== null} sx={{ bgcolor: COLORS.redSoft, ml: 3, mr: 3, mb: 1, mt: 1 }} onClick={() => handleErase(woID.id)}>
                                                 Eliminar orden
                                             </Button>
                                             <Button
                                                 variant='contained'
+                                                disabled={savingTaskId !== null}
                                                 sx={{ bgcolor: COLORS.gray500, ml: 3, mr: 3, mb: 1 }}
                                                 onClick={() => {
                                                     setEditMode(!editMode);
@@ -820,6 +863,14 @@ export default function PlantelProduccion() {
                                         <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.black, textAlign: "center" }}>
                                             Actividades por sección
                                         </Typography>
+                                        {progressFeedback && (
+                                            <Alert severity={progressFeedback.severity} sx={{ mt: 2 }}>
+                                                {progressFeedback.text}
+                                            </Alert>
+                                        )}
+                                        {template.template_type === "ENSAMBLE" && (
+                                            <ProductionInspectionRequest key={woID.id} workOrderId={woID.id} disabled={savingTaskId !== null} />
+                                        )}
                                     </Box>
 
                                     {/* Contenido scrollable */}
@@ -872,7 +923,7 @@ export default function PlantelProduccion() {
                                                                 {section}
                                                             </ListSubheader>
 
-                                                            {tasks!.map((task: any) => (
+                                                            {tasks!.map(task => (
                                                                 <ListItem
                                                                     key={task.id}
                                                                     disableGutters
@@ -917,17 +968,18 @@ export default function PlantelProduccion() {
                                                                                 secondaryTypographyProps={{
                                                                                     sx: { color: COLORS.gray500, mt: 0.25 },
                                                                                 }}
-                                                                                primary={task.task_title || task.title || "Actividad"}
+                                                                                primary={task.task_title || "Actividad"}
                                                                                 secondary={
-                                                                                    task.status === "DONE"
-                                                                                        ? `Finalizado el: ${task.finished_at.replace("T", " ").slice(0, 16).replaceAll("-", "/")}`
-                                                                                        : "En proceso"
+                                                                                    `Tarea #${task.id} · ${task.code || "Sin código"} · ` +
+                                                                                    (task.status === "DONE"
+                                                                                        ? `Finalizado: ${task.finished_at ? new Date(task.finished_at).toLocaleString() : "Sin fecha registrada"}`
+                                                                                        : (task.status || "Sin estado"))
                                                                                 }
                                                                             />
                                                                         </Box>
 
                                                                         <Chip
-                                                                            label={task.status === "DONE" ? "Completado" : "En progreso"}
+                                                                            label={task.status === "DONE" ? "Completado" : (task.status || "Sin estado")}
                                                                             size="small"
                                                                             sx={{
                                                                                 bgcolor: task.status === "DONE" ? COLORS.red : COLORS.gray200,
@@ -935,6 +987,19 @@ export default function PlantelProduccion() {
                                                                                 fontWeight: 600,
                                                                             }}
                                                                         />
+                                                                        {isQualityRelease(task) ? (
+                                                                            <Typography variant="caption" color="text.secondary">Liberación por Calidad</Typography>
+                                                                        ) : template.template_type === "ENSAMBLE" && canCompleteProductionTask(task) && (
+                                                                            <Button size="small" variant="contained"
+                                                                                disabled={savingTaskId !== null || task.work_order_id !== woID.id}
+                                                                                onClick={() => {
+                                                                                    setCompletionTask(task);
+                                                                                    setMinutes(task.actual_minutes == null ? "" : String(task.actual_minutes));
+                                                                                    setProgressFeedback(null);
+                                                                                }}>
+                                                                                Marcar como completada
+                                                                            </Button>
+                                                                        )}
                                                                     </Box>
                                                                 </ListItem>
                                                             ))}
@@ -948,11 +1013,38 @@ export default function PlantelProduccion() {
                             </Box>
                         ) : (
                             <Box sx={{ p: 3 }}>
-                                <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
-                                    Cargando…
-                                </Typography>
+                                {detailError ? <Alert severity="error">{detailError}</Alert> : (
+                                    <Typography variant="body2" sx={{ color: COLORS.gray700 }}>Cargando…</Typography>
+                                )}
                             </Box>
                         )}
+                    </Dialog>
+                    <Dialog open={completionTask !== null} onClose={() => {
+                        if (!savingProgress.current) setCompletionTask(null);
+                    }} fullWidth maxWidth="sm">
+                        <DialogTitle>Completar actividad productiva</DialogTitle>
+                        <DialogContent>
+                            <Typography sx={{ mb: 2 }}>
+                                Orden #{woID?.id} · Tarea #{completionTask?.id}: {completionTask?.task_title}
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 2 }}>
+                                Se registrará la finalización ahora. Si no existe una fecha de inicio, se registrará también ahora.
+                            </Typography>
+                            <TextField fullWidth label="Minutos reales (opcional)" type="number" value={minutes}
+                                disabled={savingTaskId !== null}
+                                inputProps={{ min: 0, max: 2147483647, step: 1 }}
+                                helperText="Introduce minutos enteros. Si lo dejas vacío, se conserva el valor registrado."
+                                onChange={event => setMinutes(event.target.value)} />
+                            {progressFeedback?.severity === "error" && (
+                                <Alert severity="error" sx={{ mt: 2 }}>{progressFeedback.text}</Alert>
+                            )}
+                        </DialogContent>
+                        <DialogActions>
+                            <Button disabled={savingTaskId !== null} onClick={() => setCompletionTask(null)}>Cancelar</Button>
+                            <Button variant="contained" disabled={savingTaskId !== null} onClick={saveProductionProgress}>
+                                {savingTaskId !== null ? "Guardando…" : "Confirmar actividad completada"}
+                            </Button>
+                        </DialogActions>
                     </Dialog>
 
                 </Box>

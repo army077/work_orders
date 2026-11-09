@@ -3,6 +3,7 @@ import { API10_URL } from "../config/api";
 import React from "react";
 import { useList, useCreate, useCustomMutation, useDataProvider } from "@refinedev/core";
 import TemplateDetailsDrawer from "./components/TemplateDetailsDrawer";
+import TemplatePublishButton from "./components/TemplatePublishButton";
 import type { Template } from "./components/TemplateDetailsDrawer";
 import { BsSearch } from 'react-icons/bs';
 import { FaRegEdit } from 'react-icons/fa';
@@ -245,21 +246,6 @@ export default function Templates() {
 
 
 
-  const onPublish = (id: number) => {
-    publishMutate(
-      {
-        url: `/templates/${id}/publish`,
-        method: "post",
-        values: {},
-        meta: { headers: { "Content-Type": "application/json" } },
-      },
-      { onSuccess: () => refetch() }
-    );
-  };
-
-
-
-
   const items = React.useMemo(() => {
     const arr = data?.data ?? [];
     let filtered = arr;
@@ -434,12 +420,16 @@ export default function Templates() {
                 {t.is_published ? (
                   <span className="pill pill--ok">Publicado</span>
                 ) : (
-                  <button
-                    className="btn btn--primary"
-                    onClick={() => alert("Publicar (por hacer)")}
-                  >
-                    Publicar
-                  </button>
+                  <TemplatePublishButton
+                    templateId={t.id}
+                    disabled={creating || publishing || updating || editingId === t.id}
+                    onPublished={async (publishedTemplate) => {
+                      setOpenTmpl(current => current?.id === publishedTemplate.id
+                        ? { ...current, ...publishedTemplate } : current);
+                      const result = await refetch();
+                      if (result.isError) throw result.error;
+                    }}
+                  />
                 )}
               </div>
             </div>

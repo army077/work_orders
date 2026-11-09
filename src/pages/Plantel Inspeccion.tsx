@@ -67,10 +67,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 
-const INSPECTOR_EMAILS = [
-    "fernando.reyes@asiarobotica.com",
-    "sergio.rodriguez@asiarobotica.com",
-    "jose.hernandez@asiarobotica.com",
+const INSPECTORS = [
+    { name: "Miguel Casillas", email: "miguel.casillas@asiarobotica.com" },
+    { name: "Iván Cobián", email: "ivan.cobian@asiarobotica.com" },
+    { name: "Carlos Rodriguez", email: "carlos.rodriguez@asiarobotica.com" },
+    { name: "Paulina Correa", email: "paulina.correa@asiarobotica.com" },
+    { name: "Carlos Mercado", email: "carlos.mercado@asiarobotica.com" },
 ];
 
 const COLORS = {
@@ -543,7 +545,7 @@ export const PlantelInspeccion = () => {
 
                                             <Box
                                                 component="select"
-                                                value={selectedOrder.assigned_tech_email ?? ""}
+                                                value={INSPECTORS.find((inspector) => inspector.email === selectedOrder.assigned_tech_email)?.email ?? ""}
                                                 onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
                                                     const email = e.target.value;
                                                     if (!email) return;
@@ -587,21 +589,12 @@ export const PlantelInspeccion = () => {
                                                     cursor: "pointer",
                                                 }}
                                             >
-                                                <option value="">Selecciona un inspector…</option>
-                                                {selectedOrder.assigned_tech_email && !INSPECTOR_EMAILS.includes(selectedOrder.assigned_tech_email) && (
-                                                    <option value={selectedOrder.assigned_tech_email}>
-                                                        {selectedOrder.assigned_tech_email}
+                                                <option value="">Selecciona un inspector...</option>
+                                                {INSPECTORS.map((inspector) => (
+                                                    <option key={inspector.email} value={inspector.email}>
+                                                        {inspector.name}
                                                     </option>
-                                                )}
-                                                <option value="fernando.reyes@asiarobotica.com">
-                                                    Fernando Reyes Gallegos
-                                                </option>
-                                                <option value="sergio.rodriguez@asiarobotica.com">
-                                                    Sergio Rodríguez
-                                                </option>
-                                                <option value="jose.hernandez@asiarobotica.com">
-                                                    José Hernandez Jiménez
-                                                </option>
+                                                ))}
                                             </Box>
                                             {selectedOrder.assigned_tech_email && (
                                                 <Typography variant="body2" sx={{ mt: 1, color: COLORS.black }}>

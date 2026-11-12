@@ -6,6 +6,8 @@ import type {
     ConditionalFilter,
 } from "@refinedev/core";
 
+import { fetchInspectionPlantel, fetchProductionReleases, LEGACY_INSPECTION_LIST_RESOURCE, LEGACY_RELEASE_RESOURCE } from "./features/inspectionPlantel";
+
 const API_URL = "https://desarrollotecnologicoar.com/api10";
 const API_URL2 = "https://desarrollotecnologicoar.com/api7";
 
@@ -41,10 +43,14 @@ export const dataProvider: DataProvider = {
             return { data, total: data.length ?? 0 };
         }
 
-        if (resource === "inspection") {
-            const res = await fetch(`${API_URL}/quality/inspection/orders_all?include=tasks`);
-            const data = await res.json();
-            return { data, total: data.length ?? 0 };
+        if (resource === "inspection" || resource === LEGACY_INSPECTION_LIST_RESOURCE) {
+            const data = await fetchInspectionPlantel();
+            return { data, total: data.length };
+        }
+
+        if (resource === LEGACY_RELEASE_RESOURCE) {
+            const data = await fetchProductionReleases();
+            return { data, total: data.length };
         }
 
         if (resource === "tasks") {

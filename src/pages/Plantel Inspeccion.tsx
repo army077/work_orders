@@ -14,56 +14,15 @@ import {
     ListSubheader,
     Button,
     IconButton,
-    Tooltip,
-    Menu,
-    MenuItem
+    Tooltip
 } from "@mui/material";
 import React, { useState, useEffect } from "react";
 import { FaEye } from 'react-icons/fa6';
-import { MdFilterList } from "react-icons/md";
 
-type InspectionOrder = {
-    id: number;
-    inspection_order_id: number;
-    inspection_template_id: number;
-    model_id: number | null;
-    assigned_tech_email: string | null;
-    status: string;
-    created_at: string;
-    started_at: string | null;
-    finished_at: string | null;
-    work_order_id: number | null;
-    estacion: number | null;
-    comments: string | null;
-    evidencias?: string[];
-    inspection_type: string | null;
-
-    // work order data
-    machine_serial: string | null;
-    customer_name: string | null;
-    site_address: string | null;
-    scheduled_at: string | null;
-
-    // template info
-    equipo: string | null;
-    titulo: string | null;
-
-    tasks?: {
-        id: number;
-        status: string;
-        revision_point: string;
-        section_title: string | null;
-    }[];
-};
-
-const STATUS_LABELS: Record<string, string> = {
-    OPEN: "Abierta",
-    IN_PROGRESS: "En proceso",
-    PENDING: "Pendiente",
-    CLOSED: "Cerrada",
-    FINISHED: "Finalizada",
-};
-
+import { createInspectionRefresh, filterInspectionOrders, LEGACY_INSPECTION_LIST_RESOURCE, LEGACY_RELEASE_RESOURCE } from "../features/inspectionPlantel";
+import type { InspectionOrder, InspectionStatus, SearchScope, ReleaseFilter, ReleaseCode, ProductionReleaseOrder } from "../features/inspectionPlantel";
+import { STATUS_LABELS } from "../features/inspectionPlantel";
+import { InspectionPlantelControls, InspectionIdentity, InspectionPeople, InspectionListFeedback, InspectionReleaseSummary } from "../features/InspectionPlantelControls";
 
 const INSPECTORS = [
     { name: "Miguel Casillas", email: "miguel.casillas@asiarobotica.com" },
@@ -97,8 +56,8 @@ export const PlantelInspeccion = () => {
         comments: "",
     });
     const [showEvidencePanel, setShowEvidencePanel] = useState(false);
-    const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
-    const filterOpen = Boolean(filterAnchorEl);
+    const [searchScope, setSearchScope] = useState<SearchScope>("all");
+    const [releaseFilter, setReleaseFilter] = useState<ReleaseFilter>("");
 
 
     const handleOpen = (order: InspectionOrder) => {
@@ -110,53 +69,40 @@ export const PlantelInspeccion = () => {
         setSelectedOrder(null);
     };
     const [filterStatus, setFilterStatus] =
-        React.useState<"" | "OPEN" | "IN_PROGRESS" | "CLOSED" | "FINISHED">("");
+        React.useState<InspectionStatus | "">("");
 
-    const { data, isLoading } = useList<InspectionOrder>({
-        resource: "quality/inspection/orders_all?include=tasks",
+    const { data, isLoading, isFetching, error, refetch } = useList<InspectionOrder>({
+        resource: LEGACY_INSPECTION_LIST_RESOURCE,
+        queryOptions: { retry: false },
     });
+    const releasesEnabled = releaseFilter !== "";
+    const releaseQuery = useList<ProductionReleaseOrder>({
+        resource: LEGACY_RELEASE_RESOURCE,
+        queryOptions: { enabled: releasesEnabled, retry: false, refetchOnWindowFocus: false },
+    });
+    const releaseRefetch = releaseQuery.refetch;
+    const refreshInspections = React.useMemo(() => createInspectionRefresh(async () => {
+        await Promise.all([refetch(), ...(releasesEnabled ? [releaseRefetch()] : [])]);
+    }), [refetch, releaseRefetch, releasesEnabled]);
+    const releases = React.useMemo(() => releaseQuery.data ? new Map(releaseQuery.data.data.map(order => [order.id, order])) : undefined, [releaseQuery.data]);
+    const releaseLoading = releasesEnabled && (releaseQuery.isLoading || releaseQuery.isFetching);
+    const releaseFailed = releasesEnabled && Boolean(releaseQuery.error);
+    const refreshing = isFetching || releaseLoading;
 
-    const inspections = data?.data ?? [];
+    const inspections = React.useMemo(() => data?.data ?? [], [data]);
     const fdt = (iso?: string | null) =>
         iso ? new Date(iso).toLocaleString() : "—";
 
-    // 🔎 FILTRO + ORDENAMIENTO
-    const filtered = React.useMemo(() => {
-        let list = [...inspections];
+    const filtered = React.useMemo(() => filterInspectionOrders(inspections,
+        { search, status: filterStatus, scope: searchScope, release: releaseFilter, releases }), [inspections, search, filterStatus, searchScope, releaseFilter, releases]);
 
-        if (filterStatus) {
-            list = list.filter((i) => i.status === filterStatus);
-        }
-
-        if (search.trim()) {
-            const needle = search.toLowerCase();
-            list = list.filter((i) => {
-                const text = [
-                    i.customer_name,
-                    i.assigned_tech_email,
-                    i.machine_serial,
-                    i.titulo,
-                ]
-                    .filter(Boolean)
-                    .join(" ")
-                    .toLowerCase();
-                return text.includes(needle);
-            });
-        }
-
-        // ordenar por fecha
-        return list.sort((b, a) =>
-            (a.created_at || "").localeCompare(b.created_at || "")
-        );
-    }, [inspections, search, filterStatus]);
-
-    if (isLoading) {
-        return (
-            <Typography sx={{ color: COLORS.gray500 }}>
-                Cargando inspecciones…
-            </Typography>
-        );
-    }
+    // Refresh an open detail from the same inspection identity, never generic id.
+    useEffect(() => {
+        if (!open || !data || isFetching || error) return;
+        const current = inspections.find(order => order.inspection_order_id === selectedOrder?.inspection_order_id);
+        if (current) setSelectedOrder(current);
+        else { setSelectedOrder(null); setOpen(false); }
+    }, [data, inspections, isFetching, error, open, selectedOrder?.inspection_order_id]);
 
     const fetchDeviations = async (taskId: number) => {
         try {
@@ -201,7 +147,7 @@ export const PlantelInspeccion = () => {
         const avance = total > 0 ? Math.round((done / total) * 100) : 0;
 
         return (
-            <Grid item sx={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={o.id}>
+            <Grid item sx={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={o.inspection_order_id}>
                 <Card
                     sx={{
                         p: 2,
@@ -228,7 +174,7 @@ export const PlantelInspeccion = () => {
                                 {o.inspection_type} para <u>{o.equipo}</u>
                             </>
                         ) : (
-                            `Inspección #${o.id}`
+                            `Inspección #${o.inspection_order_id}`
                         )}
                         {o.estacion !== null && (
                             <span style={{ color: COLORS.gray700, fontWeight: 400, marginLeft: 8 }}>
@@ -237,9 +183,9 @@ export const PlantelInspeccion = () => {
                         )}
                     </Typography>
 
-                    <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
-                        Inspector Asignado: <strong>{o.assigned_tech_email ?? "Sin asignar"}</strong>
-                    </Typography>
+                    <InspectionIdentity order={o} />
+                    <InspectionPeople order={o} />
+                    {releaseFilter && releases && !releaseFailed && <InspectionReleaseSummary order={o} releases={releases} code={releaseFilter.split(":")[0] as ReleaseCode} />}
                     <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
                         Equipo: <strong>{o.equipo ?? "N/A"}</strong>
                     </Typography>
@@ -306,82 +252,13 @@ export const PlantelInspeccion = () => {
 
     return (
         <Box sx={{ p: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                <Typography variant="h4" sx={{ mb: 2, color: COLORS.white }}>
-                    Plantel de Inspección
-                </Typography>
-
-                <Box sx={{ position: "relative" }}>
-                    <IconButton
-                        sx={{
-                            color: COLORS.white,
-                            transition: 'color 0.3s, transform 0.3s',
-                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
-                        }}
-                        onClick={(e) => setFilterAnchorEl(e.currentTarget)}
-                    >
-                        <MdFilterList />
-                    </IconButton>
-                </Box>
-
-                <Menu
-                    anchorEl={filterAnchorEl}
-                    open={filterOpen}
-                    onClose={() => setFilterAnchorEl(null)}
-                    anchorOrigin={{
-                        vertical: "bottom",
-                        horizontal: "right",
-                    }}
-                    transformOrigin={{
-                        vertical: "top",
-                        horizontal: "right",
-                    }}
-                    PaperProps={{
-                        sx: {
-                            borderRadius: 2,
-                            minWidth: 200,
-                            boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
-                        },
-                    }}
-                >
-                    <MenuItem
-                        selected={filterStatus === ""}
-                        onClick={() => {
-                            setFilterStatus("");
-                            setFilterAnchorEl(null);
-                        }}
-                    >
-                        Todas
-                    </MenuItem>
-
-                    {["OPEN", "PENDING", "CLOSED", "FINISHED"].map((status) => (
-                        <MenuItem
-                            key={status}
-                            selected={filterStatus === status}
-                            onClick={() => {
-                                setFilterStatus(status as any);
-                                setFilterAnchorEl(null);
-                            }}
-                        >
-                            {STATUS_LABELS[status]}
-                        </MenuItem>
-                    ))}
-                </Menu>
-
-                {filterStatus && (
-                    <Chip
-                        size="small"
-                        label={`Estado: ${STATUS_LABELS[filterStatus]}`}
-                        sx={{
-                            bgcolor: COLORS.gray200,
-                            fontWeight: 600,
-                        }}
-                    />
-                )}
-            </Box>
-            <Grid container spacing={2}>
-                {filtered.map(renderCard)}
-            </Grid>
+            <Typography variant="h4" sx={{ mb: 2, color: COLORS.white }}>Plantel de Inspección</Typography>
+            <InspectionPlantelControls search={search} scope={searchScope} status={filterStatus}
+                release={releaseFilter} onRelease={setReleaseFilter}
+                refreshing={refreshing} onSearch={setSearch} onScope={setSearchScope} onStatus={setFilterStatus}
+                onRefresh={() => { void refreshInspections().catch(() => undefined); }} />
+            <InspectionListFeedback loading={isLoading || releaseLoading} failed={Boolean(error) || releaseFailed} releaseFailed={releaseFailed} total={inspections.length} matched={filtered.length} />
+            {!isLoading && !releaseLoading && !error && !releaseFailed && <Grid container spacing={2}>{filtered.map(renderCard)}</Grid>}
             <Dialog
                 open={open}
                 onClose={handleClose}
@@ -422,7 +299,7 @@ export const PlantelInspeccion = () => {
                                 }}
                             >
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                    {selectedOrder.titulo || `Inspección #${selectedOrder.id}`}
+                                    {selectedOrder.titulo || `Inspección #${selectedOrder.inspection_order_id}`}
                                 </Typography>
                                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 0.5 }}>
                                     Estación: <b>{selectedOrder.estacion ?? "N/A"}</b>
@@ -443,6 +320,12 @@ export const PlantelInspeccion = () => {
 
                             {/* DETALLES */}
                             <Box sx={{ p: 3, overflowY: "auto", flex: 1 }}>
+                                <Button disabled={refreshing} onClick={() => { void refreshInspections().catch(() => undefined); }}>
+                                    Actualizar esta inspección
+                                </Button>
+                                {(error || releaseFailed) && <InspectionListFeedback loading={false} failed releaseFailed={releaseFailed} total={inspections.length} matched={filtered.length} />}
+                                <InspectionIdentity order={selectedOrder} />
+                                <InspectionPeople order={selectedOrder} />
 
                                 <Box sx={{ mt: 2 }}>
 
@@ -463,7 +346,7 @@ export const PlantelInspeccion = () => {
                                                     if (!email) return;
 
                                                     try {
-                                                        console.log("Asignando inspector:", email, "a orden", selectedOrder.id);
+                                                        console.log("Asignando inspector:", email, "a orden", selectedOrder.inspection_order_id);
                                                         const res = await fetch(
                                                             "https://desarrollotecnologicoar.com/api10/quality/inspection/assign_inspector",
                                                             {
@@ -483,7 +366,7 @@ export const PlantelInspeccion = () => {
                                                         );
 
                                                         alert("Inspector asignado correctamente.");
-                                                        window.location.reload();
+                                                        await refreshInspections();
                                                     } catch (err) {
                                                         console.error(err);
                                                         alert("No se pudo asignar, intenta de nuevo.");

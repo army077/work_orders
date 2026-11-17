@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { API10_URL } from "../config/api";
+import { useEffect, useMemo, useState } from "react";
 import {
     Box,
     Typography,
@@ -16,16 +17,15 @@ import {
     CircularProgress,
     Snackbar,
     Alert,
-    Tab,
     Card,
     Divider,
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { Search, AddCircle, Visibility, BorderColor } from "@mui/icons-material";
+import { Search, AddCircle, Visibility } from "@mui/icons-material";
 import dayjs, { Dayjs } from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
-import axios from "axios";
+import { apiAxios as axios, apiFetch as fetch } from "../services/apiTransport";
 
 dayjs.extend(weekOfYear);
 import { IoBuildOutline } from "react-icons/io5";
@@ -112,7 +112,7 @@ export default function ProductionHistory() {
             if (fin) params.append("fin", dayjs(fin).format("YYYY-MM-DD"));
 
             const res = await fetch(
-                `https://desarrollotecnologicoar.com/api10/bonds/detalle?${params.toString()}`
+                `${API10_URL}/bonds/detalle?${params.toString()}`
             );
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
@@ -136,7 +136,7 @@ export default function ProductionHistory() {
 
     const fetchCustoms = async (woid: number) => {
         try {
-            const res = await fetch(`https://desarrollotecnologicoar.com/api10/customs/workorder/${woid}`, {
+            const res = await fetch(`${API10_URL}/customs/workorder/${woid}`, {
                 method: "GET",
             });
             const json = await res.json();
@@ -179,7 +179,7 @@ export default function ProductionHistory() {
         console.log("Guardar puntos extra:", selectedRow, extraPoints);
         if (!selectedRow) return;
         try {
-            await axios.put(`https://desarrollotecnologicoar.com/api10/work-orders/agregar_puntos_extra`, {
+            await axios.put(`${API10_URL}/work-orders/agregar_puntos_extra`, {
                 work_order_id: selectedRow?.id,
                 extra_points: Number(extraPoints),
             });

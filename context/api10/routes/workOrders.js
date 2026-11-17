@@ -92,7 +92,6 @@ r.post('/from-template', async (req, res) => {
   } = req.body;
 
 
-  const nowMX = new Date().toLocaleString("sv-SE", { timeZone: "America/Mexico_City" });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -104,7 +103,7 @@ r.post('/from-template', async (req, res) => {
     if (!trows.length) return res.status(404).json({ error: 'template not found' });
     const tpl = trows[0];
 
-    // CORRECCIÓN: 12 columnas -> 12 placeholders ($1..$12) y 12 valores en el array
+    // created_at se genera en PostgreSQL; los otros 13 campos usan parámetros.
     const { rows: wrows } = await client.query(
       `INSERT INTO work_order (
          template_id,
@@ -122,7 +121,7 @@ r.post('/from-template', async (req, res) => {
          id_reserva, 
 	 created_at 
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, $13, $14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, $13, NOW())
        RETURNING *`,
       [
         tpl.id,
@@ -138,7 +137,6 @@ r.post('/from-template', async (req, res) => {
         initial_status,
         comments,
         id_reserva,
-	nowMX,
       ]
     );
     const wo = wrows[0];
@@ -702,6 +700,14 @@ r.put("/:id/stavance", async (req, res) => {
     return res.status(400).json({ error: "Faltan campos obligatorios" });
   }
 
+  for (const [field, value] of Object.entries({ started_at, finished_at })) {
+    if (value != null && (typeof value !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/.test(value))) {
+      return res.status(400).json({
+        error: `${field} requiere un timestamp con zona explícita: Z u offset +HH:MM/-HH:MM`,
+      });
+    }
+  }
+
   try {
     const { rows } = await pool.query(
       `UPDATE work_order_task
@@ -765,18 +771,15 @@ r.put("/:id/prod_end", async (req, res) => {
   }
 
 
-  const nowMX = new Date().toLocaleString("sv-SE", { timeZone: "America/Mexico_City" });
-
-
   try {
     const { rows } = await pool.query(
       `UPDATE work_order
        SET status = 'FINISHED',
        diagnostic_result = 'SUCCESSFUL',
-       finished_at = $2
+       finished_at = NOW()
        WHERE id=$1
        RETURNING *`,
-      [id, nowMX]
+      [id]
     );
 
     if (!rows.length) {

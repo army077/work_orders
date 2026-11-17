@@ -1,3 +1,6 @@
+import { API10_URL } from "../config/api";
+import { apiFetch } from "../services/apiTransport";
+
 export type InspectionTask = {
     id: number;
     status: string;
@@ -130,11 +133,13 @@ export function cancellationProposalReady(confirmation?: CancellationConfirmatio
 }
 
 export const LEGACY_INSPECTION_LIST_RESOURCE = "quality/inspection/orders_all?include=tasks";
-export const LEGACY_INSPECTION_LIST_URL = `https://desarrollotecnologicoar.com/api10/${LEGACY_INSPECTION_LIST_RESOURCE}`;
+export const LEGACY_INSPECTION_LIST_URL = `${API10_URL}/${LEGACY_INSPECTION_LIST_RESOURCE}`;
 export const LEGACY_RELEASE_RESOURCE = "inspection-production-releases";
-export const LEGACY_RELEASE_URL = "https://desarrollotecnologicoar.com/api10/work-orders?include=tasks";
+export const LEGACY_RELEASE_URL = `${API10_URL}/work-orders?include=tasks`;
 
-async function boundedJson(fetcher: typeof fetch, url: string, timeoutMs: number): Promise<unknown> {
+type InspectionFetcher = (input: string, init?: RequestInit) => Promise<Response>;
+
+async function boundedJson(fetcher: InspectionFetcher, url: string, timeoutMs: number): Promise<unknown> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const request = async () => {
@@ -152,7 +157,7 @@ async function boundedJson(fetcher: typeof fetch, url: string, timeoutMs: number
     } finally { clearTimeout(timer); }
 }
 
-export async function fetchInspectionPlantel(fetcher: typeof fetch = fetch, timeoutMs = 30000): Promise<InspectionOrder[]> {
+export async function fetchInspectionPlantel(fetcher: InspectionFetcher = apiFetch, timeoutMs = 30000): Promise<InspectionOrder[]> {
         const data = await boundedJson(fetcher, LEGACY_INSPECTION_LIST_URL, timeoutMs);
         if (!Array.isArray(data) || data.some(row => !row || typeof row !== "object"
             || !positiveInteger(row.inspection_order_id) || typeof row.status !== "string"
@@ -166,7 +171,7 @@ export async function fetchInspectionPlantel(fetcher: typeof fetch = fetch, time
         return orders;
 }
 
-export async function fetchProductionReleases(fetcher: typeof fetch = fetch, timeoutMs = 30000): Promise<ProductionReleaseOrder[]> {
+export async function fetchProductionReleases(fetcher: InspectionFetcher = apiFetch, timeoutMs = 30000): Promise<ProductionReleaseOrder[]> {
     const data = await boundedJson(fetcher, LEGACY_RELEASE_URL, timeoutMs);
     if (!Array.isArray(data) || data.some(order => !order || !positiveInteger(order.id) || !Array.isArray(order.tasks)
         || order.tasks.some((task: ProductionReleaseOrder["tasks"][number]) => !task || !positiveInteger(task.id)

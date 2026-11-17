@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:v2": "node --test --test-isolation=none --test-reporter=spec src/services/*.test.mjs",
+    "typecheck": "tsc -b --pretty false",
+    "build:v2": "npm run typecheck && vite build --config vite.v2.config.mjs --mode v2",
+    "dev:v2": "vite --config vite.v2.config.mjs --mode v2",
+    "preview:v2": "vite preview --config vite.v2.config.mjs --mode v2",
+    "check:v2": "node scripts/check-v2-build.mjs",
+    "test:browser:v2": "node scripts/check-v2-browser.mjs",
     "build": "tsc && refine build",
     "dev": "refine dev",
     "refine": "refine",
@@ -60,6 +67,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.2.1",
+    "pg": "8.23.1",
     "typescript": "^5.4.2",
     "vite": "^5.4.15"
   }

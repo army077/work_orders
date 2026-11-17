@@ -168,10 +168,10 @@ test('release query failure is visible as an error, not empty inspection list', 
   assert.match(output, /No se pudieron consultar las liberaciones de Producción/);
   assert.doesNotMatch(output, /No hay inspecciones/);
 });
-test('release fetch uses the existing read-only bulk API10 contract with no per-card requests', async () => {
+test('release fetch uses configured API27 with the existing read-only bulk contract and no per-card requests', async () => {
   let calls = 0;
   const result = await domain.fetchProductionReleases(async (url, init) => {
-    calls++; assert.equal(url, 'https://desarrollotecnologicoar.com/api10/work-orders?include=tasks'); assert.equal(init.method, 'GET');
+    calls++; assert.equal(url, 'https://desarrollotecnologicoar.com/api27/work-orders?include=tasks'); assert.equal(init.method, 'GET');
     return new Response(JSON.stringify([production()]));
   });
   assert.equal(calls, 1); assert.equal(result[0].tasks[0].code, 'LIB001');
@@ -197,10 +197,10 @@ test('new provider alias maps only to the existing GET production endpoint', asy
   assert.equal(result.total, 1); assert.deepEqual(calls, [[domain.LEGACY_RELEASE_URL, 'GET']]);
 });
 
-test('manual read uses unchanged API10 URL and validates the alias', async () => {
+test('manual read uses configured API27 and validates the alias', async () => {
   let calls = 0;
   const data = await fetchInspectionPlantel(async (url, init) => {
-    calls++; assert.equal(url, 'https://desarrollotecnologicoar.com/api10/quality/inspection/orders_all?include=tasks');
+    calls++; assert.equal(url, 'https://desarrollotecnologicoar.com/api27/quality/inspection/orders_all?include=tasks');
     assert.equal(init.method, 'GET'); return new Response(JSON.stringify([row(7, { id: 8 })]));
   });
   assert.deepEqual(ids(data), [7]); assert.equal(calls, 1);
@@ -249,7 +249,7 @@ test('provider handles both inspection resources with mocks, leaves unrelated GE
     const result = await provider.getList({ resource }); assert.equal(result.total, 1); assert.deepEqual(ids(result.data), [7]);
   }
   await provider.getList({ resource: 'sections', meta: { queryParams: { template_id: 10 } } });
-  assert.match(calls[2][0], /\/api10\/sections\?template_id=10$/);
+  assert.match(calls[2][0], /\/api27\/sections\?template_id=10$/);
   assert.ok(calls.every(([, method]) => method === 'GET'));
 });
 

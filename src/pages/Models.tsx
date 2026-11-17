@@ -1,5 +1,6 @@
 import React from "react";
 import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
+import { retryApiQuery } from "../services/apiResponse";
 
 type Family = { id: number; name: string };
 type Model = {
@@ -14,9 +15,10 @@ type Model = {
 
 export default function Models() {
   // Families para selector y filtro
-  const { data: famData } = useList<Family>({
+  const { data: famData, error: familiesError } = useList<Family>({
     resource: "machine-families",
     pagination: { pageSize: 500 },
+    queryOptions: { retry: retryApiQuery },
   });
   const families = famData?.data ?? [];
 
@@ -24,13 +26,14 @@ export default function Models() {
   const [familyFilter, setFamilyFilter] = React.useState<number | "">("");
 
   // Listado de modelos (con query param ?family_id=)
-  const { data, isLoading, refetch } = useList<Model>({
+  const { data, isLoading, refetch, error: modelsError } = useList<Model>({
     resource: "machine-models",
     pagination: { pageSize: 500 },
     meta: {
       queryParams:
         familyFilter === "" ? {} : { family_id: String(familyFilter) },
     },
+    queryOptions: { retry: retryApiQuery },
   });
 
   // Mutations
@@ -134,6 +137,7 @@ export default function Models() {
     <div className="card">
       <h2>Modelos de máquina</h2>
       <p style={{ color: "var(--muted)" }}>Crea y administra modelos de máquina.</p>
+      {familiesError && <div role="alert">No se pudieron cargar las familias: {familiesError.message}</div>}
 
       {/* Filtro por familia */}
       <div className="row cols-3" style={{ alignItems: "end" }}>
@@ -214,7 +218,9 @@ export default function Models() {
       <br></br>
 
       {/* Lista tipo ListTile */}
-      {isLoading ? (
+      {modelsError ? (
+        <div role="alert">No se pudieron cargar los modelos: {modelsError.message}</div>
+      ) : isLoading ? (
         <div className="badge">Cargando…</div>
       ) : models.length === 0 ? (
         <div className="badge">No hay modelos.</div>

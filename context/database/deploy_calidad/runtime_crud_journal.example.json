@@ -1,0 +1,16 @@
+{
+  "reviewed": false,
+  "marker": "TEST_LOCAL_CRUD_20261027_",
+  "ids": {
+    "inspection_order_task": [],
+    "inspection_order": [],
+    "work_order_task": [],
+    "work_order": [],
+    "template_task_inspection": [],
+    "template_task": [],
+    "template_section": [],
+    "maintenance_template": [],
+    "machine_model": [],
+    "machine_family": []
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "reviewed": true,
+  "marker": "TEST_LOCAL_CRUD_20261027_",
+  "ids": {
+    "inspection_order_task": [],
+    "inspection_order": [],
+    "work_order_task": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "work_order": [
+      1,
+      2,
+      3
+    ],
+    "template_task_inspection": [],
+    "template_task": [
+      1,
+      2
+    ],
+    "template_section": [
+      1,
+      2
+    ],
+    "maintenance_template": [
+      1,
+      2
+    ],
+    "machine_model": [
+      1,
+      2
+    ],
+    "machine_family": [
+      1,
+      2
+    ]
+  },
+  "origins": {
+    "machine_family": {
+      "2": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    },
+    "machine_model": {
+      "2": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    },
+    "maintenance_template": {
+      "2": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    },
+    "template_section": {
+      "2": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    },
+    "template_task": {
+      "2": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    },
+    "work_order": {
+      "3": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    },
+    "work_order_task": {
+      "5": "TEST_LOCAL_CRUD_FRONT_20261027_",
+      "6": "TEST_LOCAL_CRUD_FRONT_20261027_",
+      "7": "TEST_LOCAL_CRUD_FRONT_20261027_"
+    }
+  },
+  "provenance": {
+    "published_commit": "51a743fbfc5823afb075f8268522bbfcc17cb1eb",
+    "confirmed_by_user": "2026-10-28",
+    "sql_execution_authorized": false
+  }
+}

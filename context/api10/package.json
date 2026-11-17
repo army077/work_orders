@@ -5,15 +5,32 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
+    "start:local": "node scripts/start_local.cjs",
+    "test:evidence": "node scripts/run_tests.cjs",
+    "audit:node18": "node scripts/audit_node18_engines.cjs",
     "test": "node --test tests/engineering.test.js"
   },
   "devDependencies": {
+    "semver": "7.8.5",
     "@electric-sql/pglite": "^0.5.8"
   },
   "dependencies": {
-    "auth-material-ui": "file:../..",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "pg": "^8.13.1"
+    "file-type": "20.5.0",
+    "firebase-admin": "13.10.0",
+    "googleapis": "178.0.0",
+    "multer": "^2.4.0",
+    "pg": "^8.13.1",
+    "auth-material-ui": "file:../.."
+  },
+  "engines": {
+    "node": "18.19.1"
+  },
+  "overrides": {
+    "firebase-admin": {
+      "@firebase/database-compat": "2.0.11",
+      "@firebase/database-types": "1.0.15"
+    }
   }
 }

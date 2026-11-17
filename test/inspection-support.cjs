@@ -8,12 +8,15 @@ const dependencyRequire = createRequire(path.join(dependencyRoot, '__p2_tests.cj
 const ts = dependencyRequire('typescript');
 
 // Compile only trusted local source in memory. No install, server or browser.
-function createLoader(mocks = {}) {
+function createLoader(mocks = {}, env = {
+  VITE_APP_ENV: 'test', VITE_API10_URL: 'https://desarrollotecnologicoar.com/api27',
+  VITE_API5_ENABLED: 'false', VITE_API5_URL: '',
+}) {
   const cache = new Map();
   function load(filename) {
     const absolute = path.resolve(root, filename);
     if (cache.has(absolute)) return cache.get(absolute).exports;
-    const source = fs.readFileSync(absolute, 'utf8');
+    const source = fs.readFileSync(absolute, 'utf8').replaceAll('import.meta.env', JSON.stringify(env));
     const compiled = ts.transpileModule(source, { fileName: absolute, compilerOptions: {
       target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
       esModuleInterop: true,

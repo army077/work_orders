@@ -28,7 +28,7 @@ r.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   const { rows } = await pool.query(
     `
-    SELECT m.id, m.name, m.manufacturer, m.family_id, f.name, m.standard_days AS family_name
+    SELECT m.id, m.name, m.manufacturer, m.family_id, m.bond_value, f.name AS family_name, m.standard_days
     FROM machine_model m
     LEFT JOIN machine_family f ON f.id = m.family_id
     WHERE m.id=$1
@@ -64,7 +64,7 @@ r.post("/", async (req, res) => {
 // UPDATE
 r.put("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const { name, family_id, manufacturer, bond_value } = req.body || {};
+  const { name, family_id, manufacturer, bond_value, standard_days } = req.body || {};
   if (!name?.trim()) return res.status(400).json({ error: "name required" });
   const famId = family_id === null || family_id === undefined ? null : Number(family_id);
 

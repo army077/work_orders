@@ -1,3 +1,4 @@
+import { API10_URL } from "../config/api";
 // src/pages/TemplateTasksBuilder.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useList, useCreate, useCustomMutation, useUpdate, useDelete } from "@refinedev/core";
@@ -10,8 +11,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dialog, Box, Typography, Button } from "@mui/material"
-import axios from 'axios'
+import { apiAxios as axios } from '../services/apiTransport'
 import * as XLSX from 'xlsx';
+import { fetchApi, retryApiQuery } from "../services/apiResponse";
+import { isPositiveId, requirePositiveId } from "../services/catalogQueries";
 
 type Template = { id: number; name: string; template_type: string; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -167,9 +170,9 @@ export default function TemplateTasksBuilder() {
   const [isCloning, setIsCloning] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState<string>("");
   const [modelos, setModelos] = useState<Array<{ id: number; name: string }>>([]);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
   const [openFileDialog, setOpenFileDialog] = useState(false);
-  const [puntos, setPuntos] = useState<Array<{ puntos_revision: string[]; especificaciones: string[]; sugerencias: string[]; categoria: string[] }>>([]);
 
 
   const resetCloneState = () => {
@@ -185,24 +188,26 @@ export default function TemplateTasksBuilder() {
     (clonedTasks?.length || 0) > 0
   );
 
-  const { data: templates } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 } });
+  const { data: templates, error: templatesError, isLoading: loadingTemplates } = useList<Template>({ resource: "templates", pagination: { pageSize: 200 }, queryOptions: { retry: retryApiQuery } });
   const selectedTemplate = templates?.data.find(t => t.id === templateId);
   const isInspectionTemplate = selectedTemplate?.template_type === "INSPECCION";
-  const { data: sectionsRes } = useList<Section>({
+  const { data: sectionsRes, error: sectionsError, isLoading: loadingSections } = useList<Section>({
     resource: "sections",
-    filters: [{ field: "template_id", operator: "eq", value: templateId ?? -1 }],
-    queryOptions: { enabled: !!templateId },
+    filters: [{ field: "template_id", operator: "eq", value: templateId }],
+    queryOptions: { enabled: isPositiveId(templateId) && !!selectedTemplate, retry: retryApiQuery, keepPreviousData: false },
     pagination: { pageSize: 500 },
   });
-  const { data: tasksRes, refetch } = useList<any>({
+  const sectionReady = isPositiveId(sectionId) && !!selectedTemplate && !sectionsError && !loadingSections &&
+    !!sectionsRes?.data.some(s => s.id === sectionId && s.template_id === templateId);
+  const { data: tasksRes, refetch, error: tasksError, isLoading: loadingTasks } = useList<any>({
     resource: isInspectionTemplate ? "quality/template_task_inspection" : "tasks",
-    filters: [{ field: "section_id", operator: "eq", value: sectionId ?? -1 }],
-    queryOptions: { enabled: !!sectionId },
+    filters: [{ field: "section_id", operator: "eq", value: sectionId }],
+    queryOptions: { enabled: sectionReady, retry: retryApiQuery, keepPreviousData: false },
     pagination: { pageSize: 1000 },
   });
 
-  const sections = useMemo(() => (sectionsRes?.data ?? []).sort((a, b) => a.position - b.position), [sectionsRes?.data]);
-  const tasks = useMemo(() => (tasksRes?.data ?? []).sort((a, b) => a.position - b.position), [tasksRes?.data]);
+  const sections = useMemo(() => (sectionsRes?.data ?? []).slice().sort((a, b) => a.position - b.position), [sectionsRes?.data]);
+  const tasks = useMemo(() => (sectionReady && !tasksError ? tasksRes?.data ?? [] : []).slice().sort((a, b) => a.position - b.position), [tasksRes?.data, sectionReady, tasksError]);
 
   const { mutate: createTask } = useCreate();
   const { mutate: patchReorder, isLoading: savingOrder } = useCustomMutation();
@@ -230,11 +235,14 @@ export default function TemplateTasksBuilder() {
   useEffect(() => {
     const fetchModelos = async () => {
       try {
-        const res = await fetch("https://desarrollotecnologicoar.com/api10/machine-models");
+        setModelsError(null);
+        const res = await fetchApi(`${API10_URL}/machine-models`);
         const data = await res.json();
-        setModelos(Array.isArray(data) ? data : []);
+        if (!Array.isArray(data)) throw new Error("Respuesta de modelos no válida.");
+        setModelos(data);
       } catch (err) {
         console.error("Error cargando modelos:", err);
+        setModelsError(String((err as { message?: string })?.message || "No se pudieron cargar los modelos."));
         setModelos([]);
       }
     };
@@ -249,13 +257,15 @@ export default function TemplateTasksBuilder() {
     const nextPos = (tasks?.length ?? 0) + 1;
 
     if (isInspectionTemplate) {
+      const revisionPoint = prompt("Punto de revisión nuevo", "Nuevo punto de revisión")?.trim();
+      if (!revisionPoint) return;
       // 🧩 Inserta en tabla de inspección
       createTask(
         {
           resource: "quality/template_task_inspection",
           values: {
             section_id: sectionId,
-            revision_point: "Nuevo punto de revisión",
+            revision_point: revisionPoint,
             specs: "Nueva especificación",
             suggestions: "Nueva sugerencia",
             position: nextPos,
@@ -264,14 +274,18 @@ export default function TemplateTasksBuilder() {
         { onSuccess: () => refetch() }
       );
     } else {
+      const title = prompt("Título de la nueva actividad", "New Task")?.trim();
+      if (!title) return;
+      const code = prompt("Código de la nueva actividad", "");
+      if (code === null) return;
       // 🧩 Inserta en tabla normal
       createTask(
         {
           resource: "tasks",
           values: {
             section_id: sectionId,
-            title: "New Task",
-            code: "",
+            title,
+            code: code.trim(),
             expected_minutes: 0,
             position: nextPos,
           },
@@ -340,7 +354,7 @@ export default function TemplateTasksBuilder() {
 
   // 🔸 ACTUALIZA tu clonación para limpiar antes y marcar loading
   const clonacionDePlantilla = async () => {
-    if (!templateId2) {
+    if (!isPositiveId(templateId2)) {
       alert("Selecciona una plantilla para clonar");
       return;
     }
@@ -354,7 +368,7 @@ export default function TemplateTasksBuilder() {
 
       // 1) plantilla
       const response = await axios.get(
-        `https://desarrollotecnologicoar.com/api10/templates/${templateId2}`
+        `${API10_URL}/templates/${templateId2}`, { timeout: 20000 }
       );
       setClonedTemplate(response.data);
       setSelectedModelId(response.data.model_id);
@@ -365,9 +379,14 @@ export default function TemplateTasksBuilder() {
 
       // 2) secciones
       const response1 = await axios.get(
-        `https://desarrollotecnologicoar.com/api10/sections?template_id=${templateId2}`
+        `${API10_URL}/sections?template_id=${templateId2}`, { timeout: 20000 }
       );
       const sections = response1.data;
+      if (!Array.isArray(sections)) throw new Error("Respuesta de secciones no válida.");
+      sections.forEach(s => {
+        requirePositiveId(s.id, "section_id");
+        if (s.template_id !== templateId2) throw new Error("La sección no pertenece a la plantilla seleccionada.");
+      });
       setClonedSections(sections);
       console.log
 
@@ -375,10 +394,11 @@ export default function TemplateTasksBuilder() {
       const tasksBySection = await Promise.all(
         sections.map(async (s: any) => {
           const url = isInspectionClone
-            ? `https://desarrollotecnologicoar.com/api10/quality/template_task_inspection?section_id=${s.id}`
-            : `https://desarrollotecnologicoar.com/api10/tasks?section_id=${s.id}`;
+            ? `${API10_URL}/quality/template_task_inspection?section_id=${s.id}`
+            : `${API10_URL}/tasks?section_id=${s.id}`;
 
-          const resp = await axios.get(url);
+          const resp = await axios.get(url, { timeout: 20000 });
+          if (!Array.isArray(resp.data)) throw new Error("Respuesta de actividades no válida.");
           return resp.data;
         })
       );
@@ -391,7 +411,7 @@ export default function TemplateTasksBuilder() {
       }
     } catch (e) {
       console.error(e);
-      alert("Error al clonar");
+      alert(`Error al clonar: ${String((e as { message?: string })?.message || e)}`);
     } finally {
       setIsCloning(false);
     }
@@ -418,7 +438,7 @@ export default function TemplateTasksBuilder() {
     const isInspectionClone = clonedTemplate.template_type === "INSPECCION";
     try {
       axios.post(
-        `https://desarrollotecnologicoar.com/api10/templates/`,
+        `${API10_URL}/templates/`,
         {
           name: newTemplateName.trim() || `Copia de ${clonedTemplate.name}`,
           template_type: clonedTemplate.template_type,
@@ -429,14 +449,14 @@ export default function TemplateTasksBuilder() {
         const newTemplateId = res.data.id;
         // Publicar la nueva plantilla
         axios.post(
-          `https://desarrollotecnologicoar.com/api10/templates/${newTemplateId}/publish`,
+          `${API10_URL}/templates/${newTemplateId}/publish`,
           { version: 1 },
           { headers: { "Content-Type": "application/json" } }
         );
         // clonar secciones
         Promise.all(clonedSections.map(s => {
           return axios.post(
-            `https://desarrollotecnologicoar.com/api10/sections/`,
+            `${API10_URL}/sections/`,
             { template_id: newTemplateId, title: s.title, position: s.position },
             { headers: { "Content-Type": "application/json" } }
           ).then(resSec => {
@@ -445,8 +465,8 @@ export default function TemplateTasksBuilder() {
             const tasksToClone = clonedTasks.filter(t => t.section_id === s.id);
             return Promise.all(tasksToClone.map(t => {
               const url = isInspectionClone
-                ? `https://desarrollotecnologicoar.com/api10/quality/template_task_inspection`
-                : `https://desarrollotecnologicoar.com/api10/tasks`;
+                ? `${API10_URL}/quality/template_task_inspection`
+                : `${API10_URL}/tasks`;
               const payload = isInspectionClone
                 ? { section_id: newSectionId, revision_point: t.revision_point, specs: t.specs, suggestions: t.suggestions, category: t.category, position: t.position }
                 : { section_id: newSectionId, title: t.title, code: t.code, expected_minutes: t.expected_minutes, category: t.category, position: t.position };
@@ -535,7 +555,7 @@ export default function TemplateTasksBuilder() {
           position: i + 1,
         };
 
-        await fetch("https://desarrollotecnologicoar.com/api10/quality/template_task_inspection", {
+        await fetchApi(`${API10_URL}/quality/template_task_inspection`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -612,7 +632,15 @@ export default function TemplateTasksBuilder() {
 
       <br />
 
-      {!sectionId ? (
+      {templatesError && <div role="alert">No se pudieron cargar las plantillas: {templatesError.message}</div>}
+      {modelsError && <div role="alert">No se pudieron cargar los modelos: {modelsError}</div>}
+      {templateId !== null && !isPositiveId(templateId) && <div role="alert">El identificador de la plantilla no es válido.</div>}
+      {sectionId !== null && !isPositiveId(sectionId) && <div role="alert">El identificador de la sección no es válido.</div>}
+      {sectionsError && <div role="alert">No se pudieron cargar las secciones: {sectionsError.message}</div>}
+      {tasksError && <div role="alert">No se pudieron cargar las actividades: {tasksError.message}</div>}
+      {loadingTemplates || (selectedTemplate && loadingSections) || (sectionReady && loadingTasks) ? <div role="status">Cargando actividades…</div> : null}
+
+      {!sectionReady ? (
         <div className="badge">Selecciona sección</div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

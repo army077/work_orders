@@ -1,7 +1,8 @@
+import { API10_URL, IS_TEST } from "../config/api";
+import { apiFetch as fetch } from "../services/apiTransport";
 import { useList } from "@refinedev/core";
 import {
     Card,
-    CardContent,
     Typography,
     Grid,
     Box,
@@ -45,16 +46,16 @@ const COLORS = {
 
 export const PlantelInspeccion = () => {
     const [search, setSearch] = React.useState("");
-    const [customs, setCustoms] = React.useState<any[]>([]);
     const [open, setOpen] = React.useState(false);
     const [selectedOrder, setSelectedOrder] = React.useState<InspectionOrder | null>(null);
     const [openTaskId, setOpenTaskId] = React.useState<number | null>(null);
     const [deviations, setDeviations] = React.useState<any[]>([]);
     const [loadingDev, setLoadingDev] = React.useState(false);
     const [editMode, setEditMode] = useState(false);
-    const [editForm, setEditForm] = useState({
-        comments: "",
-    });
+    const [savingTaskId, setSavingTaskId] = useState<number | null>(null);
+    const [closing, setClosing] = useState<"release" | "finish" | null>(null);
+    const [closeFeedback, setCloseFeedback] = useState<{ ok: boolean; text: string } | null>(null);
+    const [taskFeedback, setTaskFeedback] = useState<{ taskId: number; ok: boolean; text: string } | null>(null);
     const [showEvidencePanel, setShowEvidencePanel] = useState(false);
     const [searchScope, setSearchScope] = useState<SearchScope>("all");
     const [releaseFilter, setReleaseFilter] = useState<ReleaseFilter>("");
@@ -62,6 +63,7 @@ export const PlantelInspeccion = () => {
 
     const handleOpen = (order: InspectionOrder) => {
         setSelectedOrder(order);
+        setCloseFeedback(null);
         setOpen(true);
     };
     const handleClose = () => {
@@ -90,8 +92,6 @@ export const PlantelInspeccion = () => {
     const refreshing = isFetching || releaseLoading;
 
     const inspections = React.useMemo(() => data?.data ?? [], [data]);
-    const fdt = (iso?: string | null) =>
-        iso ? new Date(iso).toLocaleString() : "—";
 
     const filtered = React.useMemo(() => filterInspectionOrders(inspections,
         { search, status: filterStatus, scope: searchScope, release: releaseFilter, releases }), [inspections, search, filterStatus, searchScope, releaseFilter, releases]);
@@ -108,7 +108,7 @@ export const PlantelInspeccion = () => {
         try {
             setLoadingDev(true);
             const res = await fetch(
-                `https://desarrollotecnologicoar.com/api10/quality/desviaciones/${taskId}`
+                `${API10_URL}/quality/desviaciones/${taskId}`
             );
             const json = await res.json();
             setDeviations(Array.isArray(json) ? json : []);
@@ -125,7 +125,7 @@ export const PlantelInspeccion = () => {
         if (!confirm) return;
         try {
             const res = await fetch(
-                `https://desarrollotecnologicoar.com/api10/quality/${inspection_order_id}/insp_cancel`,
+                `${API10_URL}/quality/${inspection_order_id}/insp_cancel`,
                 {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -140,6 +140,88 @@ export const PlantelInspeccion = () => {
         }
     }
 
+
+    const refreshSelectedOrder = async (inspectionOrderId: number) => {
+        const result = await refetch();
+        const fresh = result.data?.data?.find((i) => i.inspection_order_id === inspectionOrderId);
+        if (fresh) setSelectedOrder(fresh);
+        if (releasesEnabled) await releaseRefetch();
+    };
+
+    const completeTask = async (order: InspectionOrder, task: any) => {
+        setSavingTaskId(task.id);
+        setTaskFeedback(null);
+        try {
+            const nowIso = new Date().toISOString();
+            // started_at se envía solo si el punto no tiene inicio; el backend conserva el existente.
+            const body: Record<string, unknown> = { status: "DONE", finished_at: nowIso };
+            if (!task.started_at) body.started_at = nowIso;
+            const res = await fetch(`${API10_URL}/quality/${task.id}/stavance`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                throw new Error(err?.error || `HTTP ${res.status}`);
+            }
+            await refreshSelectedOrder(order.inspection_order_id);
+            setTaskFeedback({ taskId: task.id, ok: true, text: "Punto marcado como completado y guardado." });
+        } catch (err: any) {
+            console.error(err);
+            setTaskFeedback({ taskId: task.id, ok: false, text: `No se pudo guardar el resultado: ${err?.message || "error desconocido"}` });
+        } finally {
+            setSavingTaskId(null);
+        }
+    };
+
+    const closeInspection = async (order: InspectionOrder, action: "release" | "finish") => {
+        const pending = (order.tasks ?? []).filter((t) => t.status !== "DONE").length;
+        if ((order.tasks ?? []).length === 0 || pending > 0) {
+            setCloseFeedback({ ok: false, text: "Todos los puntos de inspección deben estar completados antes de continuar." });
+            return;
+        }
+        if (action === "release" && !order.work_order_id) {
+            setCloseFeedback({ ok: false, text: "La inspección no tiene una orden de trabajo asociada." });
+            return;
+        }
+        const message = action === "release"
+            ? `¿Liberar la sección "${order.inspection_type}" en la orden de trabajo #${order.work_order_id}?`
+            : `¿Finalizar la inspección #${order.inspection_order_id}? Esta acción no se puede deshacer.`;
+        if (!window.confirm(message)) return;
+
+        setClosing(action);
+        setCloseFeedback(null);
+        try {
+            const url = action === "release"
+                ? `${API10_URL}/quality/liberar_orden/${order.work_order_id}`
+                : `${API10_URL}/quality/${order.inspection_order_id}/insp_end`;
+            const body = action === "release"
+                ? { inspection_order_id: order.inspection_order_id, section_title: order.inspection_type, finished_at: new Date().toISOString() }
+                : undefined;
+            const res = await fetch(url, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: body ? JSON.stringify(body) : undefined,
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                throw new Error(err?.error || `HTTP ${res.status}`);
+            }
+            await refreshSelectedOrder(order.inspection_order_id);
+            setCloseFeedback({
+                ok: true,
+                text: action === "release"
+                    ? "Sección liberada correctamente. Ya puedes finalizar la inspección."
+                    : "Inspección finalizada correctamente.",
+            });
+        } catch (err: any) {
+            console.error(err);
+            setCloseFeedback({ ok: false, text: `No se pudo completar la operación: ${err?.message || "error desconocido"}` });
+        } finally {
+            setClosing(null);
+        }
+    };
 
     const renderCard = (o: InspectionOrder) => {
         const total = o.tasks?.length ?? 0;
@@ -329,7 +411,7 @@ export const PlantelInspeccion = () => {
 
                                 <Box sx={{ mt: 2 }}>
 
-                                    {selectedOrder.assigned_tech_email === null || selectedOrder.assigned_tech_email === "" || !editMode ? (
+                                    {(
                                         <>
                                             <Typography
                                                 variant="subtitle2"
@@ -348,7 +430,7 @@ export const PlantelInspeccion = () => {
                                                     try {
                                                         console.log("Asignando inspector:", email, "a orden", selectedOrder.inspection_order_id);
                                                         const res = await fetch(
-                                                            "https://desarrollotecnologicoar.com/api10/quality/inspection/assign_inspector",
+                                                            `${API10_URL}/quality/inspection/assign_inspector`,
                                                             {
                                                                 method: "POST",
                                                                 headers: { "Content-Type": "application/json" },
@@ -366,7 +448,7 @@ export const PlantelInspeccion = () => {
                                                         );
 
                                                         alert("Inspector asignado correctamente.");
-                                                        await refreshInspections();
+                                                        await refreshSelectedOrder(selectedOrder.inspection_order_id);
                                                     } catch (err) {
                                                         console.error(err);
                                                         alert("No se pudo asignar, intenta de nuevo.");
@@ -396,21 +478,6 @@ export const PlantelInspeccion = () => {
                                                     Inspector asignado: <b>{selectedOrder.assigned_tech_email}</b>
                                                 </Typography>
                                             )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}>
-                                                Inspector asignado
-                                            </Typography>
-                                            <Chip
-                                                label={selectedOrder.assigned_tech_email}
-                                                sx={{
-                                                    mt: 1,
-                                                    bgcolor: COLORS.gray200,
-                                                    color: COLORS.black,
-                                                    fontWeight: 700,
-                                                }}
-                                            />
                                         </>
                                     )}
                                 </Box>
@@ -452,8 +519,39 @@ export const PlantelInspeccion = () => {
                                         {`Cancelar la orden #${selectedOrder.inspection_order_id}`}
                                     </Button>
 
+                                    {(() => {
+                                        const tasks = selectedOrder.tasks ?? [];
+                                        const pending = tasks.filter((t) => t.status !== "DONE").length;
+                                        const closed = ["FINISHED", "CANCELED"].includes(selectedOrder.status);
+                                        const blocked = closed || closing !== null || tasks.length === 0 || pending > 0;
+                                        return (
+                                            <Box sx={{ mt: 2, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                                                {!closed && pending > 0 && (
+                                                    <Typography variant="body2" sx={{ color: COLORS.gray500 }}>
+                                                        Faltan {pending} punto(s) por completar.
+                                                    </Typography>
+                                                )}
+                                                <Button variant="contained" disabled={blocked || !selectedOrder.work_order_id}
+                                                    onClick={() => closeInspection(selectedOrder, "release")}>
+                                                    {closing === "release" ? "Liberando…" : "1. Liberar sección"}
+                                                </Button>
+                                                <Button variant="contained" disabled={blocked}
+                                                    onClick={() => closeInspection(selectedOrder, "finish")}>
+                                                    {closing === "finish" ? "Finalizando…" : "2. Finalizar inspección"}
+                                                </Button>
+                                                {closeFeedback && (
+                                                    <Typography role="status" variant="body2"
+                                                        sx={{ color: closeFeedback.ok ? "#028f02ff" : COLORS.red, textAlign: "center" }}>
+                                                        {closeFeedback.text}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        );
+                                    })()}
+
                                 </Box>
                             </Box>
+
                         </Box>
 
                         {/* COL DERECHA — TAREAS */}
@@ -520,7 +618,8 @@ export const PlantelInspeccion = () => {
                                                 gap: 2,
                                             }}
                                         >
-                                            {selectedOrder.evidencias.map((url: string, i: number) => (
+                                            {IS_TEST && <Typography>Evidencias externas deshabilitadas en TEST.</Typography>}
+                                            {(IS_TEST ? [] : selectedOrder.evidencias).map((url: string, i: number) => (
                                                 <Card
                                                     key={i}
                                                     sx={{
@@ -705,6 +804,33 @@ export const PlantelInspeccion = () => {
                                                                             <b>Categoría:</b> {task.category || "—"}
                                                                         </Typography>
 
+                                                                        {/* ----- Resultado ----- */}
+                                                                        <Box sx={{ mb: 2 }}>
+                                                                            {task.status === "DONE" ? (
+                                                                                <Typography variant="body2" sx={{ color: "#028f02ff", fontWeight: 600 }}>
+                                                                                    Resultado registrado: completado
+                                                                                </Typography>
+                                                                            ) : (
+                                                                                <Button
+                                                                                    variant="contained"
+                                                                                    size="small"
+                                                                                    disabled={savingTaskId === task.id || ["CANCELED", "FINISHED"].includes(selectedOrder.status)}
+                                                                                    onClick={() => completeTask(selectedOrder, task)}
+                                                                                >
+                                                                                    {savingTaskId === task.id ? "Guardando…" : "Marcar como completado"}
+                                                                                </Button>
+                                                                            )}
+                                                                            {taskFeedback && taskFeedback.taskId === task.id && (
+                                                                                <Typography
+                                                                                    role="status"
+                                                                                    variant="body2"
+                                                                                    sx={{ mt: 1, color: taskFeedback.ok ? "#028f02ff" : COLORS.red }}
+                                                                                >
+                                                                                    {taskFeedback.text}
+                                                                                </Typography>
+                                                                            )}
+                                                                        </Box>
+
                                                                         {/* ----- Desviaciones ----- */}
                                                                         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                                                                             Desviaciones
@@ -756,7 +882,8 @@ export const PlantelInspeccion = () => {
                                                                                                     flexWrap: "wrap"
                                                                                                 }}
                                                                                             >
-                                                                                                {d.evidencias.map((img: string, i: number) => (
+                                                                                                {IS_TEST && <Typography>Evidencias externas deshabilitadas en TEST.</Typography>}
+                                                                                                {(IS_TEST ? [] : d.evidencias).map((img: string, i: number) => (
                                                                                                     <img
                                                                                                         key={i}
                                                                                                         src={img}

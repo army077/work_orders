@@ -12,11 +12,20 @@ r.post('/', async (req, res) => {
 });
 
 r.get('/', async (req, res) => {
-  const template_id = Number(req.query.template_id);
-  const { rows } = await pool.query(
-    `SELECT * FROM template_section WHERE template_id=$1 ORDER BY position`, [template_id]
-  );
-  res.json(rows);
+  const raw = req.query.template_id;
+  const template_id = typeof raw === 'string' && /^[1-9]\d*$/.test(raw) ? Number(raw) : NaN;
+  if (!Number.isSafeInteger(template_id) || template_id > 2147483647) {
+    return res.status(400).json({ error: 'template_id es obligatorio y debe ser un entero positivo válido' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM template_section WHERE template_id=$1 ORDER BY position`, [template_id]
+    );
+    return res.json(rows);
+  } catch (error) {
+    console.error('sections list failed:', error.code || 'DATABASE_ERROR');
+    return res.status(500).json({ error: 'No se pudieron consultar las secciones' });
+  }
 });
 
 /**

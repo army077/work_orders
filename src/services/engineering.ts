@@ -1,4 +1,5 @@
-import { dataProvider } from "../dataProvider";
+import { API10_URL } from "../config/api";
+import { apiFetch as fetch } from "./apiTransport";
 
 export type DocumentStatus = "BORRADOR" | "VIGENTE" | "OBSOLETO" | "RETIRADO";
 
@@ -53,7 +54,7 @@ export type DocumentDetail = Omit<EngineeringDocument, "versions"> & {
   events: EngineeringEvent[];
 };
 
-const API_URL = `${import.meta.env.VITE_API10_URL || dataProvider.getApiUrl()}/engineering`;
+const API_URL = `${API10_URL}/engineering`;
 
 export async function engineeringRequest<T>(
   path: string,

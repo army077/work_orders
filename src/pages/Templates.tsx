@@ -1,13 +1,15 @@
+import { API10_URL } from "../config/api";
 // src/pages/Templates.tsx
 import React from "react";
-import { useList, useCreate, useCustomMutation, useDataProvider } from "@refinedev/core";
+import { useList, useCreate, useCustomMutation } from "@refinedev/core";
 import TemplateDetailsDrawer from "./components/TemplateDetailsDrawer";
+import TemplatePublishButton from "./components/TemplatePublishButton";
 import type { Template } from "./components/TemplateDetailsDrawer";
 import { BsSearch } from 'react-icons/bs';
 import { FaRegEdit } from 'react-icons/fa';
 import { FaSave } from 'react-icons/fa';
 import { MdDeleteForever } from "react-icons/md";
-import axios from "axios";
+import { apiAxios as axios } from "../services/apiTransport";
 
 
 type MachineModel = {
@@ -17,8 +19,6 @@ type MachineModel = {
   family_name?: string | null;
 };
 
-type Section = { id: number; template_id: number; title: string; position: number; };
-type Task = { id: number; section_id: number; title: string; code: string | null; expected_minutes: number | null; position: number; };
 
 
 /* ---------------------------------------------------------------- */
@@ -28,10 +28,8 @@ export default function Templates() {
   const [openTmpl, setOpenTmpl] = React.useState<Template | null>(null);
   const [search, setSearch] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [editMode, setEditMode] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [editedName, setEditedName] = React.useState<string>("");
-  const dataProvider = useDataProvider();
   const { mutate: createSection } = useCreate();
 
   // Templates
@@ -47,7 +45,7 @@ export default function Templates() {
   });
 
 
-  const { mutate: updateTemplate, isLoading: updating } = useCustomMutation();
+  const { mutateAsync: updateTemplate, isLoading: updating } = useCustomMutation();
 
   const handleStartEdit = (template: Template) => {
     setEditingId(template.id);
@@ -66,21 +64,11 @@ export default function Templates() {
         meta: { headers: { "Content-Type": "application/json" } },
       });
 
-      // Actualiza localmente
-      if (data?.data) {
-        const newList = data.data.map((t) =>
-          t.id === template.id ? { ...t, name: newName } : t
-        );
-        data.data = newList;
-      }
-
       setEditingId(null);
       setEditedName("");
 
       alert("✅ Nombre actualizado");
       await refetch();
-
-      location.reload();
     } catch (error: any) {
       console.error("❌ Error guardando nombre:", error);
       alert(`Error al guardar: ${error.message || "Desconocido"}`);
@@ -113,11 +101,6 @@ export default function Templates() {
       }));
   }, [modelsRes?.data]);
 
-  const getModelLabel = (id?: number | null) => {
-    if (!id) return "—";
-    const found = modelOptions.find((o) => o.id === id);
-    return found?.label ?? `Modelo #${id}`;
-  };
 
   const { mutate: createMutate, isLoading: creating } = useCreate();
   const { mutate: publishMutate, isLoading: publishing } = useCustomMutation();
@@ -128,7 +111,6 @@ export default function Templates() {
     model_id: "",
   });
 
-  const [infoTemplate, setInfoTemplate] = React.useState<Template | null>(null);
 
   // ...
   const onCreateInspeccion = () => {
@@ -184,7 +166,7 @@ export default function Templates() {
     const confirm = window.confirm("¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer.");
     if (!confirm) return;
     try {
-      await axios.delete(`https://desarrollotecnologicoar.com/api10/templates/${templateId}`, {
+      await axios.delete(`${API10_URL}/templates/${templateId}`, {
         headers: { "Content-Type": "application/json" },
       });
       alert("Plantilla eliminada");
@@ -248,21 +230,6 @@ export default function Templates() {
           alert(`Error creando plantilla: ${String((err as any)?.message || err)}`);
         },
       }
-    );
-  };
-
-
-
-
-  const onPublish = (id: number) => {
-    publishMutate(
-      {
-        url: `/templates/${id}/publish`,
-        method: "post",
-        values: {},
-        meta: { headers: { "Content-Type": "application/json" } },
-      },
-      { onSuccess: () => refetch() }
     );
   };
 
@@ -443,12 +410,16 @@ export default function Templates() {
                 {t.is_published ? (
                   <span className="pill pill--ok">Publicado</span>
                 ) : (
-                  <button
-                    className="btn btn--primary"
-                    onClick={() => alert("Publicar (por hacer)")}
-                  >
-                    Publicar
-                  </button>
+                  <TemplatePublishButton
+                    templateId={t.id}
+                    disabled={creating || publishing || updating || editingId === t.id}
+                    onPublished={async (publishedTemplate) => {
+                      setOpenTmpl(current => current?.id === publishedTemplate.id
+                        ? { ...current, ...publishedTemplate } : current);
+                      const result = await refetch();
+                      if (result.isError) throw result.error;
+                    }}
+                  />
                 )}
               </div>
             </div>

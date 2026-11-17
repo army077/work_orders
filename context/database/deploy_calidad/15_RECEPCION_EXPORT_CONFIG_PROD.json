@@ -1,0 +1,331 @@
+{
+  "EXPORT_CONFIG_PROD_RECIBIDO": "SI",
+  "source_file": "sources/export_config_prod_20261023.json",
+  "source_sha256": "47f5dddeb498f7b50ee61c7148f10bfa7635aaf773b12495134ffe8147349bd0",
+  "source": {
+    "database": "artecnologia",
+    "read_only": "on",
+    "postgresql": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "captured_at": "2026-10-23T22:02:20.831481+00:00"
+  },
+  "executed_query_file": "export_seed_config_artecnologia.sql",
+  "executed_query_sha256": "0363a906ef958ed2d61d251e8ca9857fc66a243f43f606ead93488d2f1c79d8a",
+  "query_format": "Normalized transcription of the executed SQL supplied by the user; no SQL executed by Codex",
+  "legacy_status_label": "PENDIENTE_EXPORT_CONFIG_PROD",
+  "legacy_status_is_not_a_blocker": true,
+  "counts": {
+    "machine_family": 8,
+    "machine_model": 37,
+    "maintenance_template": 51,
+    "template_section": 155,
+    "template_task": 869,
+    "template_task_inspection": 2,
+    "plantilla_tecnicos": 17
+  },
+  "total_rows": 1139,
+  "max_ids": {
+    "machine_family": 8,
+    "machine_model": 51,
+    "maintenance_template": 130,
+    "template_section": 405,
+    "template_task": 1250,
+    "template_task_inspection": 222,
+    "plantilla_tecnicos": 130
+  },
+  "next_sequence_values": {
+    "machine_family": 9,
+    "machine_model": 52,
+    "maintenance_template": 131,
+    "template_section": 406,
+    "template_task": 1251,
+    "template_task_inspection": 223,
+    "plantilla_tecnicos": 131
+  },
+  "orphans": 0,
+  "test_fixture_rows": 0,
+  "excluded_templates": {
+    "published": 54,
+    "included": 51,
+    "excluded": 3,
+    "ids": null,
+    "names": null,
+    "individual_reasons": null,
+    "detail": "The export contains no excluded rows or per-template exclusion diagnostics. No IDs or causes inferred; no reincorporation."
+  },
+  "functional_findings": {
+    "empty_sections": [
+      {
+        "section_id": 155,
+        "template_id": 50
+      },
+      {
+        "section_id": 249,
+        "template_id": 61
+      },
+      {
+        "section_id": 250,
+        "template_id": 61
+      },
+      {
+        "section_id": 263,
+        "template_id": 69
+      },
+      {
+        "section_id": 264,
+        "template_id": 69
+      }
+    ],
+    "assembly_without_inspection": [
+      {
+        "template_id": 19,
+        "model_id": 1
+      },
+      {
+        "template_id": 30,
+        "model_id": 23
+      },
+      {
+        "template_id": 31,
+        "model_id": 23
+      },
+      {
+        "template_id": 32,
+        "model_id": 10
+      },
+      {
+        "template_id": 33,
+        "model_id": 24
+      },
+      {
+        "template_id": 34,
+        "model_id": 25
+      },
+      {
+        "template_id": 37,
+        "model_id": 16
+      },
+      {
+        "template_id": 38,
+        "model_id": 27
+      },
+      {
+        "template_id": 39,
+        "model_id": 28
+      },
+      {
+        "template_id": 40,
+        "model_id": 28
+      },
+      {
+        "template_id": 41,
+        "model_id": 14
+      },
+      {
+        "template_id": 42,
+        "model_id": 8
+      },
+      {
+        "template_id": 43,
+        "model_id": 29
+      },
+      {
+        "template_id": 44,
+        "model_id": 30
+      },
+      {
+        "template_id": 45,
+        "model_id": 31
+      },
+      {
+        "template_id": 48,
+        "model_id": 33
+      },
+      {
+        "template_id": 49,
+        "model_id": 27
+      },
+      {
+        "template_id": 50,
+        "model_id": 34
+      },
+      {
+        "template_id": 55,
+        "model_id": 35
+      },
+      {
+        "template_id": 56,
+        "model_id": 36
+      },
+      {
+        "template_id": 57,
+        "model_id": 17
+      },
+      {
+        "template_id": 61,
+        "model_id": 15
+      },
+      {
+        "template_id": 65,
+        "model_id": 27
+      },
+      {
+        "template_id": 69,
+        "model_id": 36
+      },
+      {
+        "template_id": 70,
+        "model_id": 36
+      },
+      {
+        "template_id": 71,
+        "model_id": 37
+      },
+      {
+        "template_id": 72,
+        "model_id": 38
+      },
+      {
+        "template_id": 74,
+        "model_id": 39
+      },
+      {
+        "template_id": 75,
+        "model_id": 40
+      },
+      {
+        "template_id": 77,
+        "model_id": 36
+      },
+      {
+        "template_id": 105,
+        "model_id": 38
+      },
+      {
+        "template_id": 109,
+        "model_id": 42
+      },
+      {
+        "template_id": 111,
+        "model_id": 2
+      },
+      {
+        "template_id": 112,
+        "model_id": 43
+      },
+      {
+        "template_id": 116,
+        "model_id": 44
+      },
+      {
+        "template_id": 120,
+        "model_id": 48
+      },
+      {
+        "template_id": 125,
+        "model_id": 49
+      },
+      {
+        "template_id": 128,
+        "model_id": 50
+      },
+      {
+        "template_id": 130,
+        "model_id": 51
+      }
+    ],
+    "assembly_missing_release_codes": [
+      {
+        "template_id": 30,
+        "missing": [
+          "LIB001",
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 31,
+        "missing": [
+          "LIB001",
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 32,
+        "missing": [
+          "LIB001",
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 34,
+        "missing": [
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 38,
+        "missing": [
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 49,
+        "missing": [
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 55,
+        "missing": [
+          "LIB001",
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 61,
+        "missing": [
+          "LIB001",
+          "LIB002"
+        ]
+      },
+      {
+        "template_id": 69,
+        "missing": [
+          "LIB001",
+          "LIB002"
+        ]
+      }
+    ],
+    "technicians_blank_bonus_name": [
+      88,
+      99,
+      101,
+      102,
+      103,
+      107,
+      124,
+      129,
+      130
+    ],
+    "duplicate_technician_email_ids": [
+      [
+        63,
+        101
+      ]
+    ],
+    "ambiguous_trial_template_names": [
+      {
+        "id": 31,
+        "name": "Ensamble de Plasma 1895 Pruebita"
+      },
+      {
+        "id": 32,
+        "name": "Prueba Ensamblaje Shop"
+      },
+      {
+        "id": 33,
+        "name": "Ensamble de prueba Works 1325"
+      }
+    ]
+  },
+  "logistica_authorized_users": "ALTA_MANUAL_REQUERIDA"
+}

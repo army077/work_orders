@@ -1,12 +1,13 @@
+import { API10_URL, IS_TEST, TEST_EXTERNAL_ADMIN_MESSAGE } from "../config/api";
+import { apiFetch as fetch } from "../services/apiTransport";
+import { addApi5Technician, getApi5Technicians, sendApi5Notification } from "../services/api5";
+import { getProductionTechnicians } from "../services/productionTechnicians";
 import React, { useMemo, useState, useEffect } from "react";
 import { useList, useCreate } from "@refinedev/core";
 import { Dialog, FormControl, InputLabel, Select, MenuItem, IconButton } from "@mui/material";
 import { FaEye } from 'react-icons/fa6';
-import axios from "axios";
-import { collection, getDocs, addDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase/firebase-config'
 
-type Template = { id: number; name: string; version: number; model_id: number; is_published: boolean; template_type: string; };
+type Template = { id: number; name: string; version: number; model_id: number; model_name?: string | null; is_published: boolean; template_type: string; };
 
 type Technician = {
   id: number;
@@ -26,18 +27,16 @@ type Customization = {
 };
 
 // helpers
-const isoToDateInput = (iso?: string) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => `${n}`.padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-};
 const dateToIsoAt1600Z = (yyyyMmDd: string) =>
   yyyyMmDd ? new Date(`${yyyyMmDd}T16:00:00Z`).toISOString() : "";
 
 export default function CreateWorkOrderFromTemplate() {
   const { data: tpls } = useList<Template>({ resource: "templates", pagination: { pageSize: 500 } });
-  const published = useMemo(() => (tpls?.data ?? []).filter(t => t.is_published), [tpls?.data]);
+  // Las plantillas INSPECCION no generan tareas de producción: solo se usan al solicitar inspecciones.
+  const published = useMemo(
+    () => (tpls?.data ?? []).filter(t => t.is_published && t.template_type !== "INSPECCION"),
+    [tpls?.data]
+  );
 
   // fecha default: hoy a las 16:00Z
   const today = new Date();
@@ -58,8 +57,6 @@ export default function CreateWorkOrderFromTemplate() {
     comments: ""
   });
 
-  //firebase
-  const operadoresCollection = collection(db, 'operadores');
   const [newTecForm, setNewTec] = useState({
     estatus: "Activo",
     sucursal: "",
@@ -79,7 +76,10 @@ export default function CreateWorkOrderFromTemplate() {
 
   //--- dialog nuevo técnico (manual) ---
   const [openDialogNewTec, setOpenDialogNewTec] = useState(false);
-  const handleOpenDialogNewTec = () => setOpenDialogNewTec(true);
+  const handleOpenDialogNewTec = () => {
+    if (IS_TEST) { alert(TEST_EXTERNAL_ADMIN_MESSAGE); return; }
+    setOpenDialogNewTec(true);
+  };
   const handleCloseDialogNewTec = () => {
     setNewTec({
       estatus: "",
@@ -94,7 +94,7 @@ export default function CreateWorkOrderFromTemplate() {
     });
     setOpenDialogNewTec(false);
   };
-  const [operadores, setOperadores] = useState<any[]>([]);
+  const [, setOperadores] = useState<any[]>([]);
 
   // --- dialog nueva customización (manual) ---
   const [openDialogNewCustom, setOpenDialogNewCustom] = useState(false);
@@ -118,10 +118,17 @@ export default function CreateWorkOrderFromTemplate() {
       try {
         setLoadingTechs(true);
         setTechsError(null);
-        const res = await fetch("https://desarrollotecnologicoar.com/api5/tecnicos");
-        const data: Technician[] = await res.json();
+        if (IS_TEST) setForm(f => ({ ...f, assigned_tech_email: "", tech_support: "" }));
+        if (IS_TEST && form.template_type !== "ENSAMBLE") {
+          if (!cancel) {
+            setTechs([]);
+            setTechsError(form.template_type ? "El catálogo de técnicos de servicio en TEST está pendiente de un contrato backend aprobado." : null);
+          }
+          return;
+        }
+        const data = await (IS_TEST ? getProductionTechnicians<Technician>() : getApi5Technicians<Technician>());
         if (!cancel) setTechs(data.filter(t => (t.estatus || "").toLowerCase() === "activo"));
-        await fetchUsuarios();
+        if (import.meta.env.VITE_APP_ENV === "production") await fetchUsuarios();
       } catch (e: any) {
         if (!cancel) setTechsError(e?.message || "No se pudieron cargar los técnicos");
       } finally {
@@ -129,10 +136,13 @@ export default function CreateWorkOrderFromTemplate() {
       }
     })();
     return () => { cancel = true; };
-  }, []);
+  }, [IS_TEST ? form.template_type : null]);
 
   const fetchUsuarios = async () => {
+    if (IS_TEST) return;
     try {
+      const { collection, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../firebase/firebase-config');
       const querySnapshot = await getDocs(collection(db, 'operadores'));
       const usuariosData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -147,7 +157,7 @@ export default function CreateWorkOrderFromTemplate() {
 
   const fetchCustoms = async () => {
     try {
-      const res = await fetch("https://desarrollotecnologicoar.com/api10/customs/template_custom");
+      const res = await fetch(`${API10_URL}/customs/template_custom`);
       if (!res.ok) throw new Error(`Error HTTP ${res.status}`);
       const data: Customization[] = await res.json();
       setCustoms(data); // 👈 correcto
@@ -162,6 +172,11 @@ export default function CreateWorkOrderFromTemplate() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.template_id) return;
+    const selectedTemplate = published.find(t => t.id === Number(form.template_id));
+    if (!selectedTemplate) {
+      alert("La plantilla seleccionada no es válida para crear una orden de trabajo. Las plantillas de INSPECCION no se pueden usar aquí.");
+      return;
+    }
 
     if (!confirm("¿Estás seguro que la información es correcta?")) return;
     mutate(
@@ -190,7 +205,7 @@ export default function CreateWorkOrderFromTemplate() {
           if (selectedCustoms.length > 0) {
             for (const custom of selectedCustoms) {
               try {
-                await fetch("https://desarrollotecnologicoar.com/api10/customs/custom_wo", {
+                await fetch(`${API10_URL}/customs/custom_wo`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -256,25 +271,15 @@ export default function CreateWorkOrderFromTemplate() {
       setNewTec((f) => ({ ...f, [k]: e.target.value }));
 
   const guardarTecnico = async () => {
-    if (!confirm("¿Estás seguro que la información es correcta?")) return;
+    if (IS_TEST) { alert(TEST_EXTERNAL_ADMIN_MESSAGE); return false; }
+    if (!confirm("¿Estás seguro que la información es correcta?")) return false;
 
     if (!newTecForm.nombre_tecnico || !newTecForm.correo_tecnico) {
       alert("El nombre y correo del técnico son obligatorios");
-      return;
+      return false;
     }
     try {
-      const res = await fetch("https://desarrollotecnologicoar.com/api5/agregar_tecnico", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTecForm),
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Error guardando técnico");
-
-      }
-
-      const saved: Technician = await res.json();
+      const saved = await addApi5Technician<Technician>(newTecForm);
       setTechs((t) => [...t, saved]);
       setForm((f) => ({ ...f, assigned_tech_email: saved.correo_tecnico }));
       setNewTec({
@@ -290,18 +295,21 @@ export default function CreateWorkOrderFromTemplate() {
       setManualEmail(false);
       await handleAddOperador();
       alert(`Técnico guardado con éxito,ahora puedes asignarlo para la orden de trabajo`);
+      return true;
     } catch (e: any) {
       alert(`Error: ${String(e?.message || e)}`);
+      return false;
     }
   };
 
   const mandarNotificacion = async (notif: any) => {
     try {
       console.log("Enviando notificación:", notif);
-      const res = await axios.post("https://desarrollotecnologicoar.com/api5/enviarNotificacion/", notif);
-      console.log("Respuesta del servidor:", res.data);
-    } catch (e) {
+      const res = await sendApi5Notification(notif);
+      console.log("Respuesta del servidor:", res.status);
+    } catch (e: any) {
       console.error("Error al enviar las actividades:", e);
+      alert(`No se envió la notificación: ${String(e?.message || e)}`);
     }
   };
 
@@ -313,7 +321,7 @@ export default function CreateWorkOrderFromTemplate() {
     setIsSavingCustom(true);
     setNewCustomState(false);
     try {
-      const res = await fetch("https://desarrollotecnologicoar.com/api10/customs/template_custom", {
+      const res = await fetch(`${API10_URL}/customs/template_custom`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -336,7 +344,7 @@ export default function CreateWorkOrderFromTemplate() {
   const handleDeleteCustom = async (id: number) => {
     if (!confirm("¿Seguro que deseas eliminar esta customización?")) return;
     try {
-      const res = await fetch(`https://desarrollotecnologicoar.com/api10/customs/${id}/template_custom`, {
+      const res = await fetch(`${API10_URL}/customs/${id}/template_custom`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Error eliminando custom");
@@ -348,8 +356,13 @@ export default function CreateWorkOrderFromTemplate() {
   };
 
   const handleAddOperador = async () => {
+    if (IS_TEST) { alert(TEST_EXTERNAL_ADMIN_MESSAGE); return; }
     if (newTecForm.nombre_tecnico && newTecForm.correo_tecnico && contraseña) {
       try {
+        // Load Firebase only after the TEST guard, including SDK initialization.
+        const { collection, addDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebase/firebase-config');
+        const operadoresCollection = collection(db, 'operadores');
         // Registrar el usuario en Firebase Authentication
         const apiKey = 'AIzaSyBGB6jHNXRKIif9vUSR6ogtDIcCJpnqCrU'; // Tu API Key de Firebase
         const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
@@ -400,9 +413,14 @@ export default function CreateWorkOrderFromTemplate() {
             >
               <option value="">— seleccionar —</option>
               {published.map(t => (
-                <option key={t.id} value={t.id}>{t.name} (v{t.version})</option>
+                <option key={t.id} value={t.id}>{t.name}{t.model_name ? ` — ${t.model_name}` : ""} (v{t.version})</option>
               ))}
             </select>
+            {tpls && published.length === 0 && (
+              <div className="badge fail" style={{ marginTop: 6 }}>
+                No hay plantillas publicadas disponibles para crear órdenes de trabajo.
+              </div>
+            )}
           </div>
 
           <div>
@@ -504,6 +522,7 @@ export default function CreateWorkOrderFromTemplate() {
                 type="button"
                 className="btn--clone"
                 onClick={handleOpenDialogNewTec}
+                disabled={IS_TEST}
               >
                 + Agregar técnico
               </button>
@@ -525,13 +544,14 @@ export default function CreateWorkOrderFromTemplate() {
               }
             </div>
 
+            {IS_TEST && <p role="status">{TEST_EXTERNAL_ADMIN_MESSAGE}</p>}
             {techsError && <div className="badge fail" style={{ marginTop: 6 }}>Error: {techsError}</div>}
 
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <button className='btn--ok' type="submit" disabled={isLoading}>
+          <button className='btn--ok' type="submit" disabled={isLoading || !published.some(t => t.id === Number(form.template_id))}>
             {isLoading ? "Creando…" : "Crear orden de trabajo"}
           </button>
           <button
@@ -640,6 +660,7 @@ export default function CreateWorkOrderFromTemplate() {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
               className="btn--ok"
+              disabled={IS_TEST}
               onClick={async () => {
                 const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newTecForm.correo_tecnico);
 
@@ -653,8 +674,7 @@ export default function CreateWorkOrderFromTemplate() {
                   return;
                 }
 
-                await guardarTecnico(); // <- este ya guarda y actualiza estados
-                handleCloseDialogNewTec();
+                if (await guardarTecnico()) handleCloseDialogNewTec();
               }}
             >
               Confirmar

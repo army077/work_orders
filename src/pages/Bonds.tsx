@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { API10_URL } from "../config/api";
+import { useEffect, useState, useMemo } from "react";
 import {
     Box,
     Card,
@@ -17,7 +18,7 @@ import {
     CircularProgress,
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import axios from "axios";
+import { apiAxios as axios } from "../services/apiTransport";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
@@ -47,7 +48,7 @@ export default function BondsDashboard() {
     const fetchBonos = async () => {
         setLoading(true);
         try {
-            const url = new URL("https://desarrollotecnologicoar.com/api10/bonds/visualizar");
+            const url = new URL(`${API10_URL}/bonds/visualizar`);
             if (inicio) url.searchParams.append("inicio", inicio);
             if (fin) url.searchParams.append("fin", fin);
 

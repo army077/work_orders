@@ -1,4 +1,3 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import { Refine } from "@refinedev/core";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
@@ -29,12 +28,12 @@ function App() {
         { name: "work-orders" },
       ]}
     >
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <div className="layout responsive">
           {/* Sidebar (solo desktop/tablet) */}
           <aside className="sidebar nav-desktop">
             <div style={{ padding: 10 }}>
-              <img src="/AR LOGO.png" alt="Asia Robótica" style={{ height: 50, borderRadius: 2 }} />
+              <img src={`${import.meta.env.BASE_URL}AR LOGO.png`} alt="Asia Robótica" style={{ height: 50, borderRadius: 2 }} />
             </div>
             <nav className="nav">
               <Link to="/families">Familia de Equipos</Link>
@@ -53,7 +52,7 @@ function App() {
           {/* Topbar (solo móvil) */}
           <header className="topbar nav-mobile">
             <div className="brand">
-              <img src="/AR LOGO.png" alt="Asia Robótica" style={{ height: 36, borderRadius: 2 }} />
+              <img src={`${import.meta.env.BASE_URL}AR LOGO.png`} alt="Asia Robótica" style={{ height: 36, borderRadius: 2 }} />
             </div>
             <nav className="nav-horizontal">
               <Link to="/families">Families</Link>

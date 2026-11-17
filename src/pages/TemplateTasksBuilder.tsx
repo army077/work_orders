@@ -173,7 +173,6 @@ export default function TemplateTasksBuilder() {
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
   const [openFileDialog, setOpenFileDialog] = useState(false);
-  const [puntos, setPuntos] = useState<Array<{ puntos_revision: string[]; especificaciones: string[]; sugerencias: string[]; categoria: string[] }>>([]);
 
 
   const resetCloneState = () => {

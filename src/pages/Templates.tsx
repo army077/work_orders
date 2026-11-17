@@ -1,7 +1,7 @@
 import { API10_URL } from "../config/api";
 // src/pages/Templates.tsx
 import React from "react";
-import { useList, useCreate, useCustomMutation, useDataProvider } from "@refinedev/core";
+import { useList, useCreate, useCustomMutation } from "@refinedev/core";
 import TemplateDetailsDrawer from "./components/TemplateDetailsDrawer";
 import TemplatePublishButton from "./components/TemplatePublishButton";
 import type { Template } from "./components/TemplateDetailsDrawer";
@@ -19,8 +19,6 @@ type MachineModel = {
   family_name?: string | null;
 };
 
-type Section = { id: number; template_id: number; title: string; position: number; };
-type Task = { id: number; section_id: number; title: string; code: string | null; expected_minutes: number | null; position: number; };
 
 
 /* ---------------------------------------------------------------- */
@@ -30,10 +28,8 @@ export default function Templates() {
   const [openTmpl, setOpenTmpl] = React.useState<Template | null>(null);
   const [search, setSearch] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [editMode, setEditMode] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [editedName, setEditedName] = React.useState<string>("");
-  const dataProvider = useDataProvider();
   const { mutate: createSection } = useCreate();
 
   // Templates
@@ -105,11 +101,6 @@ export default function Templates() {
       }));
   }, [modelsRes?.data]);
 
-  const getModelLabel = (id?: number | null) => {
-    if (!id) return "—";
-    const found = modelOptions.find((o) => o.id === id);
-    return found?.label ?? `Modelo #${id}`;
-  };
 
   const { mutate: createMutate, isLoading: creating } = useCreate();
   const { mutate: publishMutate, isLoading: publishing } = useCustomMutation();
@@ -120,7 +111,6 @@ export default function Templates() {
     model_id: "",
   });
 
-  const [infoTemplate, setInfoTemplate] = React.useState<Template | null>(null);
 
   // ...
   const onCreateInspeccion = () => {

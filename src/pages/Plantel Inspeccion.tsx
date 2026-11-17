@@ -3,7 +3,6 @@ import { apiFetch as fetch } from "../services/apiTransport";
 import { useList } from "@refinedev/core";
 import {
     Card,
-    CardContent,
     Typography,
     Grid,
     Box,
@@ -20,7 +19,7 @@ import {
     Menu,
     MenuItem
 } from "@mui/material";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FaEye } from 'react-icons/fa6';
 import { MdFilterList } from "react-icons/md";
 
@@ -87,8 +86,7 @@ const COLORS = {
 };
 
 export const PlantelInspeccion = () => {
-    const [search, setSearch] = React.useState("");
-    const [customs, setCustoms] = React.useState<any[]>([]);
+    const [search] = React.useState("");
     const [open, setOpen] = React.useState(false);
     const [selectedOrder, setSelectedOrder] = React.useState<InspectionOrder | null>(null);
     const [openTaskId, setOpenTaskId] = React.useState<number | null>(null);
@@ -99,9 +97,6 @@ export const PlantelInspeccion = () => {
     const [closing, setClosing] = useState<"release" | "finish" | null>(null);
     const [closeFeedback, setCloseFeedback] = useState<{ ok: boolean; text: string } | null>(null);
     const [taskFeedback, setTaskFeedback] = useState<{ taskId: number; ok: boolean; text: string } | null>(null);
-    const [editForm, setEditForm] = useState({
-        comments: "",
-    });
     const [showEvidencePanel, setShowEvidencePanel] = useState(false);
     const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
     const filterOpen = Boolean(filterAnchorEl);
@@ -124,8 +119,6 @@ export const PlantelInspeccion = () => {
     });
 
     const inspections = data?.data ?? [];
-    const fdt = (iso?: string | null) =>
-        iso ? new Date(iso).toLocaleString() : "—";
 
     // 🔎 FILTRO + ORDENAMIENTO
     const filtered = React.useMemo(() => {

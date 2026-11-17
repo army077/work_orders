@@ -1,6 +1,7 @@
 import type { HttpError } from "@refinedev/core";
 import { assertTestApiUrl } from "../config/api";
 import { apiFetch } from "./apiTransport";
+import { Api27AuthError } from "./api27Auth";
 
 /** Keep failed requests out of Refine's success/cache path. */
 export async function fetchApi(input: string, init?: RequestInit): Promise<Response> {
@@ -12,6 +13,7 @@ export async function fetchApi(input: string, init?: RequestInit): Promise<Respo
             signal: init?.signal ?? AbortSignal.timeout(20000),
         });
     } catch (cause) {
+        if (cause instanceof Api27AuthError) throw cause;
         const error: HttpError = {
             message: cause instanceof Error && cause.name === "TimeoutError"
                 ? "La solicitud tardó demasiado. Intenta nuevamente."

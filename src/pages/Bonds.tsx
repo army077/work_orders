@@ -1,5 +1,5 @@
 import { API10_URL } from "../config/api";
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
     Box,
     Card,

@@ -27,12 +27,6 @@ type Customization = {
 };
 
 // helpers
-const isoToDateInput = (iso?: string) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => `${n}`.padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-};
 const dateToIsoAt1600Z = (yyyyMmDd: string) =>
   yyyyMmDd ? new Date(`${yyyyMmDd}T16:00:00Z`).toISOString() : "";
 
@@ -100,7 +94,7 @@ export default function CreateWorkOrderFromTemplate() {
     });
     setOpenDialogNewTec(false);
   };
-  const [operadores, setOperadores] = useState<any[]>([]);
+  const [, setOperadores] = useState<any[]>([]);
 
   // --- dialog nueva customización (manual) ---
   const [openDialogNewCustom, setOpenDialogNewCustom] = useState(false);

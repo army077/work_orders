@@ -17,6 +17,7 @@ function load(apiUrl = 'https://test.invalid/api27') {
                 resolveCustomApiUrl: url => url.startsWith('http') ? url : apiUrl + url,
             };
             if (name === './apiTransport') return { apiFetch: (...args) => sandbox.fetch(...args) };
+            if (name === './api27Auth') return modules.auth;
             if (name === './services/apiResponse') return modules.response;
             if (name === './services/catalogQueries') return modules.catalog;
             throw new Error(name);
@@ -27,6 +28,9 @@ function load(apiUrl = 'https://test.invalid/api27') {
     const compile = relative => '(function () {\n' + ts.transpileModule(readFileSync(new URL(relative, import.meta.url), 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText + '\n})();';
+    vm.runInContext(compile('./api27Auth.ts'), sandbox);
+    modules.auth = sandbox.exports;
+    sandbox.exports = {};
     vm.runInContext(compile('./catalogQueries.ts'), sandbox);
     modules.catalog = sandbox.exports;
     sandbox.exports = {};

@@ -45,6 +45,21 @@ export interface InspectionTimingRecord {
   titulo: string | null;
 }
 
+function parseMxDate(isoString: string | null): Date | null {
+  if (!isoString) return null;
+  try {
+    // Si la cadena termina en Z o viene de PostgreSQL sin offset,
+    // el backend ya generó la hora local de México ('America/Mexico_City', UTC-6).
+    // Tomamos la parte de fecha y hora pura y le aplicamos el offset -06:00 (Guadalajara).
+    const clean = isoString.replace("Z", "").replace("T", " ");
+    const hasOffset = /[+-]\d{2}(?::?\d{2})?$/.test(isoString);
+    const date = hasOffset ? new Date(isoString) : new Date(`${clean}-06:00`);
+    return isNaN(date.getTime()) ? new Date(isoString) : date;
+  } catch {
+    return new Date(isoString);
+  }
+}
+
 function formatDuration(minutesTotal: number | null): string {
   if (minutesTotal === null || isNaN(minutesTotal) || minutesTotal < 0) return "—";
   const mins = Math.floor(minutesTotal);
@@ -56,8 +71,8 @@ function formatDuration(minutesTotal: number | null): string {
 
 function computeMinutesDiff(fromIso: string | null, toIso: string | null): number | null {
   if (!fromIso) return null;
-  const start = new Date(fromIso).getTime();
-  const end = toIso ? new Date(toIso).getTime() : Date.now();
+  const start = parseMxDate(fromIso)?.getTime() ?? NaN;
+  const end = toIso ? (parseMxDate(toIso)?.getTime() ?? NaN) : Date.now();
   if (isNaN(start) || isNaN(end)) return null;
   return Math.max(0, (end - start) / (1000 * 60));
 }
@@ -65,14 +80,16 @@ function computeMinutesDiff(fromIso: string | null, toIso: string | null): numbe
 function formatDate(isoString?: string | null): string {
   if (!isoString) return "—";
   try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
+    const date = parseMxDate(isoString);
+    if (!date || isNaN(date.getTime())) return isoString;
     return date.toLocaleString("es-MX", {
       day: "2-digit",
       month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Mexico_City",
     });
   } catch {
     return isoString;

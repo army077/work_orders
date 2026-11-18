@@ -20,6 +20,7 @@ import EmbarquesList from "./pages/EmbarquesList";
 import LiberacionEmpaqueList from "./pages/LiberacionEmpaqueList";
 import DesviacionesList from "./pages/DesviacionesList";
 import MetricasInspeccion from "./pages/MetricasInspeccion";
+import EntregasList from "./pages/EntregasList";
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
         { name: "embarques" },
         { name: "liberacion-empaque" },
         { name: "quality/desviaciones" },
+        { name: "entregas" },
       ]}
     >
       <BrowserRouter basename={import.meta.env.BASE_URL}>
@@ -63,6 +65,7 @@ function App() {
               <Link to="/liberacion-empaque">Liberación de Empaque</Link>
               <Link to="/desviaciones">Desviaciones de Calidad</Link>
               <Link to="/metricas-inspeccion">Tiempos de Inspección</Link>
+              <Link to="/entregas">Entregas y Firmas</Link>
             </nav>
           </aside>
 
@@ -86,6 +89,7 @@ function App() {
               <Link to="/liberacion-empaque">Empaque</Link>
               <Link to="/desviaciones">Desviaciones</Link>
               <Link to="/metricas-inspeccion">Tiempos</Link>
+              <Link to="/entregas">Entregas</Link>
             </nav>
           </header>
 
@@ -106,6 +110,7 @@ function App() {
               <Route path="/liberacion-empaque" element={<LiberacionEmpaqueList />} />
               <Route path="/desviaciones" element={<DesviacionesList />} />
               <Route path="/metricas-inspeccion" element={<MetricasInspeccion />} />
+              <Route path="/entregas" element={<EntregasList />} />
             </Routes>
           </main>
         </div>

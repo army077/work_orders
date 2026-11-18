@@ -1,12 +1,20 @@
 :root {
-  --bg: #0b0c10;
-  --panel: #111216;
-  --muted: #a0a4ad;
-  --accent: #d11e1e; /* rojo Asia Robótica */
-  --card: #151821;
-  --ok: #00a67e;
-  --warn: #f0ad00;
-  --fail: #d11e1e;
+  --bg: #14110F;
+  --panel: #1F1B19;
+  --muted: #B8B0A9;
+  --accent: #E63946; /* Rojo Dragón Asia Robótica */
+  --accent-deep: #5B1A1F;
+  --amber: #F2A65A;
+  --card: #24201D;
+  --card-mid: #2A2522;
+  --card-high: #34302D;
+  --border: #3A3633;
+  --border-subtle: #2A2522;
+  --text: #F5F1ED;
+  --text-secondary: #B8B0A9;
+  --ok: #5BBF8A;
+  --warn: #F2B04A;
+  --fail: #E63946;
   --na: #6c757d;
 }
 
@@ -15,46 +23,68 @@
 html, body, #root {
   height: 100%;
   margin: 0;
-  color: #e6e9ef;
-  background: linear-gradient(180deg, #0b0c10, #0b0c10 200px, #0f1115 100%);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  color: #F5F1ED;
+  background-color: #14110F;
+  background: linear-gradient(180deg, #14110F 0%, #1F1B19 50%, #2A2522 100%);
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ===== Layout ===== */
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 270px 1fr;
   height: 100%;
 }
 .sidebar {
   background: var(--panel);
-  border-right: 1px solid #1d2028;
-  padding: 18px;
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .brand { margin: 0 0 12px; font-size: 18px; }
-.nav { display: grid; gap: 8px; }
+.nav { display: grid; gap: 6px; }
 .nav a {
-  color: #e6e9ef;
+  color: var(--text-secondary);
   text-decoration: none;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #171922;
-  border: 1px solid #242838;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease-in-out;
 }
-.nav a:hover { background: #1b1e29; }
-.content { padding: 24px 28px 40px; overflow: auto; }
+.nav a:hover {
+  background: var(--card-mid);
+  color: var(--text);
+  border-color: var(--border);
+}
+.nav a.active, .nav a:focus {
+  background: rgba(230, 57, 70, 0.12);
+  color: var(--accent);
+  border-color: rgba(230, 57, 70, 0.35);
+  font-weight: 600;
+}
+.content {
+  padding: 28px 32px 48px;
+  overflow: auto;
+  background-color: var(--bg);
+}
 
 /* ===== Cards ===== */
 .card {
-  background: var(--card);
-  border: 1px solid #232633;
-  border-radius: 14px;
-  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 /* ===== Typography & Forms ===== */

@@ -11,8 +11,9 @@
     "preview:v2": "vite preview --config vite.v2.config.mjs --mode v2",
     "check:v2": "node scripts/check-v2-build.mjs",
     "test:browser:v2": "node scripts/check-v2-browser.mjs",
-    "build": "tsc && refine build",
-    "dev": "refine dev",
+    "build": "npm run typecheck && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
     "refine": "refine",
     "start": "refine start"
   },

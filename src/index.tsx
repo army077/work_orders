@@ -1,6 +1,8 @@
 import ReactDOM from "react-dom/client";
 import { Refine } from "@refinedev/core";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { ThemeProvider, CssBaseline } from "@mui/material";
+import { asiaRoboticaTheme } from "./theme";
 import { dataProvider } from "./dataProvider";
 import "./style.css";
 
@@ -15,10 +17,17 @@ import WorkOrdersList from "./pages/WorkOrdersList";
 import PlantelProduccion from "./pages/Plantel Producción";
 import { PlantelInspeccion } from "./pages/Plantel Inspeccion";
 import EngineeringDocuments from "./pages/EngineeringDocuments";
+import IncomingList from "./pages/IncomingList";
+import LiberacionesList from "./pages/LiberacionesList";
+import EmbarquesList from "./pages/EmbarquesList";
+import LiberacionEmpaqueList from "./pages/LiberacionEmpaqueList";
+import DesviacionesList from "./pages/DesviacionesList";
 
 function App() {
   return (
-    <Refine
+    <ThemeProvider theme={asiaRoboticaTheme}>
+      <CssBaseline />
+      <Refine
       dataProvider={dataProvider}
       resources={[
         { name: "machine-families" },
@@ -28,6 +37,11 @@ function App() {
         { name: "tasks" },
         { name: "work-orders" },
         { name: "engineering/documents" },
+        { name: "incoming" },
+        { name: "liberaciones" },
+        { name: "embarques" },
+        { name: "liberacion-empaque" },
+        { name: "quality/desviaciones" },
       ]}
     >
       <BrowserRouter basename={import.meta.env.BASE_URL}>
@@ -48,6 +62,11 @@ function App() {
               <Link to="/run-work-order/1">Panel de control de orden</Link>
               <Link to="/plantel-produccion">Panel de Producción</Link>
               <Link to="/plantel-inspeccion">Panel de Inspección</Link>
+              <Link to="/incoming">Incomings (Calidad)</Link>
+              <Link to="/liberaciones">Procesos de Liberación</Link>
+              <Link to="/embarques">Pre-Embarques</Link>
+              <Link to="/liberacion-empaque">Liberación de Empaque</Link>
+              <Link to="/desviaciones">Desviaciones de Calidad</Link>
               <Link to="/engineering-documents">Documentación de Ingeniería</Link>
             </nav>
           </aside>
@@ -67,6 +86,11 @@ function App() {
               <Link to="/work-orders">Work Orders</Link>
               <Link to="/plantel-produccion">Producción</Link>
               <Link to="/plantel-inspeccion">Inspección</Link>
+              <Link to="/incoming">Incomings</Link>
+              <Link to="/liberaciones">Liberaciones</Link>
+              <Link to="/embarques">Embarques</Link>
+              <Link to="/liberacion-empaque">Empaque</Link>
+              <Link to="/desviaciones">Desviaciones</Link>
               <Link to="/engineering-documents">Documentación de Ingeniería</Link>
             </nav>
           </header>
@@ -84,12 +108,18 @@ function App() {
               <Route path="/run-work-order/:id" element={<WorkOrderRun />} />
               <Route path="/plantel-produccion" element={<PlantelProduccion />} />
               <Route path="/plantel-inspeccion" element={<PlantelInspeccion />} />
+              <Route path="/incoming" element={<IncomingList />} />
+              <Route path="/liberaciones" element={<LiberacionesList />} />
+              <Route path="/embarques" element={<EmbarquesList />} />
+              <Route path="/liberacion-empaque" element={<LiberacionEmpaqueList />} />
+              <Route path="/desviaciones" element={<DesviacionesList />} />
               <Route path="/engineering-documents" element={<EngineeringDocuments />} />
             </Routes>
           </main>
         </div>
       </BrowserRouter>
     </Refine>
+    </ThemeProvider>
   );
 }
 

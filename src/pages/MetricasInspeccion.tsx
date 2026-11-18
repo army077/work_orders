@@ -69,10 +69,11 @@ function formatDuration(minutesTotal: number | null): string {
   return `${hours}h ${remainingMins}m`;
 }
 
-function computeMinutesDiff(fromIso: string | null, toIso: string | null): number | null {
+function computeMinutesDiff(fromIso: string | null, toIso: string | null, nowMs?: number): number | null {
   if (!fromIso) return null;
   const start = parseMxDate(fromIso)?.getTime() ?? NaN;
-  const end = toIso ? (parseMxDate(toIso)?.getTime() ?? NaN) : Date.now();
+  // Si toIso no se proporciona, usamos el timestamp actual directamente (nowMs o Date.now())
+  const end = toIso ? (parseMxDate(toIso)?.getTime() ?? NaN) : (nowMs ?? Date.now());
   if (isNaN(start) || isNaN(end)) return null;
   return Math.max(0, (end - start) / (1000 * 60));
 }
@@ -385,12 +386,13 @@ export default function MetricasInspeccion() {
                   // Tiempo que esperó para ser tomada por un inspector
                   const waitMinutes = row.started_at
                     ? computeMinutesDiff(row.created_at, row.started_at)
-                    : computeMinutesDiff(row.created_at, new Date(now).toISOString());
+                    : computeMinutesDiff(row.created_at, null, now);
 
                   // Tiempo total que lleva o llevó abierta
                   const totalOpenMinutes = computeMinutesDiff(
                     row.created_at,
-                    row.finished_at ?? new Date(now).toISOString()
+                    row.finished_at ?? null,
+                    now
                   );
 
                   return (

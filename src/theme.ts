@@ -119,7 +119,17 @@ export const asiaRoboticaTheme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: "#2A2522",
+          "& .MuiTableRow-root": {
+            backgroundColor: "#2A2522",
+          },
+          "& .MuiTableCell-root": {
+            backgroundColor: "#2A2522",
+            color: "#F5F1ED",
+            fontWeight: 700,
+            borderBottom: "1px solid #3A3633",
+          },
           "& .MuiTableCell-head": {
+            backgroundColor: "#2A2522",
             color: "#F5F1ED",
             fontWeight: 700,
             borderBottom: "1px solid #3A3633",

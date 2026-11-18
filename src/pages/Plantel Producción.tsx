@@ -450,7 +450,7 @@ export default function PlantelProduccion() {
                     placeholder="Buscar orden..."
                     value={q}
                     onChange={e => setQ(e.target.value)}
-                    sx={{ minWidth: 220, bgcolor: COLORS.gray200, borderRadius: 1 }}
+                    sx={{ minWidth: 220, bgcolor: "#2A2522", borderRadius: 1 }}
                 />
             </Box>
 
@@ -472,40 +472,55 @@ export default function PlantelProduccion() {
                                 <Grid item sx={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={wo.id}>
                                     <Card
                                         sx={{
-                                            p: 2,
+                                            p: 2.5,
                                             height: '100%',
-                                            transition: 'box-shadow 0.2s, transform 0.2s',
+                                            transition: 'all 0.25s ease',
                                             maxWidth: 350,
                                             cursor: 'pointer',
-                                            bgcolor: '#e0e0e0ff',
-                                            border: '5px double #d11e1e',
+                                            bgcolor: '#1F1B19',
+                                            border: '1px solid #3A3633',
+                                            borderRadius: 3,
+                                            color: '#F5F1ED',
+                                            boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
                                             '&:hover': {
-                                                boxShadow: 6,
-                                                transform: 'translateY(-4px) scale(1.02)',
-                                                bgcolor: '#a5a5a5ff',
+                                                boxShadow: '0 6px 20px rgba(230, 57, 70, 0.25)',
+                                                transform: 'translateY(-3px)',
+                                                borderColor: '#E63946',
+                                                bgcolor: '#25201D',
                                             },
                                         }}
                                         onClick={() => handleOpenDialog(wo.id)}
                                     >
-                                        <Typography variant="h6" gutterBottom>
+                                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: '#F5F1ED', fontSize: '1.1rem' }}>
                                             {template?.name}
                                         </Typography>
-                                        <Typography variant="body2"><strong>Técnico Asignado:</strong> {tecnico?.nombre_tecnico || "—"}</Typography>
-                                        <Typography variant="body2"><strong>Modelo:</strong> {model?.name || "—"}</Typography>
-                                        <Typography variant="body2"><strong>Estado de la orden:</strong> <span className={statusClass(wo.status)}>{STATUS_LABELS[wo.status] || "—"}</span></Typography>
-                                        <Typography variant="body2"><strong>Fecha de programación:</strong> {fdt(wo.scheduled_at)}</Typography>
-                                        <Typography variant="body2"><strong>Creada el:</strong> {fdt(wo.created_at)}</Typography>
-                                        <Box sx={{ position: "relative", width: "100%", mt: 1 }}>
+                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
+                                            <strong style={{ color: '#F5F1ED' }}>Técnico Asignado:</strong> {tecnico?.nombre_tecnico || "—"}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
+                                            <strong style={{ color: '#F5F1ED' }}>Modelo:</strong> {model?.name || "—"}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
+                                            <strong style={{ color: '#F5F1ED' }}>Estado:</strong> <span className={statusClass(wo.status)}>{STATUS_LABELS[wo.status] || "—"}</span>
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
+                                            <strong style={{ color: '#F5F1ED' }}>Fecha de programación:</strong> {fdt(wo.scheduled_at)}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 1 }}>
+                                            <strong style={{ color: '#F5F1ED' }}>Creada el:</strong> {fdt(wo.created_at)}
+                                        </Typography>
+                                        <Box sx={{ position: "relative", width: "100%", mt: 1.5 }}>
                                             <LinearProgress
                                                 variant="determinate"
                                                 value={orden.avance ? orden.avance : 0}
                                                 sx={{
-                                                    height: 20,
-                                                    borderRadius: 10,
-                                                    backgroundColor: COLORS.gray200,
+                                                    height: 22,
+                                                    borderRadius: 11,
+                                                    backgroundColor: '#2A2522',
+                                                    border: '1px solid #3A3633',
                                                     "& .MuiLinearProgress-bar": {
-                                                        backgroundColor: COLORS.red, // rojo oscuro
-                                                        borderRadius: 10,
+                                                        backgroundColor: Number(orden.avance) >= 100 ? '#5BBF8A' : '#E63946',
+                                                        borderRadius: 11,
                                                     },
                                                 }}
                                             />
@@ -516,10 +531,12 @@ export default function PlantelProduccion() {
                                                     top: 0,
                                                     left: "50%",
                                                     transform: "translateX(-50%)",
-                                                    lineHeight: "20px",
-                                                    fontWeight: 600,
-                                                    color: COLORS.gray900,
-
+                                                    lineHeight: "22px",
+                                                    fontWeight: 700,
+                                                    fontSize: '0.75rem',
+                                                    letterSpacing: '0.02em',
+                                                    color: '#FFFFFF',
+                                                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
                                                 }}
                                             >
                                                 Progreso {`${Math.round(Number(orden.avance))}%`}
@@ -539,9 +556,10 @@ export default function PlantelProduccion() {
                             sx: {
                                 overflow: "hidden",
                                 borderRadius: 3,
-                                border: `1px solid ${COLORS.gray200}`,
-                                boxShadow: `0 10px 30px rgba(0,0,0,0.25)`,
-                                bgcolor: COLORS.white,
+                                border: '1px solid #3A3633',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+                                bgcolor: '#1F1B19',
+                                color: '#F5F1ED',
                             },
                         }}
                     >
@@ -551,34 +569,35 @@ export default function PlantelProduccion() {
                                 <Box
                                     sx={{
                                         width: 280,
-                                        borderRight: `1px solid ${COLORS.gray200}`,
+                                        borderRight: '1px solid #3A3633',
                                         display: "flex",
                                         flexDirection: "column",
-                                        bgcolor: "#fafafa",
+                                        bgcolor: "#14110F",
                                     }}
                                 >
                                     {/* Header con gradiente */}
                                     <Box
                                         sx={{
                                             p: 3,
-                                            bgcolor: `linear-gradient(135deg, ${COLORS.red} 0%, ${COLORS.redSoft} 80%)`,
-                                            color: COLORS.white,
+                                            background: 'linear-gradient(135deg, #5B1A1F 0%, #1F1B19 100%)',
+                                            borderBottom: '1px solid #3A3633',
+                                            color: '#F5F1ED',
                                         }}
                                     >
-                                        <Typography variant="overline" sx={{ opacity: 0.8, color: COLORS.gray900 }}>
+                                        <Typography variant="overline" sx={{ opacity: 0.8, color: '#B8B0A9', letterSpacing: '0.05em' }}>
                                             Orden de trabajo
                                         </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1, color: COLORS.red }}>
+                                        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1, color: '#E63946' }}>
                                             {template.name}
                                         </Typography>
                                         <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                            <Chip size="small" label={`#${woID.id}`} sx={{ bgcolor: "rgba(255,255,255,0.15)", color: COLORS.black }} />
+                                            <Chip size="small" label={`#${woID.id}`} sx={{ bgcolor: "rgba(230, 57, 70, 0.2)", color: "#FFFFFF", border: '1px solid #E63946' }} />
                                             <Chip
                                                 size="small"
                                                 label={String(woID.status)}
                                                 sx={{
-                                                    bgcolor: "rgba(255,255,255,0.15)",
-                                                    color: COLORS.black,
+                                                    bgcolor: "rgba(255,255,255,0.08)",
+                                                    color: "#F5F1ED",
                                                     textTransform: "capitalize",
                                                 }}
                                             />
@@ -587,50 +606,49 @@ export default function PlantelProduccion() {
 
                                     {/* Datos generales o formulario de edición */}
                                     {!editMode ? (
-                                        <Box sx={{ p: 3, display: "Grid", rowGap: 1.25, overflowY: "scroll", overflowX: "hidden", flex: 1 }}>
-                                            <Box sx={{ display: 'flex' }}>
-                                                <Box sx={{ mr: 4 }}>
-                                                    <Typography variant="h6" sx={{ color: COLORS.black }}>
-                                                        <b>Modelo:</b>
+                                        <Box sx={{ p: 3, display: "Grid", rowGap: 1.25, overflowY: "scroll", overflowX: "hidden", flex: 1, color: '#F5F1ED' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <Box sx={{ mr: 2 }}>
+                                                    <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
+                                                        Modelo
                                                     </Typography>
 
-                                                    <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                                    <Typography variant="body1" sx={{ color: '#F5F1ED', fontWeight: 600 }}>
                                                         {model?.name || "—"}
                                                     </Typography>
                                                 </Box>
-                                                <Button variant='contained'
+                                                <Button variant='outlined'
                                                     size='small'
                                                     onClick={() => setCustomSee(prev => !prev)}
-                                                    sx={{ bgcolor: COLORS.gray200, color: COLORS.gray500 }}>
-                                                    <FaEye style={{ marginRight: 2 }}></FaEye>
+                                                    sx={{ borderColor: '#3A3633', color: '#B8B0A9' }}>
+                                                    <FaEye style={{ marginRight: 4 }} />
                                                     customs
-
                                                 </Button>
 
                                             </Box>
 
-                                            <Divider sx={{ my: 1.5 }} />
+                                            <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
 
                                             {customSee && (
                                                 <Box>
-                                                    <Card sx={{ bgcolor: COLORS.gray200 }}>
+                                                    <Card sx={{ bgcolor: '#2A2522', p: 1, border: '1px solid #3A3633' }}>
                                                         {(customs ?? []).map((custom: any, idx: number) => (
-                                                            <Box key={custom.id || idx} sx={{ mb: 1, p: 1 }}>
-                                                                <Typography variant="subtitle2" sx={{ color: COLORS.black }}>
+                                                            <Box key={custom.id || idx} sx={{ mb: 1, p: 0.5 }}>
+                                                                <Typography variant="subtitle2" sx={{ color: '#F5F1ED', display: 'flex', alignItems: 'center', gap: 1 }}>
                                                                     <IoBuildOutline />
                                                                     <b>{custom.custom_title || `Custom ${idx + 1}`}</b>
                                                                 </Typography>
                                                             </Box>
                                                         ))}
                                                     </Card>
-                                                    <Divider sx={{ my: 1.5 }} />
+                                                    <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
                                                 </Box>
                                             )}
 
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}>
-                                                <b>Técnico asignado</b>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
+                                                Técnico asignado
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                 {woID.assigned_tech_email || "—"}
                                             </Typography>
 
@@ -638,10 +656,10 @@ export default function PlantelProduccion() {
                                             {
                                                 woID.tech_support && (
                                                     <Box>
-                                                        <Typography variant="subtitle2" sx={{ color: COLORS.black }}>
-                                                            <b>Técnico de soporte asignado</b>
+                                                        <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
+                                                            Técnico de soporte asignado
                                                         </Typography>
-                                                        <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                                        <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                             {woID.tech_support || "—"}
                                                         </Typography>
 
@@ -650,43 +668,43 @@ export default function PlantelProduccion() {
                                                 )
                                             }
 
-                                            <Divider sx={{ my: 1.5 }} />
+                                            <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
 
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}>
-                                                <b>Programada para:</b>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
+                                                Programada para
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                 {fdt(woID.scheduled_at)}
                                             </Typography>
 
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}>
-                                                <b>Creada el:</b>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
+                                                Creada el
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                 {fdt(woID.created_at)}
                                             </Typography>
 
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}>
-                                                <b>Folio SAI:</b>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
+                                                Folio SAI
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                 {woID.folio_sai || "—"}
                                             </Typography>
 
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}>
-                                                <b> Numero de serie:</b>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
+                                                Número de serie
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                 {woID.machine_serial || "—"}
                                             </Typography>
                                             {
                                                 woID.comments && (
                                                     <Box>
-                                                        <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}>
-                                                            <b>Comentarios:</b>
+                                                        <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
+                                                            Comentarios
                                                         </Typography>
-                                                        <Card sx={{ p: 1, bgcolor: COLORS.gray200, minHeight: 60 }}>
-                                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                                        <Card sx={{ p: 1, bgcolor: '#2A2522', minHeight: 60, border: '1px solid #3A3633' }}>
+                                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                                 {woID.comments}
                                                             </Typography>
                                                         </Card>
@@ -695,10 +713,10 @@ export default function PlantelProduccion() {
                                             }
 
 
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}>
-                                                <b>Estado inicial de la máquina:</b>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
+                                                Estado inicial de la máquina
                                             </Typography>
-                                            <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
                                                 {woID.initial_status || "—"}
                                             </Typography>
                                         </Box>
@@ -730,10 +748,10 @@ export default function PlantelProduccion() {
                                                 }
                                             }}
                                         >
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}><b>Modelo</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}><b>Modelo</b></Typography>
                                             <TextField size="small" value={model?.name || ""} disabled fullWidth />
-                                            <Divider sx={{ my: 1.5 }} />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}><b>Técnico asignado</b></Typography>
+                                            <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}><b>Técnico asignado</b></Typography>
                                             <Select
                                                 size="small"
                                                 value={editForm.assigned_tech_email}
@@ -750,7 +768,7 @@ export default function PlantelProduccion() {
 
                                             {woID.tech_support !== undefined && (
                                                 <>
-                                                    <Typography variant="subtitle2" sx={{ color: COLORS.black }}><b>Técnico de soporte asignado</b></Typography>
+                                                    <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}><b>Técnico de soporte asignado</b></Typography>
                                                     <Select
                                                         size="small"
                                                         value={editForm.tech_support}
@@ -768,8 +786,8 @@ export default function PlantelProduccion() {
                                                     </Select>
                                                 </>
                                             )}
-                                            <Divider sx={{ my: 1.5 }} />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black }}><b>Programada para:</b></Typography>
+                                            <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}><b>Programada para:</b></Typography>
                                             <TextField
                                                 size="small"
                                                 type="datetime-local"
@@ -777,23 +795,23 @@ export default function PlantelProduccion() {
                                                 onChange={e => setEditForm(f => ({ ...f, scheduled_at_local: e.target.value }))}
                                                 fullWidth
                                             />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Creada el:</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 1 }}><b>Creada el:</b></Typography>
                                             <TextField size="small" value={fdt(woID.created_at)} disabled fullWidth />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Folio SAI:</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 1 }}><b>Folio SAI:</b></Typography>
                                             <TextField
                                                 size="small"
                                                 value={editForm.folio_sai || ""}
                                                 onChange={e => setEditForm(f => ({ ...f, folio_sai: e.target.value }))}
                                                 fullWidth
                                             />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Numero de serie:</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 1 }}><b>Numero de serie:</b></Typography>
                                             <TextField
                                                 size="small"
                                                 value={editForm.machine_serial || ""}
                                                 onChange={e => setEditForm(f => ({ ...f, machine_serial: e.target.value }))}
                                                 fullWidth
                                             />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Comentarios:</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 1 }}><b>Comentarios:</b></Typography>
                                             <TextField
                                                 size="small"
                                                 multiline
@@ -802,7 +820,7 @@ export default function PlantelProduccion() {
                                                 onChange={e => setEditForm(f => ({ ...f, comments: e.target.value }))}
                                                 fullWidth
                                             />
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Estado inicial de la máquina:</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 1 }}><b>Estado inicial de la máquina:</b></Typography>
                                             <Select
                                                 size="small"
                                                 value={editForm.initial_status || ""}
@@ -813,7 +831,7 @@ export default function PlantelProduccion() {
                                                 <MenuItem value="New Product">Equipo nuevo</MenuItem>
                                                 <MenuItem value="Refurbished">Equipo remanufacturado</MenuItem>
                                             </Select>
-                                            <Typography variant="subtitle2" sx={{ color: COLORS.black, mt: 1 }}><b>Número de serie de la máquina:</b></Typography>
+                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 1 }}><b>Número de serie de la máquina:</b></Typography>
                                             <TextField
                                                 size="small"
                                                 value={editForm.machine_serial}
@@ -821,20 +839,20 @@ export default function PlantelProduccion() {
                                                 fullWidth
                                             />
                                             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                                                <Button type="submit" variant="contained" sx={{ bgcolor: COLORS.gray700, color: COLORS.white }}>Guardar</Button>
-                                                <Button variant="outlined" sx={{ color: COLORS.red, borderColor: COLORS.red }} onClick={() => setEditMode(false)}>Cancelar</Button>
+                                                <Button type="submit" variant="contained" sx={{ bgcolor: '#E63946', color: '#FFFFFF' }}>Guardar</Button>
+                                                <Button variant="outlined" sx={{ color: '#B8B0A9', borderColor: '#3A3633' }} onClick={() => setEditMode(false)}>Cancelar</Button>
                                             </Stack>
                                         </Box>
                                     )}
                                     {!editMode && (
                                         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                                            <Button variant='contained' disabled={savingTaskId !== null} sx={{ bgcolor: COLORS.redSoft, ml: 3, mr: 3, mb: 1, mt: 1 }} onClick={() => handleErase(woID.id)}>
+                                            <Button variant='contained' disabled={savingTaskId !== null} sx={{ bgcolor: '#5B1A1F', color: '#FFFFFF', ml: 3, mr: 3, mb: 1, mt: 1, '&:hover': { bgcolor: '#E63946' } }} onClick={() => handleErase(woID.id)}>
                                                 Eliminar orden
                                             </Button>
                                             <Button
-                                                variant='contained'
+                                                variant='outlined'
                                                 disabled={savingTaskId !== null}
-                                                sx={{ bgcolor: COLORS.gray500, ml: 3, mr: 3, mb: 1 }}
+                                                sx={{ borderColor: '#3A3633', color: '#F5F1ED', ml: 3, mr: 3, mb: 1 }}
                                                 onClick={() => {
                                                     setEditMode(!editMode);
                                                     setEditForm({
@@ -857,10 +875,10 @@ export default function PlantelProduccion() {
                                 </Box>
 
                                 {/* Columna derecha: Actividades agrupadas */}
-                                <Box sx={{ flex: 1, display: "flex", flexDirection: "column", bgcolor: COLORS.white }}>
+                                <Box sx={{ flex: 1, display: "flex", flexDirection: "column", bgcolor: '#1F1B19', color: '#F5F1ED' }}>
                                     {/* Título de columna */}
-                                    <Box sx={{ p: 3, borderBottom: `1px solid ${COLORS.gray200}`, bgcolor: COLORS.white }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.black, textAlign: "center" }}>
+                                    <Box sx={{ p: 3, borderBottom: '1px solid #3A3633', bgcolor: '#1F1B19' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#F5F1ED', textAlign: "center" }}>
                                             Actividades por sección
                                         </Typography>
                                         {progressFeedback && (
@@ -899,7 +917,7 @@ export default function PlantelProduccion() {
                                                     disablePadding
                                                     sx={{
                                                         width: "100%",
-                                                        bgcolor: COLORS.white,
+                                                        bgcolor: '#1F1B19',
                                                     }}
                                                 >
                                                     {entries.map(([section, tasks]) => (
@@ -910,13 +928,13 @@ export default function PlantelProduccion() {
                                                                     position: "sticky",
                                                                     top: 0,
                                                                     zIndex: 2,
-                                                                    bgcolor: COLORS.white,
-                                                                    borderBottom: `1px solid ${COLORS.gray200}`,
+                                                                    bgcolor: '#2A2522',
+                                                                    borderBottom: '1px solid #3A3633',
                                                                     px: 3,
                                                                     py: 1.5,
                                                                     fontSize: 14,
                                                                     fontWeight: 700,
-                                                                    color: COLORS.black,
+                                                                    color: '#FFFFFF',
                                                                     letterSpacing: 0.3,
                                                                 }}
                                                             >
@@ -937,12 +955,15 @@ export default function PlantelProduccion() {
                                                                             width: "100%",
                                                                             p: 1.5,
                                                                             borderRadius: 2,
-                                                                            border: `1px solid ${COLORS.gray200}`,
-                                                                            bgcolor: COLORS.white,
-                                                                            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                                                                            border: '1px solid #3A3633',
+                                                                            bgcolor: '#1F1B19',
+                                                                            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                                                                             display: "flex",
                                                                             alignItems: "center",
                                                                             gap: 2,
+                                                                            "&:hover": {
+                                                                                bgcolor: '#25201D',
+                                                                            },
                                                                         }}
                                                                     >
                                                                         {/* Acento rojo lateral */}
@@ -951,7 +972,7 @@ export default function PlantelProduccion() {
                                                                                 width: 6,
                                                                                 alignSelf: "stretch",
                                                                                 borderRadius: "8px",
-                                                                                bgcolor: task.status === "DONE" ? COLORS.red : COLORS.gray200,
+                                                                                bgcolor: task.status === "DONE" ? '#5BBF8A' : '#E63946',
                                                                             }}
                                                                         />
                                                                         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -959,14 +980,14 @@ export default function PlantelProduccion() {
                                                                                 primaryTypographyProps={{
                                                                                     sx: {
                                                                                         fontWeight: 600,
-                                                                                        color: COLORS.black,
+                                                                                        color: '#F5F1ED',
                                                                                         overflow: "hidden",
                                                                                         textOverflow: "ellipsis",
                                                                                         whiteSpace: "nowrap",
                                                                                     },
                                                                                 }}
                                                                                 secondaryTypographyProps={{
-                                                                                    sx: { color: COLORS.gray500, mt: 0.25 },
+                                                                                    sx: { color: '#B8B0A9', mt: 0.25 },
                                                                                 }}
                                                                                 primary={task.task_title || "Actividad"}
                                                                                 secondary={
@@ -982,13 +1003,14 @@ export default function PlantelProduccion() {
                                                                             label={task.status === "DONE" ? "Completado" : (task.status || "Sin estado")}
                                                                             size="small"
                                                                             sx={{
-                                                                                bgcolor: task.status === "DONE" ? COLORS.red : COLORS.gray200,
-                                                                                color: task.status === "DONE" ? COLORS.white : COLORS.black,
+                                                                                bgcolor: task.status === "DONE" ? "rgba(91, 191, 138, 0.15)" : "#2A2522",
+                                                                                border: task.status === "DONE" ? "1px solid #5BBF8A" : "1px solid #3A3633",
+                                                                                color: task.status === "DONE" ? "#5BBF8A" : "#B8B0A9",
                                                                                 fontWeight: 600,
                                                                             }}
                                                                         />
                                                                         {isQualityRelease(task) ? (
-                                                                            <Typography variant="caption" color="text.secondary">Liberación por Calidad</Typography>
+                                                                            <Typography variant="caption" sx={{ color: '#F2A65A' }}>Liberación por Calidad</Typography>
                                                                         ) : template.template_type === "ENSAMBLE" && canCompleteProductionTask(task) && (
                                                                             <Button size="small" variant="contained"
                                                                                 disabled={savingTaskId !== null || task.work_order_id !== woID.id}
@@ -996,7 +1018,8 @@ export default function PlantelProduccion() {
                                                                                     setCompletionTask(task);
                                                                                     setMinutes(task.actual_minutes == null ? "" : String(task.actual_minutes));
                                                                                     setProgressFeedback(null);
-                                                                                }}>
+                                                                                }}
+                                                                                sx={{ bgcolor: '#E63946', color: '#FFFFFF', textTransform: 'none', fontWeight: 600 }}>
                                                                                 Marcar como completada
                                                                             </Button>
                                                                         )}
@@ -1021,13 +1044,13 @@ export default function PlantelProduccion() {
                     </Dialog>
                     <Dialog open={completionTask !== null} onClose={() => {
                         if (!savingProgress.current) setCompletionTask(null);
-                    }} fullWidth maxWidth="sm">
-                        <DialogTitle>Completar actividad productiva</DialogTitle>
+                    }} fullWidth maxWidth="sm" PaperProps={{ sx: { bgcolor: '#1F1B19', color: '#F5F1ED', border: '1px solid #3A3633' } }}>
+                        <DialogTitle sx={{ color: '#F5F1ED' }}>Completar actividad productiva</DialogTitle>
                         <DialogContent>
-                            <Typography sx={{ mb: 2 }}>
+                            <Typography sx={{ mb: 2, color: '#F5F1ED' }}>
                                 Orden #{woID?.id} · Tarea #{completionTask?.id}: {completionTask?.task_title}
                             </Typography>
-                            <Typography variant="body2" sx={{ mb: 2 }}>
+                            <Typography variant="body2" sx={{ mb: 2, color: '#B8B0A9' }}>
                                 Se registrará la finalización ahora. Si no existe una fecha de inicio, se registrará también ahora.
                             </Typography>
                             <TextField fullWidth label="Minutos reales (opcional)" type="number" value={minutes}
@@ -1040,8 +1063,8 @@ export default function PlantelProduccion() {
                             )}
                         </DialogContent>
                         <DialogActions>
-                            <Button disabled={savingTaskId !== null} onClick={() => setCompletionTask(null)}>Cancelar</Button>
-                            <Button variant="contained" disabled={savingTaskId !== null} onClick={saveProductionProgress}>
+                            <Button disabled={savingTaskId !== null} onClick={() => setCompletionTask(null)} sx={{ color: '#B8B0A9' }}>Cancelar</Button>
+                            <Button variant="contained" disabled={savingTaskId !== null} onClick={saveProductionProgress} sx={{ bgcolor: '#E63946', color: '#FFFFFF' }}>
                                 {savingTaskId !== null ? "Guardando…" : "Confirmar actividad completada"}
                             </Button>
                         </DialogActions>

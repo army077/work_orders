@@ -126,7 +126,7 @@ export default function IncomingList() {
       ) : (
         <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
           <Table size="small">
-            <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+            <TableHead>
               <TableRow>
                 <TableCell><b>ID</b></TableCell>
                 <TableCell><b>Fecha</b></TableCell>

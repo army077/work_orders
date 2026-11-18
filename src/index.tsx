@@ -9,14 +9,11 @@ import "./style.css";
 import SectionsBuilder from "./pages/SectionsBuilder";
 import TemplateTasksBuilder from "./pages/TemplateTasksBuilder";
 import CreateWorkOrderFromTemplate from "./pages/CreateWorkOrderFromTemplate";
-import WorkOrderRun from "./pages/WorkOrderRun";
 import Templates from "./pages/Templates";
 import Families from "./pages/Families";
 import Models from "./pages/Models";
-import WorkOrdersList from "./pages/WorkOrdersList";
 import PlantelProduccion from "./pages/Plantel Producción";
 import { PlantelInspeccion } from "./pages/Plantel Inspeccion";
-import EngineeringDocuments from "./pages/EngineeringDocuments";
 import IncomingList from "./pages/IncomingList";
 import LiberacionesList from "./pages/LiberacionesList";
 import EmbarquesList from "./pages/EmbarquesList";
@@ -36,7 +33,6 @@ function App() {
         { name: "sections" },
         { name: "tasks" },
         { name: "work-orders" },
-        { name: "engineering/documents" },
         { name: "incoming" },
         { name: "liberaciones" },
         { name: "embarques" },
@@ -58,8 +54,6 @@ function App() {
               <Link to="/sections-builder">Constructor secciones</Link>
               <Link to="/tasks-builder">Constructor de tareas</Link>
               <Link to="/create-work-order">Crear orden de trabajo</Link>
-              <Link to="/work-orders">Todas las ordenes</Link>
-              <Link to="/run-work-order/1">Panel de control de orden</Link>
               <Link to="/plantel-produccion">Panel de Producción</Link>
               <Link to="/plantel-inspeccion">Panel de Inspección</Link>
               <Link to="/incoming">Incomings (Calidad)</Link>
@@ -67,7 +61,6 @@ function App() {
               <Link to="/embarques">Pre-Embarques</Link>
               <Link to="/liberacion-empaque">Liberación de Empaque</Link>
               <Link to="/desviaciones">Desviaciones de Calidad</Link>
-              <Link to="/engineering-documents">Documentación de Ingeniería</Link>
             </nav>
           </aside>
 
@@ -83,7 +76,6 @@ function App() {
               <Link to="/sections-builder">Sections</Link>
               <Link to="/tasks-builder">Tasks</Link>
               <Link to="/create-work-order">Create WO</Link>
-              <Link to="/work-orders">Work Orders</Link>
               <Link to="/plantel-produccion">Producción</Link>
               <Link to="/plantel-inspeccion">Inspección</Link>
               <Link to="/incoming">Incomings</Link>
@@ -91,7 +83,6 @@ function App() {
               <Link to="/embarques">Embarques</Link>
               <Link to="/liberacion-empaque">Empaque</Link>
               <Link to="/desviaciones">Desviaciones</Link>
-              <Link to="/engineering-documents">Documentación de Ingeniería</Link>
             </nav>
           </header>
 
@@ -104,8 +95,6 @@ function App() {
               <Route path="/sections-builder" element={<SectionsBuilder />} />
               <Route path="/tasks-builder" element={<TemplateTasksBuilder />} />
               <Route path="/create-work-order" element={<CreateWorkOrderFromTemplate />} />
-              <Route path="/work-orders" element={<WorkOrdersList />} />
-              <Route path="/run-work-order/:id" element={<WorkOrderRun />} />
               <Route path="/plantel-produccion" element={<PlantelProduccion />} />
               <Route path="/plantel-inspeccion" element={<PlantelInspeccion />} />
               <Route path="/incoming" element={<IncomingList />} />
@@ -113,7 +102,6 @@ function App() {
               <Route path="/embarques" element={<EmbarquesList />} />
               <Route path="/liberacion-empaque" element={<LiberacionEmpaqueList />} />
               <Route path="/desviaciones" element={<DesviacionesList />} />
-              <Route path="/engineering-documents" element={<EngineeringDocuments />} />
             </Routes>
           </main>
         </div>

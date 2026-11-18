@@ -232,35 +232,39 @@ export const PlantelInspeccion = () => {
             <Grid item sx={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={o.inspection_order_id}>
                 <Card
                     sx={{
-                        p: 2,
+                        p: 2.5,
                         height: '100%',
-                        transition: 'box-shadow 0.2s, transform 0.2s',
+                        transition: 'all 0.25s ease',
                         maxWidth: 350,
                         cursor: 'pointer',
-                        bgcolor: '#e0e0e0ff',
-                        border: '5px double #1e39d1ff',
+                        bgcolor: '#1F1B19',
+                        border: '1px solid #3A3633',
+                        borderRadius: 3,
+                        color: '#F5F1ED',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
                         '&:hover': {
-                            boxShadow: 6,
-                            transform: 'translateY(-4px) scale(1.02)',
-                            bgcolor: '#a5a5a5ff',
+                            boxShadow: '0 6px 20px rgba(91, 191, 138, 0.25)',
+                            transform: 'translateY(-3px)',
+                            borderColor: '#5BBF8A',
+                            bgcolor: '#25201D',
                         },
                     }}
                     onClick={() => handleOpen(o)}
                 >
                     <Typography
                         variant="h6"
-                        sx={{ fontWeight: 4000, color: COLORS.black, mb: 1 }}
+                        sx={{ fontWeight: 700, color: '#F5F1ED', mb: 1, fontSize: '1.05rem' }}
                     >
                         {o.inspection_type && o.equipo ? (
                             <>
-                                {o.inspection_type} para <u>{o.equipo}</u>
+                                {o.inspection_type} para <u style={{ color: '#E63946' }}>{o.equipo}</u>
                             </>
                         ) : (
                             `Inspección #${o.inspection_order_id}`
                         )}
                         {o.estacion !== null && (
-                            <span style={{ color: COLORS.gray700, fontWeight: 400, marginLeft: 8 }}>
-                                | Estación: <strong>{o.estacion}</strong>
+                            <span style={{ color: '#B8B0A9', fontWeight: 500, marginLeft: 8, fontSize: '0.85rem' }}>
+                                | Estación: <strong style={{ color: '#F5F1ED' }}>{o.estacion}</strong>
                             </span>
                         )}
                     </Typography>

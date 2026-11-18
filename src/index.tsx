@@ -19,6 +19,7 @@ import LiberacionesList from "./pages/LiberacionesList";
 import EmbarquesList from "./pages/EmbarquesList";
 import LiberacionEmpaqueList from "./pages/LiberacionEmpaqueList";
 import DesviacionesList from "./pages/DesviacionesList";
+import MetricasInspeccion from "./pages/MetricasInspeccion";
 
 function App() {
   return (
@@ -61,6 +62,7 @@ function App() {
               <Link to="/embarques">Pre-Embarques</Link>
               <Link to="/liberacion-empaque">Liberación de Empaque</Link>
               <Link to="/desviaciones">Desviaciones de Calidad</Link>
+              <Link to="/metricas-inspeccion">Tiempos de Inspección</Link>
             </nav>
           </aside>
 
@@ -83,6 +85,7 @@ function App() {
               <Link to="/embarques">Embarques</Link>
               <Link to="/liberacion-empaque">Empaque</Link>
               <Link to="/desviaciones">Desviaciones</Link>
+              <Link to="/metricas-inspeccion">Tiempos</Link>
             </nav>
           </header>
 
@@ -102,6 +105,7 @@ function App() {
               <Route path="/embarques" element={<EmbarquesList />} />
               <Route path="/liberacion-empaque" element={<LiberacionEmpaqueList />} />
               <Route path="/desviaciones" element={<DesviacionesList />} />
+              <Route path="/metricas-inspeccion" element={<MetricasInspeccion />} />
             </Routes>
           </main>
         </div>

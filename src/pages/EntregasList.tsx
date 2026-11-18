@@ -28,6 +28,25 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import GestureIcon from "@mui/icons-material/Gesture";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 
+/**
+ * Convierte cualquier URL de Google Drive al formato thumbnail embebible en <img>.
+ * - https://drive.google.com/file/d/FILE_ID/view  →  thumbnail
+ * - https://drive.google.com/open?id=FILE_ID       →  thumbnail
+ * - ya es thumbnail / lh3  →  sin cambio
+ */
+function driveImgSrc(url: string | null, size = 800): string | null {
+  if (!url) return null;
+  // Extrae FILE_ID de los formatos conocidos de Drive
+  const matchView = url.match(/\/file\/d\/([^/?#]+)/);
+  const matchOpen = url.match(/[?&]id=([^&]+)/);
+  const fileId = matchView?.[1] ?? matchOpen?.[1];
+  if (fileId) {
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
+  }
+  // Si ya es un URL embebible (thumbnail / lh3), devolverlo tal cual
+  return url;
+}
+
 export interface DeliveryEvidence {
   id: number;
   evidence_type: "PHOTO" | "SIGNATURE";
@@ -379,7 +398,7 @@ export default function EntregasList() {
                         >
                           {sig.external_url ? (
                             <img
-                              src={sig.external_url}
+                              src={driveImgSrc(sig.external_url) ?? sig.external_url}
                               alt="Firma de entrega"
                               style={{ width: "100%", maxHeight: "160px", objectFit: "contain" }}
                             />
@@ -426,7 +445,7 @@ export default function EntregasList() {
                           {photo.external_url ? (
                             <a href={photo.external_url} target="_blank" rel="noopener noreferrer">
                               <img
-                                src={photo.external_url}
+                                src={driveImgSrc(photo.external_url) ?? photo.external_url}
                                 alt={photo.original_filename || "Evidencia"}
                                 style={{
                                   width: "100%",

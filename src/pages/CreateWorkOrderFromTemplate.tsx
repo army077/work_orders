@@ -306,10 +306,9 @@ export default function CreateWorkOrderFromTemplate() {
     try {
       console.log("Enviando notificación:", notif);
       const res = await sendApi5Notification(notif);
-      console.log("Respuesta del servidor:", res.status);
+      console.log("Respuesta del servidor notificación:", res);
     } catch (e: any) {
-      console.error("Error al enviar las actividades:", e);
-      alert(`No se envió la notificación: ${String(e?.message || e)}`);
+      console.error("Error al enviar notificación:", e);
     }
   };
 

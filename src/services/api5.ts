@@ -28,6 +28,17 @@ export async function addApi5Technician<T>(payload: unknown): Promise<T> {
     return response.json();
 }
 
-export function sendApi5Notification(payload: unknown): Promise<Response> {
-    return postApi5("/enviarNotificacion/", payload);
+export async function sendApi5Notification(payload: { correoTecnico: string; ordenNumero?: string }): Promise<any> {
+    const NOTIF_URL = "https://desarrollotecnologicoar.com/api5/enviarNotificacion/";
+    const response = await fetch(NOTIF_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        console.warn("API5 enviarNotificacion respondió:", data);
+        return { ok: false, data };
+    }
+    return { ok: true, data };
 }

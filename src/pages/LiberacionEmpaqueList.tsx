@@ -24,6 +24,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import ImageIcon from "@mui/icons-material/Image";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import "./liberacion-empaque-list.css";
 
 export interface LiberacionEmpaqueItem {
   id: number;
@@ -91,27 +92,35 @@ export default function LiberacionEmpaqueList() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h5" component="h1" fontWeight="bold">
-          📦 Liberaciones de Empaque
-        </Typography>
+    <Box className="packing-list">
+      <Box component="header" className="packing-list__header">
+        <Box>
+          <Typography className="packing-list__eyebrow">Calidad</Typography>
+          <Typography component="h1" className="packing-list__title">
+            📦 Liberaciones de Empaque
+          </Typography>
+          <Typography className="packing-list__intro">
+            Consulta las liberaciones de empaque y sus evidencias.
+          </Typography>
+        </Box>
         <Tooltip title="Actualizar lista">
           <span>
-            <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
+            <IconButton aria-label="Actualizar lista" className="packing-list__refresh" onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
               <RefreshIcon />
             </IconButton>
           </span>
         </Tooltip>
       </Box>
 
-      <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
+      <Box className="packing-list__toolbar">
         <TextField
+          className="packing-list__search"
           size="small"
+          label="Buscar registros"
           placeholder="Buscar por serie, equipo, responsable o estación..."
+          helperText="Serie, equipo, responsable, usuario o estación."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 380 }}
           InputProps={{
             startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
           }}
@@ -123,8 +132,8 @@ export default function LiberacionEmpaqueList() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} elevation={0} className="packing-list__table-container" tabIndex={0} aria-label="Tabla de liberaciones de empaque">
+          <Table size="small" className="packing-list__table">
             <TableHead>
               <TableRow>
                 <TableCell><b>ID</b></TableCell>
@@ -196,7 +205,7 @@ export default function LiberacionEmpaqueList() {
       )}
 
       {/* Modal visor de evidencias */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth PaperProps={{ className: "packing-evidence-dialog" }}>
         <DialogTitle>
           📸 Evidencias de Empaque — Serie: <b>{selectedSerial}</b> ({selectedImages.length})
         </DialogTitle>
@@ -204,14 +213,7 @@ export default function LiberacionEmpaqueList() {
           {selectedImages.length === 0 ? (
             <Typography color="text.secondary">No hay imágenes disponibles para este registro.</Typography>
           ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 2,
-                p: 1,
-              }}
-            >
+            <Box className="packing-evidence-dialog__grid">
               {selectedImages.map((url, idx) => (
                 <Box
                   key={idx}
@@ -219,21 +221,13 @@ export default function LiberacionEmpaqueList() {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{
-                    display: "block",
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: "1px solid #ddd",
-                    transition: "transform 0.2s",
-                    "&:hover": { transform: "scale(1.02)", boxShadow: 3 },
-                  }}
+                  className="packing-evidence-dialog__photo"
                 >
                   <img
                     src={url}
                     alt={`Evidencia ${idx + 1}`}
-                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
                   />
-                  <Typography variant="caption" sx={{ display: "block", p: 0.5, textAlign: "center", bgcolor: "#fafafa" }}>
+                  <Typography variant="caption" className="packing-evidence-dialog__caption">
                     Foto {idx + 1} (Clic para abrir original)
                   </Typography>
                 </Box>

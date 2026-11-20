@@ -27,6 +27,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import GestureIcon from "@mui/icons-material/Gesture";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import "./entregas-list.css";
 
 /**
  * Convierte cualquier URL de Google Drive al formato thumbnail embebible en <img>.
@@ -120,71 +121,56 @@ export default function EntregasList() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: "1600px", margin: "0 auto" }}>
+    <Box className="delivery-list">
       {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
-          flexWrap: "wrap",
-          gap: 2,
-        }}
-      >
+      <Box component="header" className="delivery-list__header">
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: "bold", color: "#F5F1ED" }}>
-            Firma y Entregas de Logística
+          <Typography className="delivery-list__eyebrow">Logística</Typography>
+          <Typography component="h1" className="delivery-list__title">
+            Entregas y Firmas
           </Typography>
-          <Typography variant="body2" sx={{ color: "#8E8279", mt: 0.5 }}>
+          <Typography className="delivery-list__intro">
             Registros de entrega de máquinas a clientes con firma digital y evidencias.
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-          <TextField
-            size="small"
-            placeholder="Buscar por pedido, chofer o equipo..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon sx={{ color: "#8E8279", mr: 1 }} />,
-            }}
-            sx={{
-              width: "320px",
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "#1F1B19",
-                borderRadius: "8px",
-              },
-            }}
-          />
-          <Tooltip title="Actualizar lista">
+        <Tooltip title="Actualizar lista">
+          <span>
             <IconButton
+              aria-label="Actualizar lista"
+              className="delivery-list__refresh"
               onClick={() => refetch()}
               disabled={isFetching}
-              sx={{
-                backgroundColor: "#1F1B19",
-                color: "#E63946",
-                "&:hover": { backgroundColor: "#2D2623" },
-              }}
             >
               {isFetching ? <CircularProgress size={24} color="inherit" /> : <RefreshIcon />}
             </IconButton>
-          </Tooltip>
-        </Box>
+          </span>
+        </Tooltip>
+      </Box>
+
+      <Box className="delivery-list__toolbar">
+        <TextField
+          className="delivery-list__search"
+          size="small"
+          label="Buscar registros"
+          placeholder="Buscar por pedido, chofer o equipo..."
+          helperText="Pedido, equipo, chofer, instalador, nombre o correo."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ color: "#8E8279", mr: 1 }} />,
+          }}
+        />
       </Box>
 
       {/* Tabla */}
       <TableContainer
         component={Paper}
-        sx={{
-          backgroundColor: "#14110F",
-          borderRadius: "12px",
-          border: "1px solid #2D2623",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-          overflowX: "auto",
-        }}
+        elevation={0}
+        className="delivery-list__table-container"
+        tabIndex={0}
+        aria-label="Tabla de entregas y firmas"
       >
-        <Table sx={{ minWidth: 900 }}>
+        <Table size="small" className="delivery-list__table">
           <TableHead sx={{ backgroundColor: "#1F1B19" }}>
             <TableRow>
               <TableCell sx={{ color: "#A89F91", fontWeight: "bold" }}>ID</TableCell>
@@ -237,15 +223,11 @@ export default function EntregasList() {
                       <Chip
                         label={item.pedido}
                         size="small"
-                        sx={{
-                          backgroundColor: "rgba(230, 57, 70, 0.15)",
-                          color: "#E63946",
-                          fontWeight: "bold",
-                        }}
+                        className="delivery-list__order"
                       />
                     </TableCell>
-                    <TableCell sx={{ color: "#F5F1ED", maxWidth: 220 }}>
-                      <Typography variant="body2" noWrap title={item.equipos}>
+                    <TableCell sx={{ color: "#F5F1ED" }}>
+                      <Typography variant="body2" title={item.equipos}>
                         {item.equipos}
                       </Typography>
                     </TableCell>
@@ -292,15 +274,6 @@ export default function EntregasList() {
                         size="small"
                         startIcon={<VisibilityIcon />}
                         onClick={() => handleOpenEvidencias(item)}
-                        sx={{
-                          color: "#E63946",
-                          borderColor: "rgba(230, 57, 70, 0.5)",
-                          "&:hover": {
-                            borderColor: "#E63946",
-                            backgroundColor: "rgba(230, 57, 70, 0.08)",
-                          },
-                          textTransform: "none",
-                        }}
                       >
                         Ver ({totalEvidencias})
                         {hasSignature && (
@@ -322,17 +295,10 @@ export default function EntregasList() {
         onClose={() => setModalOpen(false)}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            backgroundColor: "#1F1B19",
-            color: "#F5F1ED",
-            borderRadius: "12px",
-            border: "1px solid #3A322D",
-          },
-        }}
+        PaperProps={{ className: "delivery-evidence-dialog" }}
       >
-        <DialogTitle sx={{ borderBottom: "1px solid #2D2623", pb: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <DialogTitle>
+          <Box className="delivery-evidence-dialog__heading">
             <Box>
               <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                 Evidencias de Entrega - Pedido #{selectedEntrega?.pedido}
@@ -345,17 +311,9 @@ export default function EntregasList() {
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ mt: 2 }}>
+        <DialogContent>
           {selectedEntrega?.observaciones && (
-            <Box
-              sx={{
-                mb: 3,
-                p: 2,
-                backgroundColor: "#14110F",
-                borderRadius: "8px",
-                border: "1px solid #2D2623",
-              }}
-            >
+            <Box className="delivery-evidence-dialog__notes">
               <Typography variant="caption" sx={{ color: "#8E8279", fontWeight: "bold", display: "block" }}>
                 OBSERVACIONES:
               </Typography>
@@ -382,25 +340,19 @@ export default function EntregasList() {
                   >
                     <GestureIcon color="success" /> Firma de Conformidad
                   </Typography>
-                  <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                  <Box className="delivery-evidence-dialog__signatures">
                     {selectedEntrega.evidencias
                       .filter((e) => e.evidence_type === "SIGNATURE")
                       .map((sig) => (
                         <Box
                           key={sig.id}
-                          sx={{
-                            backgroundColor: "#FFFFFF",
-                            p: 2,
-                            borderRadius: "8px",
-                            border: "2px solid #2D2623",
-                            maxWidth: "350px",
-                          }}
+                          className="delivery-evidence-dialog__signature"
                         >
                           {sig.external_url ? (
                             <img
                               src={driveImgSrc(sig.external_url) ?? sig.external_url}
                               alt="Firma de entrega"
-                              style={{ width: "100%", maxHeight: "160px", objectFit: "contain" }}
+                              className="delivery-evidence-dialog__signature-image"
                             />
                           ) : (
                             <Typography variant="caption" sx={{ color: "#000" }}>
@@ -423,37 +375,20 @@ export default function EntregasList() {
                     <PhotoCameraIcon sx={{ color: "#E63946" }} /> Fotografías de Evidencia (
                     {selectedEntrega.evidencias.filter((e) => e.evidence_type === "PHOTO").length})
                   </Typography>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                      gap: 2,
-                    }}
-                  >
+                  <Box className="delivery-evidence-dialog__grid">
                     {selectedEntrega.evidencias
                       .filter((e) => e.evidence_type === "PHOTO")
                       .map((photo) => (
                         <Box
                           key={photo.id}
-                          sx={{
-                            backgroundColor: "#14110F",
-                            borderRadius: "8px",
-                            overflow: "hidden",
-                            border: "1px solid #2D2623",
-                          }}
+                          className="delivery-evidence-dialog__photo"
                         >
                           {photo.external_url ? (
                             <a href={photo.external_url} target="_blank" rel="noopener noreferrer">
                               <img
                                 src={driveImgSrc(photo.external_url) ?? photo.external_url}
                                 alt={photo.original_filename || "Evidencia"}
-                                style={{
-                                  width: "100%",
-                                  height: "160px",
-                                  objectFit: "cover",
-                                  display: "block",
-                                  cursor: "pointer",
-                                }}
+                                className="delivery-evidence-dialog__photo-image"
                               />
                             </a>
                           ) : (
@@ -472,8 +407,8 @@ export default function EntregasList() {
           )}
         </DialogContent>
 
-        <DialogActions sx={{ borderTop: "1px solid #2D2623", p: 2 }}>
-          <Button onClick={() => setModalOpen(false)} sx={{ color: "#F5F1ED" }}>
+        <DialogActions>
+          <Button onClick={() => setModalOpen(false)}>
             Cerrar
           </Button>
         </DialogActions>

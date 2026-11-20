@@ -21,6 +21,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 import { apiAxios as axios } from "../services/apiTransport";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import "./production-bonuses.css";
 
 type BonoResumen = {
     nombre_tecnico: string;
@@ -32,11 +33,6 @@ type BonoResumen = {
     puntos_extra: number;
     puntos_eficiencia: number;
     numero_empleado: number;
-};
-
-const COLORS = {
-    red: "#8B0000",
-    gray200: "#e6e6e6",
 };
 
 export default function BondsDashboard() {
@@ -133,13 +129,13 @@ export default function BondsDashboard() {
     };
 
     return (
-        <Box sx={{ p: 3, backgroundColor: COLORS.gray200, minHeight: "100vh", borderRadius: 10 }}>
-            <Typography variant="h4" sx={{ mb: 2, color: "#8B0000", fontWeight: 700 }}>
+        <Box className="production-bonuses">
+            <Typography className="production-bonuses__title" variant="h4">
                 Dashboard de Bonos Técnicos
             </Typography>
 
             {/* FILTROS */}
-            <Card sx={{ mb: 3, p: 2 }}>
+            <Card className="production-bonuses__surface production-bonuses__filters">
                 <Typography variant="h6" sx={{ mb: 1 }}>
                     Filtros
                 </Typography>
@@ -164,7 +160,7 @@ export default function BondsDashboard() {
                             onChange={(e) => setFin(e.target.value)}
                         />
                     </Grid>
-                    <Grid item xs={12} sm={4} display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                    <Grid item xs={12} sm={4} className="production-bonuses__filter-actions" display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
                         <Button
                             variant="contained"
                             onClick={fetchBonos}
@@ -191,7 +187,7 @@ export default function BondsDashboard() {
             {/* RESUMEN */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={4}>
-                    <Card sx={{ bgcolor: "#8B0000", color: "#fff" }}>
+                    <Card className="production-bonuses__metric">
                         <CardContent>
                             <Typography variant="h6">Técnicos con bonos</Typography>
                             <Typography variant="h4">{data.length}</Typography>
@@ -199,7 +195,7 @@ export default function BondsDashboard() {
                     </Card>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                    <Card sx={{ bgcolor: "#333", color: "#fff" }}>
+                    <Card className="production-bonuses__metric">
                         <CardContent>
                             <Typography variant="h6">Total de puntos</Typography>
                             <Typography variant="h4">{totalBonos.toFixed(1)}</Typography>
@@ -207,7 +203,7 @@ export default function BondsDashboard() {
                     </Card>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                    <Card sx={{ bgcolor: "#666", color: "#fff" }}>
+                    <Card className="production-bonuses__metric">
                         <CardContent>
                             <Typography variant="h6">Órdenes analizadas</Typography>
                             <Typography variant="h4">
@@ -219,7 +215,7 @@ export default function BondsDashboard() {
             </Grid>
 
             {/* GRÁFICA */}
-            <Card sx={{ mb: 3, p: 2 }}>
+            <Card className="production-bonuses__surface production-bonuses__chart" tabIndex={0} role="region" aria-label="Gráfica de bono por técnico: desplazable">
                 <Typography variant="h6" sx={{ mb: 2 }}>
                     Bono por Técnico
                 </Typography>
@@ -240,7 +236,7 @@ export default function BondsDashboard() {
             </Card>
 
             {/* TABLA */}
-            <Card>
+            <Card className="production-bonuses__surface">
                 <CardContent>
                     <Typography variant="h6" sx={{ mb: 2 }}>
                         Detalle de órdenes por técnico
@@ -250,9 +246,9 @@ export default function BondsDashboard() {
                             <CircularProgress />
                         </Box>
                     ) : (
-                        <TableContainer component={Paper}>
-                            <Table>
-                                <TableHead sx={{ bgcolor: "#eee" }}>
+                        <TableContainer className="production-bonuses__table-container" component={Paper} tabIndex={0} role="region" aria-label="Detalle de órdenes por técnico: tabla desplazable">
+                            <Table className="production-bonuses__table">
+                                <TableHead>
                                     <TableRow>
                                 
                                         <TableCell><b>Técnico</b></TableCell>

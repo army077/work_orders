@@ -33,6 +33,7 @@ function fixture({ fastTimeout = false, env = {} } = {}) {
         cache.set(filename, exports);
         const require = name => {
             if (name in app.bindings) return app.bindings[name];
+            if (name.endsWith('.css')) return {};
             if (name === 'axios') return { default: axios };
             assert.ok(name.startsWith('.'), 'Unexpected dependency: ' + name);
             return app.load(path.relative(root, path.resolve(path.dirname(filename), name + '.ts')));

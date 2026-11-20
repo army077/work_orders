@@ -114,7 +114,7 @@ for (const state of [
 ]) test(`list feedback: ${state.text}`, () => assert.ok(visible(html(components.InspectionListFeedback, state)).includes(state.text)));
 
 test('live Plantel renders real aliases, progress and missing requester using a mocked useList', () => {
-  const pageLoader = createLoader({ '@refinedev/core': { useList: options => {
+  const pageLoader = createLoader({ './inspection-list.css': {}, './inspection-detail.css': {}, '@refinedev/core': { useList: options => {
     if (options.resource === domain.LEGACY_RELEASE_RESOURCE) {
       assert.equal(options.queryOptions.enabled, false); assert.equal(options.queryOptions.retry, false);
       return { data: undefined, isLoading: false, isFetching: false, error: null, refetch: async () => {} };
@@ -126,7 +126,7 @@ test('live Plantel renders real aliases, progress and missing requester using a 
   const page = pageLoader('src/pages/Plantel Inspeccion.tsx').PlantelInspeccion;
   const output = visible(html(page));
   assert.match(output, /Inspección #7/); assert.doesNotMatch(output, /Inspección #999/);
-  assert.match(output, /Progreso:.*100/); assert.match(output, /Solicitante no registrado/);
+  assert.match(output, /Progreso de puntos.*100/); assert.match(output, /Solicitante no registrado/);
 });
 
 const production = (id = 99, status = 'PENDING', code = 'LIB001') => ({ id, tasks: [{ id: id + 1000, work_order_id: id, code, status }] });

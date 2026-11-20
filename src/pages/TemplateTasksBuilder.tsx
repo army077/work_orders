@@ -15,6 +15,7 @@ import { apiAxios as axios } from '../services/apiTransport'
 import * as XLSX from 'xlsx';
 import { fetchApi, retryApiQuery } from "../services/apiResponse";
 import { isPositiveId, requirePositiveId } from "../services/catalogQueries";
+import "./template-tasks-builder.css";
 
 type Template = { id: number; name: string; template_type: string; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -41,30 +42,45 @@ const SortableTask: React.FC<{
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="item" >
-      <div className="handle" {...attributes} {...listeners}>⠿</div>
+    <div ref={setNodeRef} style={style} className="item tasks-builder__task tasks-builder__task--production" >
+      <div className="handle tasks-builder__handle" aria-label={`Reordenar actividad ${id}`} {...attributes} {...listeners}>⠿</div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-        <input
+      <div className="tasks-builder__task-fields tasks-builder__task-fields--production">
+        <div className="tasks-builder__field tasks-builder__field--title">
+        <span className="tasks-builder__field-label">Actividad</span>
+        <input className="tasks-builder__input"
+          aria-label="Nombre de la actividad"
           value={t.title}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="Task title"
         />
-        <input
+        {t.title.length > 28 && <span className="tasks-builder__long-value" aria-hidden="true">{t.title}</span>}
+        </div>
+        <div className="tasks-builder__field tasks-builder__field--code">
+        <span className="tasks-builder__field-label">Código</span>
+        <input className="tasks-builder__input"
+          aria-label="Código de la actividad"
           value={t.code}
           onChange={(e) => onChange({ code: e.target.value })}
           placeholder="Code"
         />
-        <input
+        </div>
+        <div className="tasks-builder__field tasks-builder__field--minutes">
+        <span className="tasks-builder__field-label">Minutos</span>
+        <input className="tasks-builder__input"
+          aria-label="Minutos esperados"
           type="number"
           value={t.expected_minutes}
           onChange={(e) => onChange({ expected_minutes: Number(e.target.value) })}
           placeholder="Minutes"
         />
+        </div>
+        <div className="tasks-builder__field tasks-builder__field--category">
+        <span className="tasks-builder__field-label">Categoría</span>
         <select
+          aria-label="Categoría de la actividad"
           value={t.category}
           onChange={(e) => onChange({ category: e.target.value })}
-          style={{ maxWidth: 150 }}
         >
           <option value="Mantenimiento">Mantenimiento</option>
           <option value="Reparación">Reparación</option>
@@ -74,17 +90,18 @@ const SortableTask: React.FC<{
           <option value="Detallado">Detalle</option>
           <option value="Verificación">Verificación</option>
         </select>
+        </div>
       </div>
 
-      <div className="right" style={{ gap: 8, alignItems: "center" }}>
+      <div className="right tasks-builder__task-actions">
         <span className="pill">{t.expected_minutes} min</span>
-        <button className="btn-save" onClick={onSave} disabled={savingOne}>
+        <button className="btn-save tasks-builder__save" onClick={onSave} disabled={savingOne}>
           {savingOne ? "Guardando…" : draft?.__saved ? "✔️ Guardado" : "Guardar"}
         </button>
         {draft?.__saved && (
           <audio autoPlay src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b6c2b3e.mp3" />
         )}
-        <button className="btn-cancel" onClick={onDelete}>Eliminar</button>
+        <button className="btn-cancel tasks-builder__delete" onClick={onDelete}>Eliminar</button>
         <span className="badge">#{task.position}</span>
       </div>
     </div>
@@ -111,25 +128,43 @@ const SortableTaskCalidad: React.FC<{
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="item">
-      <div className="handle" {...attributes} {...listeners}>⠿</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-        <input
+    <div ref={setNodeRef} style={style} className="item tasks-builder__task tasks-builder__task--inspection">
+      <div className="handle tasks-builder__handle" aria-label={`Reordenar punto de inspección ${id}`} {...attributes} {...listeners}>⠿</div>
+      <div className="tasks-builder__task-fields tasks-builder__task-fields--inspection">
+        <div className="tasks-builder__field tasks-builder__field--revision">
+        <span className="tasks-builder__field-label">Punto de revisión</span>
+        <input className="tasks-builder__input"
+          aria-label="Punto de revisión"
           value={t.revision_point}
           onChange={(e) => onChange({ revision_point: e.target.value })}
           placeholder="Punto de revisión"
         />
-        <input
+        {t.revision_point.length > 28 && <span className="tasks-builder__long-value" aria-hidden="true">{t.revision_point}</span>}
+        </div>
+        <div className="tasks-builder__field tasks-builder__field--specs">
+        <span className="tasks-builder__field-label">Especificaciones</span>
+        <input className="tasks-builder__input"
+          aria-label="Especificaciones"
           value={t.specs}
           onChange={(e) => onChange({ specs: e.target.value })}
           placeholder="Especificaciones"
         />
-        <input
+        {t.specs.length > 28 && <span className="tasks-builder__long-value" aria-hidden="true">{t.specs}</span>}
+        </div>
+        <div className="tasks-builder__field tasks-builder__field--suggestions">
+        <span className="tasks-builder__field-label">Sugerencias</span>
+        <input className="tasks-builder__input"
+          aria-label="Sugerencias"
           value={t.suggestions}
           onChange={(e) => onChange({ suggestions: e.target.value })}
           placeholder="Sugerencias"
         />
+        {t.suggestions.length > 28 && <span className="tasks-builder__long-value" aria-hidden="true">{t.suggestions}</span>}
+        </div>
+        <div className="tasks-builder__field tasks-builder__field--category">
+        <span className="tasks-builder__field-label">Categoría</span>
         <select
+          aria-label="Categoría del punto de inspección"
           value={t.category}
           onChange={(e) => onChange({ category: e.target.value })}
         >
@@ -143,12 +178,13 @@ const SortableTaskCalidad: React.FC<{
           <option value="Limpieza">Limpieza</option>
           <option value="Estetica">Estética</option>
         </select>
+        </div>
       </div>
-      <div className="right" style={{ gap: 8, alignItems: "center" }}>
-        <button onClick={onSave} disabled={savingOne} style={{ backgroundColor: 'rgba(76, 175, 80, 1)', color: 'white' }}>
+      <div className="right tasks-builder__task-actions">
+        <button className="tasks-builder__save" onClick={onSave} disabled={savingOne}>
           {savingOne ? "Guardando…" : draft?.__saved ? "✔️ Guardado" : "Guardar"}
         </button>
-        <button onClick={onDelete} style={{ backgroundColor: '#8B0000' }}>Eliminar</button>
+        <button className="tasks-builder__delete" onClick={onDelete}>Eliminar</button>
         <span className="badge">#{task.position}</span>
       </div>
     </div>
@@ -577,37 +613,37 @@ export default function TemplateTasksBuilder() {
 
 
   return (
-    <div className="card">
-      <h2>Constructor de actividades</h2>
-      <p className="muted">Organiza las actividades dentro de cada sección de plantilla.</p>
+    <div className="tasks-builder">
+      <header className="tasks-builder__header">
+        <span className="tasks-builder__eyebrow">Ingeniería y catálogos</span>
+        <h1>Constructor de tareas</h1>
+        <p>Configura actividades y puntos de inspección dentro de cada sección de plantilla.</p>
+      </header>
 
-      <div className="row cols-3">
-        <div>
-          <label>Plantilla</label>
-          <select value={templateId ?? ""} onChange={(e) => setTemplateId(Number(e.target.value) || null)}>
+      <section className="tasks-builder__configuration" aria-labelledby="tasks-builder-configuration-title">
+        <h2 id="tasks-builder-configuration-title">Contexto y acciones</h2>
+        <div className="tasks-builder__configuration-grid">
+        <div className="tasks-builder__field">
+          <label htmlFor="tasks-builder-template">Plantilla</label>
+          <select id="tasks-builder-template" value={templateId ?? ""} onChange={(e) => setTemplateId(Number(e.target.value) || null)}>
             <option value="">— seleccionar —</option>
             {(templates?.data ?? []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         </div>
-        <div>
-          <label>Sección</label>
-          <select value={sectionId ?? ""} onChange={(e) => setSectionId(Number(e.target.value) || null)}>
+        <div className="tasks-builder__field">
+          <label htmlFor="tasks-builder-section">Sección</label>
+          <select id="tasks-builder-section" value={sectionId ?? ""} onChange={(e) => setSectionId(Number(e.target.value) || null)}>
             <option value="">— seleccionar —</option>
             {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
         </div>
-        <div>
-          <label>Acciones</label>
-          <div className="right" style={{ gap: 10 }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={onAddTask}>+ Añadir actividad</button>
+        <div className="tasks-builder__actions">
+          <span className="tasks-builder__actions-label">Acciones</span>
+          <div className="tasks-builder__actions-content">
+              <button className="tasks-builder__primary" onClick={onAddTask}>+ Añadir actividad</button>
               {savingOrder ? <span className="badge">Guardando orden…</span> : null}
-            </div>
-
-            <div style={{ display: "flex", gap: 8 }}>
               <button className='btn--clone' onClick={handleDialogOpen}>+ Clonar plantilla</button>
               {savingOrder ? <span className="badge">Clonando orden…</span> : null}
-            </div>
 
             {isInspectionTemplate && sectionId ? (
               <Button
@@ -626,12 +662,13 @@ export default function TemplateTasksBuilder() {
               </Button>
             ) : null}
           </div>
-
         </div>
       </div>
+      </section>
 
-      <br />
-
+      <section className="tasks-builder__activities" aria-labelledby="tasks-builder-activities-title">
+      <h2 id="tasks-builder-activities-title">Actividades de la sección</h2>
+      <div className="tasks-builder__activity-content">
       {templatesError && <div role="alert">No se pudieron cargar las plantillas: {templatesError.message}</div>}
       {modelsError && <div role="alert">No se pudieron cargar los modelos: {modelsError}</div>}
       {templateId !== null && !isPositiveId(templateId) && <div role="alert">El identificador de la plantilla no es válido.</div>}
@@ -679,27 +716,21 @@ export default function TemplateTasksBuilder() {
           </SortableContext>
         </DndContext>
       )}
-      <Dialog open={dialogOpen} onClose={handleDialogClose} sx={{ borderRadius: 4, overflow: "hidden" }}>
+      </div>
+      </section>
+      <Dialog open={dialogOpen} onClose={handleDialogClose} PaperProps={{ className: "tasks-builder__dialog-paper" }}>
         {!isCloneReady ? (
           // ===== Vista de selección / clonando =====
-          <div style={{ padding: 20, minWidth: 380 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <h2 className='modal-title' style={{ marginBottom: 4 }}>Clonar plantilla</h2>
-              <p className="muted" style={{ marginTop: 0, textAlign: "center" }}>
+          <div className="tasks-builder__clone-selection">
+            <div className="tasks-builder__clone-intro">
+              <h2 className='modal-title'>Clonar plantilla</h2>
+              <p className="muted">
                 Elige una plantilla y clona su estructura de secciones y actividades.
               </p>
-              <div style={{ width: "100%" }}>
+              <div className="tasks-builder__clone-source">
                 <select
-                  style={{
-                    width: "100%",
-                    minWidth: 300,
-                    maxWidth: "100%",
-                    boxSizing: "border-box",
-                    marginBottom: 16,
-                    fontSize: 16,
-                    padding: "8px 12px",
-                  }}
-                  className="select-modal"
+                  className="select-modal tasks-builder__control"
+                  aria-label="Plantilla para clonar"
                   value={templateId2 ?? ""}
                   onChange={(e) => setTemplateId2(Number(e.target.value) || null)}
                   disabled={isCloning}
@@ -712,7 +743,7 @@ export default function TemplateTasksBuilder() {
               </div>
             </div>
 
-            <div className='right' style={{ gap: 8 }}>
+            <div className='right tasks-builder__dialog-actions'>
               <button
                 className='btn--clone'
                 onClick={clonacionDePlantilla}
@@ -725,50 +756,33 @@ export default function TemplateTasksBuilder() {
           </div>
         ) : (
           // ===== Vista de revisión (cuando ya hay datos clonados) =====
-          <div style={{ padding: 20, minWidth: 520, maxWidth: 720 }}>
-            <h2 className='modal-title' style={{ marginBottom: 8 }}>
+          <div className="tasks-builder__clone-review">
+            <h2 className='modal-title'>
               Revisión de clonación
             </h2>
-            <p className="muted" style={{ marginTop: 0 }}>
+            <p className="muted">
               Confirma la estructura clonada es correcta antes de finalizar.
             </p>
 
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: 12,
-              marginBottom: 12
-            }}>
-              <div className="stat">
+            <div className="tasks-builder__clone-summary">
+              <div className="stat tasks-builder__clone-field">
                 <div className="label"><b>Plantilla</b></div>
                 <input
+                  aria-label="Nombre de la plantilla clonada"
                   type="text"
                   value={newTemplateName}
                   placeholder={`Copia de ${clonedTemplate.name}`}
                   onChange={(e) => setNewTemplateName(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "6px 10px",
-                    fontSize: 15,
-                    borderRadius: 6,
-                    border: "1px solid #ccc",
-                  }}
                 />
               </div>
-              <div className="stat">
+              <div className="stat tasks-builder__clone-field">
                 <div className="label"><b>Modelo</b></div>
                 <select
+                  aria-label="Modelo de la plantilla clonada"
                   value={selectedModelId ?? ""}
                   onChange={(e) => {setSelectedModelId(
                     e.target.value ? Number(e.target.value) : null
                   )}}
-                  style={{
-                    width: "100%",
-                    padding: "6px 10px",
-                    fontSize: 15,
-                    borderRadius: 6,
-                    border: "1px solid #ccc",
-                  }}
                 >
                   {modelos.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -779,42 +793,42 @@ export default function TemplateTasksBuilder() {
 
               </div>
 
-              <div className="stat">
+              <div className="stat tasks-builder__clone-count">
                 <div className="label"><b>Secciones</b></div>
                 <div className="value">{clonedSections.length}</div>
               </div>
-              <div className="stat">
+              <div className="stat tasks-builder__clone-count">
                 <div className="label"><b>Actividades</b></div>
                 <div className="value">{clonedTasks.length}</div>
               </div>
             </div>
 
-            <div style={{ maxHeight: 360, overflow: "auto", border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
+            <div className="tasks-builder__clone-structure">
               {clonedSections
                 .slice()
                 .sort((a, b) => a.position - b.position)
                 .map((s) => (
-                  <div key={s.id} style={{ marginBottom: 14 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                  <div key={s.id} className="tasks-builder__clone-section">
+                    <div className="tasks-builder__clone-section-title">
                       {s.position}. {s.title}
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    <ul className="tasks-builder__clone-items">
                       {(tasksBySectionMap[s.id] ?? []).map((t) => (
-                        <li key={t.id} style={{ marginBottom: 4 }}>
-                          <span style={{ fontWeight: 500 }}>{t.title || t.revision_point}</span>
-                          {t.code ? <span style={{ marginLeft: 6, opacity: 0.7 }}>({t.code})</span> : null}
+                        <li key={t.id} className="tasks-builder__clone-item">
+                          <span className="tasks-builder__clone-item-title">{t.title || t.revision_point}</span>
+                          {t.code ? <span className="tasks-builder__clone-code">({t.code})</span> : null}
                           <span className="pill" style={{ marginLeft: 8 }}>{t.expected_minutes ?? 0} min</span>
                         </li>
                       ))}
                       {((tasksBySectionMap[s.id] ?? []).length === 0) && (
-                        <li style={{ opacity: 0.6, fontStyle: "italic" }}>Sin actividades</li>
+                        <li className="tasks-builder__clone-empty">Sin actividades</li>
                       )}
                     </ul>
                   </div>
                 ))}
             </div>
 
-            <div className='right' style={{ gap: 8, marginTop: 12 }}>
+            <div className='right tasks-builder__dialog-actions'>
               <button className='btn--ok' onClick={() => handleFinalize()}>Finalizar</button>
               <button className='btn-cancel' onClick={() => handleBack()}>Regresar</button>
             </div>
@@ -822,14 +836,15 @@ export default function TemplateTasksBuilder() {
         )}
       </Dialog>
 
-      <Dialog open={openFileDialog} onClose={handleFileDialogClose}>
-        <Box sx={{ padding: 2 }}>
-          <Typography variant="h6" gutterBottom>Cargar archivo <u style={{ color: 'green' }}>XLSX</u></Typography>
+      <Dialog open={openFileDialog} onClose={handleFileDialogClose} PaperProps={{ className: "tasks-builder__dialog-paper tasks-builder__upload-paper" }}>
+        <Box className="tasks-builder__upload-content">
+          <Typography className="tasks-builder__upload-title" variant="h6" gutterBottom>Cargar archivo <u>XLSX</u></Typography>
           <input
+            aria-label="Archivo XLSX"
             type="file"
             accept=".xlsx, .xls"
             onChange={handleFileUpload}
-            style={{ margin: "16px 0" }}
+            className="tasks-builder__file-input"
           />
 
           <Button onClick={handleFileDialogClose} color="error" variant='outlined' sx={{ ml: 2 }}>Cerrar</Button>

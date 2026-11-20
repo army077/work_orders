@@ -25,6 +25,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import { API10_URL } from "../config/api";
 import { apiFetch as fetch } from "../services/apiTransport";
+import "./metricas-inspeccion.css";
 
 export interface InspectionTimingRecord {
   inspection_order_id: number;
@@ -189,37 +190,31 @@ export default function MetricasInspeccion() {
   }, [records]);
 
   return (
-    <Box sx={{ p: 3, maxWidth: "100%", margin: "0 auto" }}>
+    <Box className="inspection-metrics">
       {/* Encabezado */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box component="header" className="inspection-metrics__header">
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: "text.primary" }}>
+          <Typography className="inspection-metrics__eyebrow">Calidad</Typography>
+          <Typography component="h1" className="inspection-metrics__title">
             Tiempos de Inspección y Calidad
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          <Typography className="inspection-metrics__intro">
             Monitoreo en tiempo real de solicitudes de inspección desde piso, tiempos de espera y liberación.
           </Typography>
         </Box>
         <Tooltip title="Actualizar datos">
-          <IconButton onClick={loadData} disabled={isLoading} sx={{ color: "primary.main" }}>
-            <RefreshIcon />
-          </IconButton>
+          <span>
+            <IconButton aria-label="Actualizar datos" className="inspection-metrics__refresh" onClick={loadData} disabled={isLoading}>
+              <RefreshIcon />
+            </IconButton>
+          </span>
         </Tooltip>
       </Box>
 
       {/* Tarjetas KPI de Tiempos y Estado */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={2} className="inspection-metrics__cards">
         <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              p: 2,
-              bgcolor: "#1F1B19",
-              border: "1px solid #3A3633",
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
+          <Card className="inspection-metrics__card inspection-metrics__card--pending">
             <PendingActionsIcon sx={{ color: "#F2A65A", fontSize: 36 }} />
             <Box>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -233,16 +228,7 @@ export default function MetricasInspeccion() {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              p: 2,
-              bgcolor: "#1F1B19",
-              border: "1px solid #3A3633",
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
+          <Card className="inspection-metrics__card inspection-metrics__card--progress">
             <PlayCircleOutlineIcon sx={{ color: "#FF6B77", fontSize: 36 }} />
             <Box>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -256,16 +242,7 @@ export default function MetricasInspeccion() {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              p: 2,
-              bgcolor: "#1F1B19",
-              border: "1px solid #3A3633",
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
+          <Card className="inspection-metrics__card inspection-metrics__card--response">
             <AccessTimeIcon sx={{ color: "#E63946", fontSize: 36 }} />
             <Box>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -279,16 +256,7 @@ export default function MetricasInspeccion() {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              p: 2,
-              bgcolor: "#1F1B19",
-              border: "1px solid #3A3633",
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
+          <Card className="inspection-metrics__card inspection-metrics__card--duration">
             <CheckCircleOutlineIcon sx={{ color: "#5BBF8A", fontSize: 36 }} />
             <Box>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -303,19 +271,20 @@ export default function MetricasInspeccion() {
       </Grid>
 
       {/* Barra de Filtros y Búsqueda */}
-      <Box sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+      <Box className="inspection-metrics__toolbar">
         <TextField
+          className="inspection-metrics__search"
           size="small"
+          label="Buscar inspecciones"
           placeholder="Buscar por serie, máquina, técnico, inspector o estación..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 380, flex: 1 }}
           InputProps={{
             startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
           }}
         />
 
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box className="inspection-metrics__filters">
           <Chip
             label={`Todas (${records.length})`}
             onClick={() => setFilterStatus("ALL")}
@@ -353,8 +322,8 @@ export default function MetricasInspeccion() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} elevation={0} className="inspection-metrics__table-container" tabIndex={0} aria-label="Tabla de tiempos de inspección">
+          <Table size="small" className="inspection-metrics__table">
             <TableHead>
               <TableRow>
                 <TableCell><b>Insp. ID</b></TableCell>

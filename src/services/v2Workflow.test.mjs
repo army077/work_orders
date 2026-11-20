@@ -34,7 +34,9 @@ function fixture(type = 'Inspección de ensamble') {
   const bindings = {
     react: { default: hooks, ...hooks },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
-    '@mui/material': new Proxy({}, { get: (_, name) => name }),
+    '@mui/material': new Proxy({}, { get: (_, name) => name === 'useMediaQuery' ? () => false
+      : name === 'useTheme' ? () => ({ breakpoints: { down: () => '(max-width:899.95px)' } }) : name }),
+    '@mui/icons-material/Close': { default: 'CloseIcon' },
     '@refinedev/core': { useList: args => {
       if (args.resource === 'inspection-production-releases') {
         assert.equal(args.queryOptions.enabled, false);
@@ -42,6 +44,8 @@ function fixture(type = 'Inspección de ensamble') {
       }
       app.queries.push(args); return query();
     } },
+    './inspection-list.css': {},
+    './inspection-detail.css': {},
     'react-icons/fa6': {}, 'react-icons/md': {},
     axios: { default: axios },
   };
@@ -93,7 +97,7 @@ function text(tree) {
 }
 const button = (ui, label) => nodes(ui.render(), 'Button').find(node => text(node).includes(label));
 function open(app) {
-  const ui = app.panel(); nodes(ui.render(), 'Card')[0].props.onClick(); return ui;
+  const ui = app.panel(); nodes(ui.render(), 'Button').find(node => node.props['data-open-inspection'] === app.order.inspection_order_id).props.onClick(); return ui;
 }
 
 test('simulated order: real dataProvider creates and lists using API27, preserving payload and states', async () => {

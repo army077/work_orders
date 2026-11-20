@@ -1,4 +1,5 @@
-import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, InputAdornment, MenuItem, TextField, Typography } from "@mui/material";
+import { MdSearch as SearchIcon, MdRefresh as RefreshIcon } from "react-icons/md";
 import {
     INSPECTION_STATUSES, SEARCH_SCOPES, STATUS_LABELS, productionOrderId, requesterLabel, cancellationProposalReady,
     RELEASE_FILTERS, RELEASE_LABELS, productionReleaseState,
@@ -18,51 +19,37 @@ type ControlsProps = {
     onRefresh: () => void;
 };
 
-// The page uses the existing dark CSS without a MUI dark theme. Keep these
-// overrides local so other pages and the light popup menus retain their styles.
-const controlsSx = {
-    display: "flex", gap: 2, mb: 2, flexWrap: "wrap", alignItems: "center",
-    "& .MuiOutlinedInput-root": {
-        color: "#f3f4f6", backgroundColor: "#151821",
-        "& fieldset": { borderColor: "#8993a5" },
-        "&:hover fieldset": { borderColor: "#e6e9ef" },
-        "&.Mui-focused fieldset": { borderColor: "#ffb4ab", borderWidth: 2 },
-        "&.Mui-focused": { outline: "2px solid #ffb4ab", outlineOffset: 2 },
-    },
-    "& .MuiOutlinedInput-input": { color: "#f3f4f6", backgroundColor: "transparent", border: 0, marginBottom: 0 },
-    "& .MuiInputLabel-root": { color: "#d5dae3", "&.Mui-focused": { color: "#ffffff" } },
-    "& .MuiFormHelperText-root": { color: "#c8d0dd" },
-    "& .MuiSelect-icon": { color: "#e6e9ef" },
-    "& .MuiButton-root": {
-        color: "#ffffff", backgroundColor: "#2a2a2a", border: "1px solid #a0a4ad",
-        "&:hover": { backgroundColor: "#444444", borderColor: "#ffffff" },
-        "&:focus-visible, &.Mui-focusVisible": { outline: "3px solid #ffb4ab", outlineOffset: 3 },
-        "&.Mui-disabled": { color: "#b7bdc8", backgroundColor: "#20232a", borderColor: "#626b7a", opacity: 1 },
-    },
-} as const;
-
 export function InspectionPlantelControls(props: ControlsProps) {
-    return <Box sx={controlsSx}>
-        <TextField select label="Buscar por" value={props.scope} onChange={event => props.onScope(event.target.value as SearchScope)} sx={{ minWidth: 210 }}>
-            {SEARCH_SCOPES.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
-        </TextField>
-        <TextField select label="Liberación actual de Producción" value={props.release}
-            onChange={event => props.onRelease(event.target.value as ReleaseFilter)} sx={{ minWidth: 290 }}
-            helperText="LIB001: ensamble. LIB002: pintura. Estado de la orden de producción.">
-            {RELEASE_FILTERS.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
-        </TextField>
-        <TextField label="Buscar inspecciones" value={props.search} onChange={event => props.onSearch(event.target.value)}
-            helperText="IDs exactos; folio SAI, cliente, serie, inspector o título por texto."
-            sx={{ minWidth: 250, flex: 1 }} />
-        <Button onClick={() => props.onSearch("")} disabled={!props.search}>Limpiar búsqueda</Button>
-        <TextField select label="Estado de inspección" value={props.status}
-            onChange={event => props.onStatus(event.target.value as InspectionStatus | "")} sx={{ minWidth: 230 }}>
-            <MenuItem value="">Todas</MenuItem>
-            {INSPECTION_STATUSES.map(status => <MenuItem key={status} value={status}>{STATUS_LABELS[status]}</MenuItem>)}
-        </TextField>
-        <Button variant="outlined" disabled={props.refreshing} onClick={props.onRefresh}>
-            {props.refreshing ? "Actualizando…" : "Actualizar inspecciones"}
-        </Button>
+    return <Box className="inspection-controls">
+        <Box className="inspection-controls__main">
+            <TextField className="inspection-controls__search" size="small" label="Buscar inspecciones" InputLabelProps={{ shrink: true }} value={props.search} onChange={event => props.onSearch(event.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon size={18} aria-hidden="true" /></InputAdornment> }}
+                inputProps={{ "aria-describedby": "inspection-search-help" }} />
+            <Box className="inspection-controls__actions">
+                <Button className="inspection-controls__clear" onClick={() => props.onSearch("")} disabled={!props.search}>Limpiar búsqueda</Button>
+                <Button className="inspection-controls__refresh" variant="outlined" startIcon={<RefreshIcon size={18} aria-hidden="true" />} disabled={props.refreshing} onClick={props.onRefresh}>
+                    {props.refreshing ? "Actualizando…" : "Actualizar inspecciones"}
+                </Button>
+            </Box>
+        </Box>
+        <Box className="inspection-controls__filters">
+            <TextField className="inspection-controls__scope" size="small" select label="Buscar por" InputLabelProps={{ shrink: true }} SelectProps={{ autoWidth: true, MenuProps: { PaperProps: { className: "inspection-filter-menu" } } }} value={props.scope} onChange={event => props.onScope(event.target.value as SearchScope)}>
+                {SEARCH_SCOPES.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+            </TextField>
+            <TextField className="inspection-controls__release" size="small" select label="Liberación actual de Producción" InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true, autoWidth: true, MenuProps: { PaperProps: { className: "inspection-filter-menu" } } }} value={props.release}
+                onChange={event => props.onRelease(event.target.value as ReleaseFilter)} inputProps={{ "aria-describedby": "inspection-release-help" }}>
+                {RELEASE_FILTERS.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+            </TextField>
+            <TextField className="inspection-controls__status" size="small" select label="Estado de inspección" InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true, autoWidth: true, MenuProps: { PaperProps: { className: "inspection-filter-menu" } } }} value={props.status}
+                onChange={event => props.onStatus(event.target.value as InspectionStatus | "")}>
+                <MenuItem value="">Todas</MenuItem>
+                {INSPECTION_STATUSES.map(status => <MenuItem key={status} value={status}>{STATUS_LABELS[status]}</MenuItem>)}
+            </TextField>
+        </Box>
+        <Box className="inspection-controls__notes">
+            <Typography id="inspection-search-help">IDs exactos; folio SAI, cliente, serie, inspector o título por texto.</Typography>
+            <Typography id="inspection-release-help">LIB001: ensamble. LIB002: pintura. Estado de la orden de producción.</Typography>
+        </Box>
     </Box>;
 }
 

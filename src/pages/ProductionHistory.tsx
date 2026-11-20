@@ -26,6 +26,7 @@ import { Search, AddCircle, Visibility } from "@mui/icons-material";
 import dayjs, { Dayjs } from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import { apiAxios as axios, apiFetch as fetch } from "../services/apiTransport";
+import "./production-bonuses.css";
 
 dayjs.extend(weekOfYear);
 import { IoBuildOutline } from "react-icons/io5";
@@ -196,24 +197,13 @@ export default function ProductionHistory() {
 
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <Box sx={{ bgcolor: COLORS.gray200, minHeight: "100vh", p: 3, color: COLORS.white, borderRadius: 10 }}>
-                <Typography variant="h4" sx={{ mb: 2, color: "#8B0000", fontWeight: 700 }}>
+            <Box className="production-bonuses production-bonuses--history">
+                <Typography className="production-bonuses__title" variant="h4">
                     Historial de Bonos de Producción
                 </Typography>
 
                 {/* FILTROS */}
-                <Box
-                    sx={{
-                        display: "flex",
-                        gap: 2,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        mb: 3,
-                        bgcolor: COLORS.white,
-                        p: 2,
-                        borderRadius: 2,
-                    }}
-                >
+                <Box className="production-bonuses__history-filters">
                     <DatePicker
                         label="Fecha inicio"
                         value={inicio}
@@ -252,9 +242,7 @@ export default function ProductionHistory() {
                         sx={{
                             flexGrow: 1,
                             minWidth: 240,
-                            bgcolor: COLORS.gray500,
                             input: { color: COLORS.white },
-                            "& .MuiOutlinedInput-root": { borderRadius: 2 },
                         }}
                         InputProps={{
                             startAdornment: <Search sx={{ color: COLORS.gray500, mr: 1 }} />,
@@ -263,10 +251,10 @@ export default function ProductionHistory() {
                 </Box>
 
                 {/* TABLA */}
-                <TableContainer component={Paper} sx={{ bgcolor: COLORS.gray200 }}>
-                    <Table>
+                <TableContainer component={Paper} className="production-bonuses__table-container" tabIndex={0} role="region" aria-label="Historial de bonos: tabla desplazable">
+                    <Table className="production-bonuses__table">
                         <TableHead>
-                            <TableRow sx={{ bgcolor: COLORS.red }}>
+                            <TableRow>
                                 <TableCell sx={{ color: COLORS.white }}>Fecha Final</TableCell>
                                 <TableCell sx={{ color: COLORS.white }}>Técnico Principal</TableCell>
                                 <TableCell sx={{ color: COLORS.white }}>Técnico Soporte</TableCell>
@@ -320,7 +308,7 @@ export default function ProductionHistory() {
                                         <TableRow
                                             key={row.id}
                                             sx={{
-                                                "&:hover": { bgcolor: COLORS.gray500 },
+                                                "&:hover": { bgcolor: "#312d29" },
                                             }}
                                         >
                                             <TableCell>{row.finished_local ? dayjs(row.finished_local).format("DD/MM/YYYY") : "-"}</TableCell>
@@ -350,7 +338,7 @@ export default function ProductionHistory() {
                                                     <AddCircle />
                                                 </IconButton>
                                                 <IconButton
-                                                    sx={{ color: COLORS.black }}
+                                                    sx={{ color: "#c5bcb5" }}
                                                     onClick={() => {
                                                         setSelectedRow(row);
                                                         fetchCustoms(row.id);
@@ -366,8 +354,8 @@ export default function ProductionHistory() {
                                         <TableRow
                                             key={row.id}
                                             sx={{
-                                                "&:hover": { bgcolor: COLORS.gray500 },
-                                                bgcolor: "#ffe6e6", // fondo diferente
+                                                "&:hover": { bgcolor: "#493337" },
+                                                bgcolor: "#402c2c",
                                                 borderLeft: `6px solid ${COLORS.redSoft}`, // acento lateral   
                                             }}
                                         >
@@ -398,7 +386,7 @@ export default function ProductionHistory() {
                                                     <AddCircle />
                                                 </IconButton>
                                                 <IconButton
-                                                    sx={{ color: COLORS.black }}
+                                                    sx={{ color: "#c5bcb5" }}
                                                     onClick={() => {
                                                         setSelectedRow(row);
                                                         fetchCustoms(row.id);
@@ -419,16 +407,17 @@ export default function ProductionHistory() {
                 </TableContainer>
                 {/* ==================== GRÁFICOS ==================== */}
                 <Box
+                    className="production-bonuses__chart-grid"
                     sx={{
                         display: "grid",
-                        gridTemplateColumns: "2fr 1fr",
+                        gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" },
                         gap: 3,
                         mt: 6,
                     }}
                 >
                     {/* --- 1️⃣ Gráfico de barras por semana --- */}
-                    <Paper sx={{ p: 2, bgcolor: COLORS.white, borderRadius: 3 }}>
-                        <Typography variant="h6" sx={{ mb: 2, color: COLORS.black, fontWeight: 700 }}>
+                    <Paper className="production-bonuses__surface production-bonuses__chart" tabIndex={0} role="region" aria-label="Gráfica de equipos finalizados por semana: desplazable">
+                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
                             Equipos finalizados por semana
                         </Typography>
                         <ResponsiveContainer width="100%" height={300}>
@@ -442,9 +431,9 @@ export default function ProductionHistory() {
                                     return acc;
                                 }, [])}
                             >
-                                <CartesianGrid strokeDasharray="3 3" stroke={COLORS.gray200} />
-                                <XAxis dataKey="week" stroke={COLORS.black} />
-                                <YAxis stroke={COLORS.black} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#554b44" />
+                                <XAxis dataKey="week" stroke="#c5bcb5" />
+                                <YAxis stroke="#c5bcb5" />
                                 <Tooltip />
                                 <Legend />
                                 <Bar dataKey="count" fill={COLORS.gray500} color={COLORS.red} name="Órdenes completadas" />
@@ -453,8 +442,8 @@ export default function ProductionHistory() {
                     </Paper>
 
                     {/* --- 2️⃣ Gráfico de pastel por modelo --- */}
-                    <Paper sx={{ p: 2, bgcolor: COLORS.white, borderRadius: 3 }}>
-                        <Typography variant="h6" sx={{ mb: 2, color: COLORS.black, fontWeight: 700 }}>
+                    <Paper className="production-bonuses__surface production-bonuses__chart" tabIndex={0} role="region" aria-label="Gráfica de ponderación por modelo: desplazable">
+                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
                             Ponderación por modelo
                         </Typography>
                         <ResponsiveContainer width="100%" height={300}>
@@ -478,7 +467,7 @@ export default function ProductionHistory() {
                                     {rows.map((_, idx) => (
                                         <Cell
                                             key={`cell-${idx}`}
-                                            fill={["#8B0000", "#B22222", "#7a7a7a", "#2a2a2a", "#1f1f1f"][idx % 5]}
+                                            fill={["#a93640", "#d96770", "#c5bcb5", "#b5865c", "#8ba59b"][idx % 5]}
                                         />
                                     ))}
                                 </Pie>
@@ -490,8 +479,8 @@ export default function ProductionHistory() {
                 </Box>
 
                 {/* --- 3️⃣ Gráfico combinado: equipos y eficiencia por técnico --- */}
-                <Paper sx={{ p: 2, bgcolor: COLORS.white, borderRadius: 3, mt: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 2, color: COLORS.black, fontWeight: 700 }}>
+                <Paper className="production-bonuses__surface production-bonuses__chart production-bonuses__performance" tabIndex={0} role="region" aria-label="Gráfica de desempeño por técnico: desplazable">
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
                         Desempeño por técnico
                     </Typography>
                     <ResponsiveContainer width="100%" height={350}>
@@ -522,27 +511,27 @@ export default function ProductionHistory() {
 
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke={COLORS.gray500} />
-                            <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} stroke={COLORS.black} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} stroke="#c5bcb5" />
                             <YAxis
                                 yAxisId="left"
                                 orientation="left"
-                                stroke={COLORS.redSoft}
+                                stroke="#d96770"
                                 label={{
                                     value: "Órdenes",
                                     angle: -90,
                                     position: "insideLeft",
-                                    style: { fill: COLORS.redSoft },
+                                    style: { fill: "#d96770" },
                                 }}
                             />
                             <YAxis
                                 yAxisId="right"
                                 orientation="right"
-                                stroke={COLORS.gray700}
+                                stroke="#c5bcb5"
                                 label={{
                                     value: "Eficiencia (%)",
                                     angle: 90,
                                     position: "insideRight",
-                                    style: { fill: COLORS.gray700 },
+                                    style: { fill: "#c5bcb5" },
                                 }}
                             />
                             <Tooltip />
@@ -552,7 +541,7 @@ export default function ProductionHistory() {
                                 yAxisId="right"
                                 type="monotone"
                                 dataKey="eficiencia"
-                                stroke={COLORS.black}
+                                stroke="#efb679"
                                 strokeWidth={2}
                                 name="Eficiencia"
                             />
@@ -570,6 +559,7 @@ export default function ProductionHistory() {
                             p: 4,
                             borderRadius: 3,
                             width: 420,
+                            maxWidth: "calc(100% - 32px)",
                             mx: "auto",
                             mt: "15%",
                             boxShadow: 24,

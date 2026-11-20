@@ -4,7 +4,6 @@ import { useList } from "@refinedev/core";
 import {
     Card,
     Typography,
-    Grid,
     Box,
     LinearProgress,
     Chip,
@@ -15,14 +14,20 @@ import {
     ListSubheader,
     Button,
     IconButton,
-    Tooltip
+    Tooltip,
+    DialogTitle,
+    useMediaQuery,
+    useTheme
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import "./inspection-list.css";
+import "./inspection-detail.css";
 import React, { useState, useEffect } from "react";
 import { FaEye } from 'react-icons/fa6';
 
 import { createInspectionRefresh, filterInspectionOrders, LEGACY_INSPECTION_LIST_RESOURCE, LEGACY_RELEASE_RESOURCE } from "../features/inspectionPlantel";
 import type { InspectionOrder, InspectionStatus, SearchScope, ReleaseFilter, ReleaseCode, ProductionReleaseOrder } from "../features/inspectionPlantel";
-import { STATUS_LABELS } from "../features/inspectionPlantel";
+import { productionOrderId, STATUS_LABELS } from "../features/inspectionPlantel";
 import { InspectionPlantelControls, InspectionIdentity, InspectionPeople, InspectionListFeedback, InspectionReleaseSummary } from "../features/InspectionPlantelControls";
 
 const INSPECTORS = [
@@ -33,18 +38,9 @@ const INSPECTORS = [
     { name: "Carlos Mercado", email: "carlos.mercado@asiarobotica.com" },
 ];
 
-const COLORS = {
-    red: "#8B0000",
-    redSoft: "#B22222",
-    black: "#121212",
-    gray900: "#1f1f1f",
-    gray700: "#2a2a2a",
-    gray500: "#7a7a7a",
-    gray200: "#e6e6e6",
-    white: "#ffffff",
-};
 
 export const PlantelInspeccion = () => {
+    const compactDetail = useMediaQuery(useTheme().breakpoints.down("md"));
     const [search, setSearch] = React.useState("");
     const [open, setOpen] = React.useState(false);
     const [selectedOrder, setSelectedOrder] = React.useState<InspectionOrder | null>(null);
@@ -229,210 +225,211 @@ export const PlantelInspeccion = () => {
         const avance = total > 0 ? Math.round((done / total) * 100) : 0;
 
         return (
-            <Grid item sx={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={o.inspection_order_id}>
-                <Card
-                    sx={{
-                        p: 2.5,
-                        height: '100%',
-                        transition: 'all 0.25s ease',
-                        maxWidth: 350,
-                        cursor: 'pointer',
-                        bgcolor: '#1F1B19',
-                        border: '1px solid #3A3633',
-                        borderRadius: 3,
-                        color: '#F5F1ED',
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-                        '&:hover': {
-                            boxShadow: '0 6px 20px rgba(91, 191, 138, 0.25)',
-                            transform: 'translateY(-3px)',
-                            borderColor: '#5BBF8A',
-                            bgcolor: '#25201D',
-                        },
-                    }}
-                    onClick={() => handleOpen(o)}
-                >
-                    <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 700, color: '#F5F1ED', mb: 1, fontSize: '1.05rem' }}
-                    >
-                        {o.inspection_type && o.equipo ? (
-                            <>
-                                {o.inspection_type} para <u style={{ color: '#E63946' }}>{o.equipo}</u>
-                            </>
-                        ) : (
-                            `Inspección #${o.inspection_order_id}`
-                        )}
-                        {o.estacion !== null && (
-                            <span style={{ color: '#B8B0A9', fontWeight: 500, marginLeft: 8, fontSize: '0.85rem' }}>
-                                | Estación: <strong style={{ color: '#F5F1ED' }}>{o.estacion}</strong>
-                            </span>
-                        )}
-                    </Typography>
-
-                    <InspectionIdentity order={o} />
-                    <InspectionPeople order={o} />
-                    {releaseFilter && releases && !releaseFailed && <InspectionReleaseSummary order={o} releases={releases} code={releaseFilter.split(":")[0] as ReleaseCode} />}
-                    <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
-                        Equipo: <strong>{o.equipo ?? "N/A"}</strong>
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
-                        Solicitada el: <strong>{new Date(new Date(o.created_at).getTime() + 6 * 60 * 60 * 1000).toLocaleString() ?? "N/A"}</strong>
-                    </Typography>
-                    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 1 }}>
-                        <Chip
+            <Box component="li" key={o.inspection_order_id} className="inspection-record" data-inspection-order={o.inspection_order_id}>
+                <Box className="inspection-record__heading">
+                    <Box className="inspection-record__identity">
+                        <Typography component="h2">Inspección #{o.inspection_order_id}</Typography>
+                        <Typography className="inspection-record__production">Orden de producción: <strong>{productionOrderId(o) ?? "No registrada"}</strong>
+                            {o.folio_sai && <span> · Folio SAI de producción: <strong>{o.folio_sai}</strong></span>}
+                        </Typography>
+                    </Box>
+                    <Chip
+                            className="inspection-record__state" data-inspection-status={o.status}
                             label={STATUS_LABELS[o.status] || o.status}
                             sx={{
                                 backgroundColor:
                                     o.status === "OPEN"
-                                        ? "#1e39d1ff"
+                                        ? "#5B1A1F"
                                         : o.status === "IN_PROGRESS"
-                                            ? "#ff9800"
+                                            ? "#F2B04A"
                                             : o.status === "CLOSED"
-                                                ? COLORS.gray700
+                                                ? "#34302D"
                                                 : o.status === "PENDING"
 
-                                                    ? COLORS.redSoft
-                                                    : COLORS.gray700,
-                                color: COLORS.white,
+                                                    ? "#5B1A1F"
+                                                    : "#34302D",
+                                color: o.status === "IN_PROGRESS" ? "#14110F" : "#F5F1ED",
                                 alignItems: "center",
                                 fontWeight: 700,
                                 fontSize: 12,
                             }}
 
                         />
-
+                </Box>
+                <Box className="inspection-record__body">
+                    <Box className="inspection-record__equipment">
+                        <Typography className="inspection-record__label">Equipo</Typography>
+                        <Typography className="inspection-record__machine">{o.equipo ?? "N/A"}</Typography>
+                        <Typography className="inspection-record__type">{o.inspection_type || "Tipo de inspección no registrado"}</Typography>
+                        <Box className="inspection-record__context">
+                        {o.estacion !== null && <Typography>Estación: <strong>{o.estacion ?? "—"}</strong></Typography>}
+                        <Typography>Serie: <strong>{o.machine_serial || "—"}</strong></Typography>
+                        </Box>
+                        <Box className="inspection-record__date">
+                            <Typography className="inspection-record__label">Solicitada el</Typography>
+                            <Typography>{new Date(new Date(o.created_at).getTime() + 6 * 60 * 60 * 1000).toLocaleString() ?? "N/A"}</Typography>
+                        </Box>
                     </Box>
-
-                    <Box sx={{ mt: 2, position: "relative" }}>
-                        <LinearProgress
-                            variant="determinate"
-                            value={avance}
-                            sx={{
-                                height: 16,
-                                borderRadius: 2,
-                                background: COLORS.gray200,
-                                "& .MuiLinearProgress-bar": {
-                                    background: `linear-gradient(90deg,${COLORS.red} , #00a708ff)`,
-                                },
-                            }}
-                        />
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                position: "absolute",
-                                top: 2,
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                fontWeight: 700,
-                                color: COLORS.black,
-                                lineHeight: "12px",
-                            }}
-                        >
-                            Progreso: {avance}%
-                        </Typography>
+                    <Box className="inspection-record__people">
+                        <Typography className="inspection-record__label">Responsables</Typography>
+                        <InspectionPeople order={o} />
                     </Box>
-                </Card>
-            </Grid>
+                    <Box className="inspection-record__progress">
+                        <Box className="inspection-record__progress-label"><span>Progreso de puntos</span><strong>{avance}% · {done}/{total}</strong></Box>
+                        <LinearProgress variant="determinate" value={avance} aria-label={`Progreso de puntos de inspección ${o.inspection_order_id}`} />
+                        <Button variant="outlined" className="inspection-record__open" data-open-inspection={o.inspection_order_id}
+                            aria-label={`Ver detalle de inspección ${o.inspection_order_id}`} onClick={() => handleOpen(o)} endIcon={<FaEye aria-hidden="true" />}>Ver detalle</Button>
+                    </Box>
+                </Box>
+                {releaseFilter && releases && !releaseFailed && <Box className="inspection-record__release"><InspectionReleaseSummary order={o} releases={releases} code={releaseFilter.split(":")[0] as ReleaseCode} /></Box>}
+            </Box>
         );
     };
 
     return (
-        <Box sx={{ p: 2 }}>
-            <Typography variant="h4" sx={{ mb: 2, color: COLORS.white }}>Plantel de Inspección</Typography>
+        <Box className="inspection-list">
+            <Box component="header" className="inspection-list__header"><Typography component="h1">Plantel de Inspección</Typography><Typography>Consulta inspecciones, responsables y avance de puntos. Abre un registro para revisar sus actividades.</Typography></Box>
             <InspectionPlantelControls search={search} scope={searchScope} status={filterStatus}
                 release={releaseFilter} onRelease={setReleaseFilter}
                 refreshing={refreshing} onSearch={setSearch} onScope={setSearchScope} onStatus={setFilterStatus}
                 onRefresh={() => { void refreshInspections().catch(() => undefined); }} />
             <InspectionListFeedback loading={isLoading || releaseLoading} failed={Boolean(error) || releaseFailed} releaseFailed={releaseFailed} total={inspections.length} matched={filtered.length} />
-            {!isLoading && !releaseLoading && !error && !releaseFailed && <Grid container spacing={2}>{filtered.map(renderCard)}</Grid>}
+            {!isLoading && !releaseLoading && !error && !releaseFailed && <Box component="ul" className="inspection-list__records" aria-label="Listado de inspecciones">{filtered.map(renderCard)}</Box>}
             <Dialog
                 open={open}
                 onClose={handleClose}
+                fullScreen={compactDetail}
+                aria-labelledby="inspection-detail-title"
                 maxWidth="lg"
                 fullWidth
-                PaperProps={{
-                    sx: {
-                        borderRadius: 3,
-                        overflow: "hidden",
-                        bgcolor: COLORS.white,
-                        border: `2px solid ${COLORS.gray200}`,
-                    },
-                }}
+                PaperProps={{ className: "inspection-detail" }}
             >
+                <DialogTitle id="inspection-detail-title" component="div" className="inspection-detail__header">
+                    <Box className="inspection-detail__identity">
+                        <Typography className="inspection-detail__eyebrow">
+                            Calidad · Detalle de inspección
+                        </Typography>
+                        <Box className="inspection-detail__heading">
+                            <Typography component="h2" variant="h6">
+                                {selectedOrder ? `Inspección #${selectedOrder.inspection_order_id}` : "Inspección"}
+                            </Typography>
+                            {selectedOrder && (
+                                <Chip
+                                    label={selectedOrder.status}
+                                    className="inspection-detail__state"
+                                    data-inspection-status={selectedOrder.status}
+                                />
+                            )}
+                        </Box>
+                        {selectedOrder && (
+                            <Box className="inspection-detail__references">
+                                <InspectionIdentity order={selectedOrder} />
+                                <Typography>{selectedOrder.equipo || "—"}</Typography>
+                            </Box>
+                        )}
+                    </Box>
+                    {selectedOrder &&
+                        (() => {
+                            const total = selectedOrder.tasks?.length ?? 0;
+                            const done = selectedOrder.tasks?.filter((t) => t.status === "DONE").length ?? 0;
+                            const avance = total > 0 ? Math.round((done / total) * 100) : 0;
+                            return (
+                                <Box className="inspection-detail__progress">
+                                    <Typography>
+                                        <strong>{avance}%</strong> puntos
+                                    </Typography>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={avance}
+                                        aria-label={`Progreso de puntos de inspección ${selectedOrder.inspection_order_id}`}
+                                    />
+                                    <Typography>
+                                        {done}/{total} completados · estado independiente
+                                    </Typography>
+                                </Box>
+                            );
+                        })()}
+                    <IconButton
+                        aria-label="Cerrar detalle de inspección"
+                        onClick={handleClose}
+                        className="inspection-detail__close"
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
                 {!selectedOrder ? (
-                    <Box sx={{ p: 4 }}>
+                    <Box>
                         <Typography>Cargando…</Typography>
                     </Box>
                 ) : (
-                    <Box sx={{ display: "flex", height: 650, minWidth: 900 }}>
-
+                    <Box className="inspection-detail__body">
                         {/* COL IZQUIERDA — INFO GENERAL */}
-                        <Box
-                            sx={{
-                                width: 300,
-                                display: "flex",
-                                flexDirection: "column",
-                                borderRight: `1px solid ${COLORS.gray200}`,
-                                bgcolor: "#f7f7f7",
-                            }}
-                        >
+                        <Box className="inspection-detail__information">
                             {/* HEADER */}
-                            <Box
-                                sx={{
-                                    p: 3,
-                                    background: `linear-gradient(135deg, ${COLORS.gray200}, #1e39d1ff)`,
-                                    color: COLORS.gray900,
-                                }}
-                            >
-                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                            <Box className="inspection-detail__template">
+                                <Typography variant="h6">
                                     {selectedOrder.titulo || `Inspección #${selectedOrder.inspection_order_id}`}
                                 </Typography>
-                                <Typography variant="body2" sx={{ opacity: 0.8, mt: 0.5 }}>
+                                <Typography variant="body2">
                                     Estación: <b>{selectedOrder.estacion ?? "N/A"}</b>
                                 </Typography>
 
-                                <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-                                    <Chip
-                                        label={selectedOrder.status}
-                                        sx={{
-                                            bgcolor: COLORS.gray200,
-                                            color: "#1e39d1ff",
-                                            fontWeight: 700,
-
-                                        }}
-                                    />
-                                </Box>
+                                <Box></Box>
                             </Box>
 
+                            <Typography className="inspection-detail__type">
+                                {selectedOrder.inspection_type || "Tipo de inspección no registrado"}
+                            </Typography>
                             {/* DETALLES */}
-                            <Box sx={{ p: 3, overflowY: "auto", flex: 1 }}>
-                                <Button disabled={refreshing} onClick={() => { void refreshInspections().catch(() => undefined); }}>
+                            <Box className="inspection-detail__fields">
+                                <Button
+                                    disabled={refreshing}
+                                    onClick={() => {
+                                        void refreshInspections().catch(() => undefined);
+                                    }}
+                                    className="inspection-detail__refresh"
+                                >
                                     Actualizar esta inspección
                                 </Button>
-                                {(error || releaseFailed) && <InspectionListFeedback loading={false} failed releaseFailed={releaseFailed} total={inspections.length} matched={filtered.length} />}
-                                <InspectionIdentity order={selectedOrder} />
-                                <InspectionPeople order={selectedOrder} />
+                                {(error || releaseFailed) && (
+                                    <InspectionListFeedback
+                                        loading={false}
+                                        failed
+                                        releaseFailed={releaseFailed}
+                                        total={inspections.length}
+                                        matched={filtered.length}
+                                    />
+                                )}
 
-                                <Box sx={{ mt: 2 }}>
+                                <Box className="inspection-detail__people">
+                                    <Typography component="h3">Responsables</Typography>
+                                    <InspectionPeople order={selectedOrder} />
+                                </Box>
 
-                                    {(
+                                <Box className="inspection-detail__assignment">
+                                    {
                                         <>
-                                            <Typography
-                                                variant="subtitle2"
-                                                sx={{ color: COLORS.red, fontWeight: 700, mb: 1 }}
-                                            >
-                                                Asignar inspector
-                                            </Typography>
+                                            <Typography variant="subtitle2">Asignar inspector</Typography>
 
                                             <Box
                                                 component="select"
-                                                value={INSPECTORS.find((inspector) => inspector.email === selectedOrder.assigned_tech_email)?.email ?? ""}
+                                                value={
+                                                    INSPECTORS.find(
+                                                        (inspector) =>
+                                                            inspector.email === selectedOrder.assigned_tech_email
+                                                    )?.email ?? ""
+                                                }
                                                 onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
                                                     const email = e.target.value;
                                                     if (!email) return;
 
                                                     try {
-                                                        console.log("Asignando inspector:", email, "a orden", selectedOrder.inspection_order_id);
+                                                        console.log(
+                                                            "Asignando inspector:",
+                                                            email,
+                                                            "a orden",
+                                                            selectedOrder.inspection_order_id
+                                                        );
                                                         const res = await fetch(
                                                             `${API10_URL}/quality/inspection/assign_inspector`,
                                                             {
@@ -458,17 +455,8 @@ export const PlantelInspeccion = () => {
                                                         alert("No se pudo asignar, intenta de nuevo.");
                                                     }
                                                 }}
-                                                style={{
-                                                    width: "100%",
-                                                    padding: "10px",
-                                                    borderRadius: "8px",
-                                                    border: `1px solid ${COLORS.gray200}`,
-                                                    backgroundColor: COLORS.gray200,
-                                                    color: COLORS.black,
-                                                    fontSize: "14px",
-                                                    fontWeight: 600,
-                                                    cursor: "pointer",
-                                                }}
+                                                className="inspection-detail__assignment-select"
+                                                aria-label="Asignar inspector"
                                             >
                                                 <option value="">Selecciona un inspector...</option>
                                                 {INSPECTORS.map((inspector) => (
@@ -478,186 +466,183 @@ export const PlantelInspeccion = () => {
                                                 ))}
                                             </Box>
                                             {selectedOrder.assigned_tech_email && (
-                                                <Typography variant="body2" sx={{ mt: 1, color: COLORS.black }}>
+                                                <Typography variant="body2">
                                                     Inspector asignado: <b>{selectedOrder.assigned_tech_email}</b>
                                                 </Typography>
                                             )}
                                         </>
-                                    )}
+                                    }
                                 </Box>
 
-                                <Typography variant="subtitle2">Equipo</Typography>
-                                <Typography variant="body2" sx={{ mb: 2 }}>
-                                    {selectedOrder.equipo || "—"}
-                                </Typography>
+                                <Box className="inspection-detail__field inspection-detail__field--wide">
+                                    <Typography variant="subtitle2">Equipo</Typography>
+                                    <Typography variant="body2">{selectedOrder.equipo || "—"}</Typography>
+                                </Box>
 
-                                <Typography variant="subtitle2">Número de serie</Typography>
-                                <Typography variant="body2" sx={{ mb: 2 }}>
-                                    {selectedOrder.machine_serial || "—"}
-                                </Typography>
+                                <Box className="inspection-detail__field">
+                                    <Typography variant="subtitle2">Número de serie</Typography>
+                                    <Typography variant="body2">{selectedOrder.machine_serial || "—"}</Typography>
+                                </Box>
 
-                                <Typography variant="subtitle2">Solicitada el</Typography>
-                                <Typography variant="body2" sx={{ mb: 2 }}>
-                                    {new Date(new Date(selectedOrder.created_at).getTime() + 6 * 60 * 60 * 1000).toLocaleString()}
-                                </Typography>
+                                <Box className="inspection-detail__field">
+                                    <Typography variant="subtitle2">Solicitada el</Typography>
+                                    <Typography variant="body2">
+                                        {new Date(
+                                            new Date(selectedOrder.created_at).getTime() + 6 * 60 * 60 * 1000
+                                        ).toLocaleString()}
+                                    </Typography>
+                                </Box>
 
-                                {selectedOrder.comments && (
-                                    <>
-                                        <Typography variant="subtitle2">Comentarios:</Typography>
-                                        <Card sx={{ p: 1, bgcolor: COLORS.gray200, mb: 2 }}>
-                                            <Typography variant="body2">
-                                                {selectedOrder.comments}
-                                            </Typography>
-                                        </Card>
-                                    </>
+                                {selectedOrder.model_id != null && (
+                                    <Box className="inspection-detail__field">
+                                        <Typography variant="subtitle2">Modelo (ID)</Typography>
+                                        <Typography variant="body2">{selectedOrder.model_id}</Typography>
+                                    </Box>
                                 )}
-                                <Box sx={{ mt: 4, justifyContent: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
-                                    <Button variant='contained'
-                                        onClick={() => setEditMode(!editMode)}
-                                        sx={{ backgroundColor: editMode! ? ("#1e39d1ff") : (COLORS.gray500), color: COLORS.white, alignItems: 'center' }}
-                                    >
-                                        {editMode! ? (`Editar información`) : (`Cancelar edición`)}
-                                    </Button>
-
-                                    <Button variant='contained' sx={{ backgroundColor: COLORS.redSoft, color: COLORS.white, alignItems: 'center', mt: 2 }} onClick={cancelOrderFunction(selectedOrder.inspection_order_id)}>
-                                        {`Cancelar la orden #${selectedOrder.inspection_order_id}`}
-                                    </Button>
-
-                                    {(() => {
-                                        const tasks = selectedOrder.tasks ?? [];
-                                        const pending = tasks.filter((t) => t.status !== "DONE").length;
-                                        const closed = ["FINISHED", "CANCELED"].includes(selectedOrder.status);
-                                        const blocked = closed || closing !== null || tasks.length === 0 || pending > 0;
-                                        return (
-                                            <Box sx={{ mt: 2, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                                                {!closed && pending > 0 && (
-                                                    <Typography variant="body2" sx={{ color: COLORS.gray500 }}>
-                                                        Faltan {pending} punto(s) por completar.
-                                                    </Typography>
-                                                )}
-                                                <Button variant="contained" disabled={blocked || !selectedOrder.work_order_id}
-                                                    onClick={() => closeInspection(selectedOrder, "release")}>
-                                                    {closing === "release" ? "Liberando…" : "1. Liberar sección"}
-                                                </Button>
-                                                <Button variant="contained" disabled={blocked}
-                                                    onClick={() => closeInspection(selectedOrder, "finish")}>
-                                                    {closing === "finish" ? "Finalizando…" : "2. Finalizar inspección"}
-                                                </Button>
-                                                {closeFeedback && (
-                                                    <Typography role="status" variant="body2"
-                                                        sx={{ color: closeFeedback.ok ? "#028f02ff" : COLORS.red, textAlign: "center" }}>
-                                                        {closeFeedback.text}
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        );
-                                    })()}
-
-                                </Box>
+                                {selectedOrder.started_at && (
+                                    <Box className="inspection-detail__field">
+                                        <Typography variant="subtitle2">Inicio registrado</Typography>
+                                        <Typography variant="body2">{selectedOrder.started_at}</Typography>
+                                    </Box>
+                                )}
+                                {selectedOrder.finished_at && (
+                                    <Box className="inspection-detail__field">
+                                        <Typography variant="subtitle2">Finalización registrada</Typography>
+                                        <Typography variant="body2">{selectedOrder.finished_at}</Typography>
+                                    </Box>
+                                )}
+                                {selectedOrder.comments && (
+                                    <Box className="inspection-detail__comments-field">
+                                        <Typography variant="subtitle2">Comentarios:</Typography>
+                                        <Card className="inspection-detail__comments">
+                                            <Typography variant="body2">{selectedOrder.comments}</Typography>
+                                        </Card>
+                                    </Box>
+                                )}
                             </Box>
-
                         </Box>
 
                         {/* COL DERECHA — TAREAS */}
                         {/* COLUMNA DERECHA: ACTIVIDADES AGRUPADAS */}
-                        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", bgcolor: COLORS.white }}>
-
+                        <Box className="inspection-detail__activities">
                             {/* Header */}
-                            <Box
-                                sx={{
-                                    p: 3,
-                                    borderBottom: `1px solid ${COLORS.gray200}`,
-                                    bgcolor: COLORS.white,
-                                    textAlign: "center",
-
-                                }}
-                            >
-                                <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.black }}>
-                                    Actividades por sección
-                                </Typography>
+                            <Box className="inspection-detail__activity-header">
+                                <Typography variant="h6">Actividades por sección</Typography>
                                 <Tooltip title="Ver evidencias de la orden" arrow>
-                                    <IconButton sx={{ position: "absolute", top: 16, right: 16 }} onClick={() => setShowEvidencePanel(!showEvidencePanel)}>
-                                        <FaEye size={20} color={COLORS.gray500} />
+                                    <IconButton
+                                        onClick={() => setShowEvidencePanel(!showEvidencePanel)}
+                                        className="inspection-detail__evidence-open"
+                                        aria-label="Ver evidencias de la orden"
+                                    >
+                                        <FaEye size={20} color="#B8B0A9" />
                                     </IconButton>
                                 </Tooltip>
                             </Box>
 
+                            <Box className="inspection-detail__quality-actions">
+                                <Button
+                                    variant="contained"
+                                    onClick={() => setEditMode(!editMode)}
+                                    className="inspection-detail__edit"
+                                >
+                                    {editMode! ? `Editar información` : `Cancelar edición`}
+                                </Button>
+
+                                <Button
+                                    variant="contained"
+                                    onClick={cancelOrderFunction(selectedOrder.inspection_order_id)}
+                                    className="inspection-detail__cancel"
+                                >
+                                    {`Cancelar la orden #${selectedOrder.inspection_order_id}`}
+                                </Button>
+
+                                {(() => {
+                                    const tasks = selectedOrder.tasks ?? [];
+                                    const pending = tasks.filter((t) => t.status !== "DONE").length;
+                                    const closed = ["FINISHED", "CANCELED"].includes(selectedOrder.status);
+                                    const blocked = closed || closing !== null || tasks.length === 0 || pending > 0;
+                                    return (
+                                        <Box className="inspection-detail__closing-actions">
+                                            {!closed && pending > 0 && (
+                                                <Typography variant="body2">
+                                                    Faltan {pending} punto(s) por completar.
+                                                </Typography>
+                                            )}
+                                            <Button
+                                                variant="contained"
+                                                disabled={blocked || !selectedOrder.work_order_id}
+                                                onClick={() => closeInspection(selectedOrder, "release")}
+                                                className="inspection-detail__release"
+                                            >
+                                                {closing === "release" ? "Liberando…" : "1. Liberar sección"}
+                                            </Button>
+                                            <Button
+                                                variant="contained"
+                                                disabled={blocked}
+                                                onClick={() => closeInspection(selectedOrder, "finish")}
+                                                className="inspection-detail__finish"
+                                            >
+                                                {closing === "finish" ? "Finalizando…" : "2. Finalizar inspección"}
+                                            </Button>
+                                            {closeFeedback && (
+                                                <Typography
+                                                    role="status"
+                                                    variant="body2"
+                                                    className="inspection-detail__feedback"
+                                                    data-feedback-ok={closeFeedback.ok}
+                                                >
+                                                    {closeFeedback.text}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    );
+                                })()}
+                            </Box>
                             {/* Panel de evidencias */}
                             {showEvidencePanel && (
-                                <Box
-                                    sx={{
-                                        position: "absolute",
-                                        top: 0,
-                                        right: 0,
-                                        width: "60%",
-                                        height: "100%",
-                                        bgcolor: COLORS.white,
-                                        boxShadow: "-4px 0 12px rgba(0,0,0,0.15)",
-                                        zIndex: 50,
-                                        p: 3,
-                                        overflowY: "auto",
-                                        animation: "slideIn 0.25s ease",
-                                    }}
-                                >
+                                <Box className="inspection-detail__evidence">
                                     {/* HEADER */}
-                                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                            Evidencias de la orden
-                                        </Typography>
-                                        <IconButton onClick={() => setShowEvidencePanel(false)}>
-                                            <FaEye size={20} color={COLORS.gray500} />
+                                    <Box className="inspection-detail__evidence-header">
+                                        <Typography variant="h6">Evidencias de la orden</Typography>
+                                        <IconButton
+                                            onClick={() => setShowEvidencePanel(false)}
+                                            className="inspection-detail__evidence-close"
+                                            aria-label="Cerrar evidencias de la orden"
+                                        >
+                                            <FaEye size={20} color="#B8B0A9" />
                                         </IconButton>
                                     </Box>
 
                                     {/* SIN EVIDENCIAS */}
                                     {!selectedOrder?.evidencias || selectedOrder.evidencias.length === 0 ? (
-                                        <Typography sx={{ color: COLORS.gray500, textAlign: "center", mt: 4 }}>
-                                            No hay evidencias registradas.
-                                        </Typography>
+                                        <Typography>No hay evidencias registradas.</Typography>
                                     ) : (
-                                        <Box
-                                            sx={{
-                                                display: "grid",
-                                                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-                                                gap: 2,
-                                            }}
-                                        >
-                                            {IS_TEST && <Typography>Evidencias externas deshabilitadas en TEST.</Typography>}
-                                            {(IS_TEST ? [] : selectedOrder.evidencias).map((url: string, i: number) => (
-                                                <Card
-                                                    key={i}
-                                                    sx={{
-                                                        cursor: "pointer",
-                                                        borderRadius: 2,
-                                                        overflow: "hidden",
-                                                        boxShadow: "0 3px 10px rgba(0,0,0,0.12)",
-                                                        transition: "0.2s",
-                                                        "&:hover": { transform: "scale(1.03)" },
-                                                    }}
-                                                    onClick={() => window.open(url, "_blank")}
-                                                >
-                                                    <img
-                                                        src={url}
-                                                        style={{
-                                                            width: "100%",
-                                                            height: 140,
-                                                            objectFit: "cover",
-                                                        }}
-                                                    />
-                                                </Card>
-                                            ))}
+                                        <Box>
+                                            {IS_TEST && (
+                                                <Typography>Evidencias externas deshabilitadas en TEST.</Typography>
+                                            )}
+                                            {(IS_TEST ? [] : selectedOrder.evidencias).map(
+                                                (url: string, i: number) => (
+                                                    <Card
+                                                        key={i}
+                                                        onClick={() => window.open(url, "_blank")}
+                                                        className="inspection-detail__evidence-item"
+                                                    >
+                                                        <img src={url} />
+                                                    </Card>
+                                                )
+                                            )}
                                         </Box>
                                     )}
                                 </Box>
                             )}
 
-
                             {/* Listado scrollable */}
-                            <Box sx={{ flex: 1, overflow: "auto" }}>
+                            <Box className="inspection-detail__task-scroll">
                                 {(() => {
                                     // Agrupar tareas por sección
                                     const grouped: Record<string, any[]> = {};
-                                    for (const t of (selectedOrder.tasks ?? [])) {
+                                    for (const t of selectedOrder.tasks ?? []) {
                                         const key = t.section_title || "Sin sección";
                                         if (!grouped[key]) grouped[key] = [];
                                         grouped[key]!.push(t);
@@ -667,8 +652,8 @@ export const PlantelInspeccion = () => {
 
                                     if (entries.length === 0) {
                                         return (
-                                            <Box sx={{ p: 3 }}>
-                                                <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                            <Box>
+                                                <Typography variant="body2">
                                                     No hay actividades disponibles.
                                                 </Typography>
                                             </Box>
@@ -676,27 +661,19 @@ export const PlantelInspeccion = () => {
                                     }
 
                                     return (
-                                        <List disablePadding sx={{ width: "100%", bgcolor: COLORS.white }}>
+                                        <List disablePadding className="inspection-detail__sections">
                                             {entries.map(([section, tasks]) => (
                                                 <Box key={section} component="li">
-
                                                     {/* Nombre del grupo */}
                                                     <ListSubheader
                                                         disableSticky={false}
-                                                        sx={{
-                                                            position: "sticky",
-                                                            top: 0,
-                                                            zIndex: 2,
-                                                            bgcolor: COLORS.white,
-                                                            borderBottom: `1px solid ${COLORS.gray200}`,
-                                                            px: 3,
-                                                            py: 1.5,
-                                                            fontSize: 14,
-                                                            fontWeight: 700,
-                                                            color: COLORS.black,
-                                                        }}
+                                                        className="inspection-detail__section"
                                                     >
-                                                        {section}
+                                                        <span>{section}</span>
+                                                        <span>
+                                                            {tasks.filter((task) => task.status === "DONE").length}/
+                                                            {tasks.length} puntos
+                                                        </span>
                                                     </ListSubheader>
 
                                                     {/* Tareas */}
@@ -716,71 +693,58 @@ export const PlantelInspeccion = () => {
                                                                             fetchDeviations(task.id);
                                                                         }
                                                                     }}
-                                                                    sx={{
-                                                                        px: 3,
-                                                                        py: 1.5,
-                                                                        cursor: "pointer",
-                                                                        "&:hover": { bgcolor: "#f5f5f5" }
-                                                                    }}
+                                                                    className="inspection-detail__task"
+                                                                    data-task-id={task.id}
+                                                                    data-task-status={task.status}
+                                                                    data-expanded={isOpen}
                                                                 >
-                                                                    <Box
-                                                                        sx={{
-                                                                            width: "100%",
-                                                                            p: 1.5,
-                                                                            borderRadius: 2,
-                                                                            border: `1px solid ${COLORS.gray200}`,
-                                                                            bgcolor: COLORS.white,
-                                                                            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                                                                            display: "flex",
-                                                                            alignItems: "center",
-                                                                            gap: 2,
-                                                                        }}
-                                                                    >
+                                                                    <Box className="inspection-detail__task-content">
                                                                         {/* Barrita lateral */}
-                                                                        <Box
-                                                                            sx={{
-                                                                                width: 6,
-                                                                                alignSelf: "stretch",
-                                                                                borderRadius: "8px",
-                                                                                bgcolor:
-                                                                                    task.status === "DONE"
-                                                                                        ? "#1e39d1ff"
-                                                                                        : COLORS.gray200,
-                                                                            }}
-                                                                        />
+                                                                        <Box className="inspection-detail__task-accent" />
 
                                                                         {/* Información compacta */}
-                                                                        <Box sx={{ flex: 1 }}>
+                                                                        <Box className="inspection-detail__task-copy">
                                                                             <ListItemText
-                                                                                primaryTypographyProps={{
-                                                                                    sx: {
-                                                                                        fontWeight: 600,
-                                                                                        color: COLORS.black,
-                                                                                        whiteSpace: "nowrap",
-                                                                                        textOverflow: "ellipsis",
-                                                                                        overflow: "hidden"
-                                                                                    },
-                                                                                }}
-                                                                                secondaryTypographyProps={{
-                                                                                    sx: { color: COLORS.gray500, mt: 0.5 },
-                                                                                }}
                                                                                 primary={task.revision_point}
                                                                                 secondary={
-                                                                                    task.status === "DONE"
-                                                                                        ? `Finalizado: ${task.finished_at?.slice(0, 16).replace("T", " ")}`
-                                                                                        : "En proceso"
+                                                                                    <>
+                                                                                        <span>
+                                                                                            Punto #{task.id}
+                                                                                            {task.code
+                                                                                                ? ` · ${task.code}`
+                                                                                                : ""}{" "}
+                                                                                            · {task.status}
+                                                                                        </span>
+                                                                                        {task.status === "DONE" && (
+                                                                                            <span>
+                                                                                                Finalizado:{" "}
+                                                                                                {task.finished_at
+                                                                                                    ?.slice(0, 16)
+                                                                                                    .replace(
+                                                                                                        "T",
+                                                                                                        " "
+                                                                                                    ) ||
+                                                                                                    "Fecha no registrada"}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </>
                                                                                 }
+                                                                                className="inspection-detail__task-text"
                                                                             />
                                                                         </Box>
 
                                                                         <Chip
-                                                                            label={task.status === "DONE" ? "Completado" : "En progreso"}
+                                                                            label={
+                                                                                task.status === "DONE"
+                                                                                    ? "Completado"
+                                                                                    : task.status === "PENDING"
+                                                                                    ? "Pendiente"
+                                                                                    : task.status === "IN_PROGRESS"
+                                                                                    ? "En proceso"
+                                                                                    : task.status
+                                                                            }
                                                                             size="small"
-                                                                            sx={{
-                                                                                bgcolor: task.status === "DONE" ? "#028f02ff" : COLORS.gray200,
-                                                                                color: task.status === "DONE" ? COLORS.white : COLORS.black,
-                                                                                fontWeight: 600,
-                                                                            }}
+                                                                            className="inspection-detail__task-state"
                                                                         />
                                                                     </Box>
                                                                 </ListItem>
@@ -788,118 +752,142 @@ export const PlantelInspeccion = () => {
                                                                 {/* PANEL EXPANDIDO */}
                                                                 {isOpen && (
                                                                     <Box
-                                                                        sx={{
-                                                                            px: 4,
-                                                                            py: 2,
-                                                                            bgcolor: "#fafafa",
-                                                                            borderBottom: `1px solid ${COLORS.gray200}`
-                                                                        }}
+                                                                        className="inspection-detail__expanded"
+                                                                        id={`inspection-point-${task.id}`}
                                                                     >
                                                                         {/* ----- Info del punto ----- */}
-                                                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                                                        <Typography variant="subtitle2">
                                                                             Detalles del punto
                                                                         </Typography>
 
-                                                                        <Typography variant="body2" sx={{ mb: 1 }}>
+                                                                        <Typography variant="body2">
                                                                             <b>Descripción:</b> {task.revision_point}
                                                                         </Typography>
 
-                                                                        <Typography variant="body2" sx={{ mb: 2 }}>
+                                                                        <Typography variant="body2">
                                                                             <b>Categoría:</b> {task.category || "—"}
                                                                         </Typography>
 
                                                                         {/* ----- Resultado ----- */}
-                                                                        <Box sx={{ mb: 2 }}>
+                                                                        <Box>
                                                                             {task.status === "DONE" ? (
-                                                                                <Typography variant="body2" sx={{ color: "#028f02ff", fontWeight: 600 }}>
+                                                                                <Typography
+                                                                                    variant="body2"
+                                                                                    className="inspection-detail__result"
+                                                                                >
                                                                                     Resultado registrado: completado
                                                                                 </Typography>
                                                                             ) : (
                                                                                 <Button
                                                                                     variant="contained"
                                                                                     size="small"
-                                                                                    disabled={savingTaskId === task.id || ["CANCELED", "FINISHED"].includes(selectedOrder.status)}
-                                                                                    onClick={() => completeTask(selectedOrder, task)}
+                                                                                    disabled={
+                                                                                        savingTaskId === task.id ||
+                                                                                        [
+                                                                                            "CANCELED",
+                                                                                            "FINISHED",
+                                                                                        ].includes(
+                                                                                            selectedOrder.status
+                                                                                        )
+                                                                                    }
+                                                                                    onClick={() =>
+                                                                                        completeTask(
+                                                                                            selectedOrder,
+                                                                                            task
+                                                                                        )
+                                                                                    }
+                                                                                    className="inspection-detail__complete"
                                                                                 >
-                                                                                    {savingTaskId === task.id ? "Guardando…" : "Marcar como completado"}
+                                                                                    {savingTaskId === task.id
+                                                                                        ? "Guardando…"
+                                                                                        : "Marcar como completado"}
                                                                                 </Button>
                                                                             )}
-                                                                            {taskFeedback && taskFeedback.taskId === task.id && (
-                                                                                <Typography
-                                                                                    role="status"
-                                                                                    variant="body2"
-                                                                                    sx={{ mt: 1, color: taskFeedback.ok ? "#028f02ff" : COLORS.red }}
-                                                                                >
-                                                                                    {taskFeedback.text}
-                                                                                </Typography>
-                                                                            )}
+                                                                            {taskFeedback &&
+                                                                                taskFeedback.taskId === task.id && (
+                                                                                    <Typography
+                                                                                        role="status"
+                                                                                        variant="body2"
+                                                                                        className="inspection-detail__feedback"
+                                                                                        data-feedback-ok={
+                                                                                            taskFeedback.ok
+                                                                                        }
+                                                                                    >
+                                                                                        {taskFeedback.text}
+                                                                                    </Typography>
+                                                                                )}
                                                                         </Box>
 
                                                                         {/* ----- Desviaciones ----- */}
-                                                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                                                        <Typography variant="subtitle2">
                                                                             Desviaciones
                                                                         </Typography>
 
                                                                         {loadingDev ? (
-                                                                            <Typography variant="body2">Cargando desviaciones…</Typography>
+                                                                            <Typography variant="body2">
+                                                                                Cargando desviaciones…
+                                                                            </Typography>
                                                                         ) : deviations.length === 0 ? (
-                                                                            <Typography variant="body2" sx={{ color: COLORS.gray500 }}>
+                                                                            <Typography variant="body2">
                                                                                 No hay desviaciones registradas.
                                                                             </Typography>
                                                                         ) : (
                                                                             deviations.map((d, idx) => (
                                                                                 <Card
                                                                                     key={idx}
-                                                                                    sx={{
-                                                                                        p: 2,
-                                                                                        mb: 2,
-                                                                                        borderLeft: `4px solid ${COLORS.red}`
-                                                                                    }}
+                                                                                    className="inspection-detail__deviation"
                                                                                 >
-                                                                                    <Typography variant="body2" sx={{ mb: 1 }}>
-                                                                                        <b>Parte afectada:</b> {d.parte_afectada}
+                                                                                    <Typography variant="body2">
+                                                                                        <b>Parte afectada:</b>{" "}
+                                                                                        {d.parte_afectada}
                                                                                     </Typography>
-                                                                                    <Typography variant="body2" sx={{ mb: 1 }}>
-                                                                                        <b>Clasificación:</b> {d.clasificacion_defecto}
+                                                                                    <Typography variant="body2">
+                                                                                        <b>Clasificación:</b>{" "}
+                                                                                        {d.clasificacion_defecto}
                                                                                     </Typography>
-                                                                                    <Typography variant="body2" sx={{ mb: 1 }}>
-                                                                                        <b>Defecto:</b> {d.clasificacion_defectivo}
+                                                                                    <Typography variant="body2">
+                                                                                        <b>Defecto:</b>{" "}
+                                                                                        {d.clasificacion_defectivo}
                                                                                     </Typography>
-                                                                                    <Typography variant="body2" sx={{ mb: 1 }}>
-                                                                                        <b>Causa raíz:</b> {d.causa_raiz}
+                                                                                    <Typography variant="body2">
+                                                                                        <b>Causa raíz:</b>{" "}
+                                                                                        {d.causa_raiz}
                                                                                     </Typography>
-                                                                                    <Typography variant="body2" sx={{ mb: 1 }}>
-                                                                                        <b>Comentarios:</b> {d.comentarios}
+                                                                                    <Typography variant="body2">
+                                                                                        <b>Comentarios:</b>{" "}
+                                                                                        {d.comentarios}
                                                                                     </Typography>
 
                                                                                     {/* Evidencias */}
                                                                                     {d.evidencias?.length > 0 && (
                                                                                         <>
-                                                                                            <Typography variant="body2" sx={{ mt: 1, mb: 1 }}>
+                                                                                            <Typography variant="body2">
                                                                                                 <b>Evidencias:</b>
                                                                                             </Typography>
 
-                                                                                            <Box
-                                                                                                sx={{
-                                                                                                    display: "flex",
-                                                                                                    gap: 2,
-                                                                                                    flexWrap: "wrap"
-                                                                                                }}
-                                                                                            >
-                                                                                                {IS_TEST && <Typography>Evidencias externas deshabilitadas en TEST.</Typography>}
-                                                                                                {(IS_TEST ? [] : d.evidencias).map((img: string, i: number) => (
-                                                                                                    <img
-                                                                                                        key={i}
-                                                                                                        src={img}
-                                                                                                        style={{
-                                                                                                            width: 120,
-                                                                                                            height: 120,
-                                                                                                            objectFit: "cover",
-                                                                                                            borderRadius: 6,
-                                                                                                            border: `1px solid ${COLORS.gray200}`
-                                                                                                        }}
-                                                                                                    />
-                                                                                                ))}
+                                                                                            <Box>
+                                                                                                {IS_TEST && (
+                                                                                                    <Typography>
+                                                                                                        Evidencias
+                                                                                                        externas
+                                                                                                        deshabilitadas
+                                                                                                        en TEST.
+                                                                                                    </Typography>
+                                                                                                )}
+                                                                                                {(IS_TEST
+                                                                                                    ? []
+                                                                                                    : d.evidencias
+                                                                                                ).map(
+                                                                                                    (
+                                                                                                        img: string,
+                                                                                                        i: number
+                                                                                                    ) => (
+                                                                                                        <img
+                                                                                                            key={i}
+                                                                                                            src={img}
+                                                                                                        />
+                                                                                                    )
+                                                                                                )}
                                                                                             </Box>
                                                                                         </>
                                                                                     )}
@@ -911,7 +899,6 @@ export const PlantelInspeccion = () => {
                                                             </Box>
                                                         );
                                                     })}
-
                                                 </Box>
                                             ))}
                                         </List>
@@ -919,9 +906,6 @@ export const PlantelInspeccion = () => {
                                 })()}
                             </Box>
                         </Box>
-
-
-
                     </Box>
                 )}
             </Dialog>

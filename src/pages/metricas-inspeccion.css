@@ -1,0 +1,155 @@
+.inspection-metrics {
+  --metrics-surface: #2c2926;
+  --metrics-raised: #37322e;
+  --metrics-border: #5c534c;
+  --metrics-text: #f7f3ef;
+  --metrics-muted: #c5bcb5;
+  min-width: 0;
+  color: var(--metrics-text);
+}
+.inspection-metrics__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-left: 16px;
+  border-left: 3px solid #a64d56;
+}
+.inspection-metrics .inspection-metrics__eyebrow {
+  color: var(--metrics-muted);
+  font-size: 11px;
+  line-height: 18px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.inspection-metrics .inspection-metrics__title {
+  margin: 4px 0 6px;
+  color: var(--metrics-text);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 650;
+  letter-spacing: -.6px;
+}
+.inspection-metrics .inspection-metrics__intro { color: var(--metrics-muted); font-size: 13px; line-height: 20px; }
+.inspection-metrics .inspection-metrics__refresh {
+  width: 40px;
+  height: 40px;
+  color: var(--metrics-text);
+  border: 1px solid #817267;
+  border-radius: 8px;
+}
+.inspection-metrics .inspection-metrics__refresh:hover { background: #40262a; border-color: #a0545d; }
+.inspection-metrics .inspection-metrics__refresh.Mui-disabled { color: #a79b91; border-color: #5c534c; }
+.inspection-metrics .inspection-metrics__cards { margin-bottom: 20px; }
+.inspection-metrics .inspection-metrics__cards > .MuiGrid-item { display: flex; min-width: 0; }
+.inspection-metrics .inspection-metrics__card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  min-height: 100px;
+  padding: 16px;
+  color: var(--metrics-text);
+  background: var(--metrics-surface);
+  background-image: none;
+  border: 1px solid var(--metrics-border);
+  border-left: 3px solid #817267;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.inspection-metrics .inspection-metrics__card--pending { border-left-color: #c79256; }
+.inspection-metrics .inspection-metrics__card--progress { border-left-color: #a0545d; }
+.inspection-metrics .inspection-metrics__card--duration { border-left-color: #5c9470; }
+.inspection-metrics .inspection-metrics__card > .MuiSvgIcon-root { flex: 0 0 auto; font-size: 30px; }
+.inspection-metrics .inspection-metrics__card > div { min-width: 0; }
+.inspection-metrics .inspection-metrics__card .MuiTypography-caption { display: block; color: var(--metrics-muted); font-size: 12px; line-height: 18px; }
+.inspection-metrics .inspection-metrics__card .MuiTypography-h6 { margin-top: 5px; font-size: 20px; line-height: 26px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.inspection-metrics__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--metrics-border);
+  border-radius: 10px;
+  background: var(--metrics-surface);
+}
+.inspection-metrics .inspection-metrics__search { flex: 1 1 320px; min-width: 0; max-width: 620px; }
+.inspection-metrics .inspection-metrics__search .MuiOutlinedInput-root { color: var(--metrics-text); background: #22201e; border-radius: 8px; font-size: 13px; }
+.inspection-metrics .inspection-metrics__search .MuiInputBase-input { border: 0; margin: 0; background: transparent; font: inherit; }
+.inspection-metrics .inspection-metrics__search .MuiOutlinedInput-notchedOutline { border-color: #817267; }
+.inspection-metrics .inspection-metrics__search .MuiInputLabel-root { color: var(--metrics-muted); }
+.inspection-metrics .inspection-metrics__search .Mui-focused .MuiOutlinedInput-notchedOutline { border-color: #efb679; }
+.inspection-metrics .inspection-metrics__search .MuiInputLabel-root.Mui-focused { color: #efb679; }
+.inspection-metrics__filters { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.inspection-metrics .inspection-metrics__filters .MuiChip-root { min-height: 36px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.inspection-metrics .inspection-metrics__filters .MuiChip-outlined { color: var(--metrics-text); border-color: #817267; }
+.inspection-metrics .inspection-metrics__filters .MuiChip-colorPrimary.MuiChip-filled { color: #f7f3ef; background: #773640; }
+.inspection-metrics .inspection-metrics__filters .MuiChip-colorWarning.MuiChip-filled { color: #f5c68b; background: #59402c; }
+.inspection-metrics .inspection-metrics__filters .MuiChip-colorSuccess.MuiChip-filled { color: #b6d2bf; background: #365540; }
+.inspection-metrics .inspection-metrics__table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--metrics-border);
+  border-radius: 10px;
+  background: var(--metrics-surface);
+  background-image: none;
+}
+.inspection-metrics .inspection-metrics__table { width: 100%; min-width: 970px; table-layout: fixed; border-collapse: collapse; }
+.inspection-metrics .inspection-metrics__table .MuiTableCell-root {
+  padding: 12px 8px;
+  color: var(--metrics-text);
+  border-bottom: 1px solid #46403a;
+  font-size: 12px;
+  line-height: 19px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.inspection-metrics .inspection-metrics__table thead .MuiTableCell-root {
+  padding: 12px 6px;
+  color: var(--metrics-muted);
+  background: var(--metrics-raised);
+  border-bottom: 1px solid var(--metrics-border);
+  font-size: 11px;
+  line-height: 18px;
+}
+.inspection-metrics .inspection-metrics__table th:nth-child(1),
+.inspection-metrics .inspection-metrics__table th:nth-child(2) { width: 6%; }
+.inspection-metrics .inspection-metrics__table th:nth-child(3),
+.inspection-metrics .inspection-metrics__table th:nth-child(8) { width: 13%; }
+.inspection-metrics .inspection-metrics__table th:nth-child(4) { width: 7%; }
+.inspection-metrics .inspection-metrics__table th:nth-child(5) { width: 9%; }
+.inspection-metrics .inspection-metrics__table th:nth-child(6),
+.inspection-metrics .inspection-metrics__table th:nth-child(7),
+.inspection-metrics .inspection-metrics__table th:nth-child(11) { width: 10%; }
+.inspection-metrics .inspection-metrics__table th:nth-child(9),
+.inspection-metrics .inspection-metrics__table th:nth-child(10) { width: 8%; }
+.inspection-metrics .inspection-metrics__table tbody tr:last-child .MuiTableCell-root { border-bottom: 0; }
+.inspection-metrics .inspection-metrics__table tbody tr:hover { background: #312d29; }
+.inspection-metrics .inspection-metrics__table tbody td:nth-child(1),
+.inspection-metrics .inspection-metrics__table tbody td:nth-child(2),
+.inspection-metrics .inspection-metrics__table tbody td:nth-child(7),
+.inspection-metrics .inspection-metrics__table tbody td:nth-child(9),
+.inspection-metrics .inspection-metrics__table tbody td:nth-child(10) { font-variant-numeric: tabular-nums; }
+.inspection-metrics .inspection-metrics__table .MuiTypography-body2 { font-size: 12px; line-height: 19px; overflow-wrap: anywhere; }
+.inspection-metrics .inspection-metrics__table .MuiTypography-caption { overflow-wrap: anywhere; }
+.inspection-metrics .inspection-metrics__table .MuiChip-root { max-width: 100%; height: auto; min-height: 24px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+.inspection-metrics .inspection-metrics__table .MuiChip-label { display: block; padding: 3px 7px; white-space: normal; overflow-wrap: anywhere; }
+.inspection-metrics .inspection-metrics__table .MuiChip-outlined { color: var(--metrics-text); border-color: #817267; }
+.inspection-metrics .inspection-metrics__table .MuiChip-colorPrimary { color: #f7f3ef; background: #773640; }
+.inspection-metrics .inspection-metrics__table .MuiChip-colorWarning { color: #f5c68b; background: #59402c; }
+.inspection-metrics .inspection-metrics__table .MuiChip-colorSuccess { color: #b6d2bf; background: #365540; }
+.inspection-metrics :is(button, input, [role=button], .inspection-metrics__table-container):focus-visible { outline: 2px solid #efb679; outline-offset: 2px; }
+@media (max-width: 599px) {
+  .inspection-metrics__header { padding-left: 12px; margin-bottom: 16px; }
+  .inspection-metrics .inspection-metrics__title { font-size: 24px; line-height: 31px; }
+  .inspection-metrics .inspection-metrics__refresh { width: 44px; height: 44px; }
+  .inspection-metrics__toolbar { padding: 14px; }
+  .inspection-metrics .inspection-metrics__filters .MuiChip-root { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inspection-metrics * { transition-duration: .01ms; scroll-behavior: auto; }
+}

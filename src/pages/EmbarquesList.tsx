@@ -24,6 +24,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import ImageIcon from "@mui/icons-material/Image";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import "./embarques-list.css";
 
 export interface PreEmbarqueItem {
   id: number;
@@ -96,27 +97,35 @@ export default function EmbarquesList() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h5" component="h1" fontWeight="bold">
-          🚚 Pre-Embarques y Embarques
-        </Typography>
+    <Box className="shipment-list">
+      <Box component="header" className="shipment-list__header">
+        <Box>
+          <Typography className="shipment-list__eyebrow">Logística</Typography>
+          <Typography component="h1" className="shipment-list__title">
+            Pre-Embarques y Embarques
+          </Typography>
+          <Typography className="shipment-list__intro">
+            Consulta los registros de embarque y sus evidencias.
+          </Typography>
+        </Box>
         <Tooltip title="Actualizar lista">
           <span>
-            <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
+            <IconButton aria-label="Actualizar lista" className="shipment-list__refresh" onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
               <RefreshIcon />
             </IconButton>
           </span>
         </Tooltip>
       </Box>
 
-      <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
+      <Box className="shipment-list__toolbar">
         <TextField
+          className="shipment-list__search"
           size="small"
+          label="Buscar registros"
           placeholder="Buscar por serie, equipo, cliente, pedido o usuario..."
+          helperText="Serie, equipo, cliente, pedido, usuario o serie asignada."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 380 }}
           InputProps={{
             startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
           }}
@@ -128,8 +137,8 @@ export default function EmbarquesList() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} elevation={0} className="shipment-list__table-container" tabIndex={0} aria-label="Tabla de pre-embarques y embarques">
+          <Table size="small" className="shipment-list__table">
             <TableHead>
               <TableRow>
                 <TableCell><b>ID</b></TableCell>
@@ -188,7 +197,7 @@ export default function EmbarquesList() {
                         )}
                       </TableCell>
                       <TableCell>{row.usuario ?? row.correo ?? "—"}</TableCell>
-                      <TableCell sx={{ maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <TableCell>
                         {row.descripcion || "—"}
                       </TableCell>
                       <TableCell align="center">
@@ -217,22 +226,15 @@ export default function EmbarquesList() {
       )}
 
       {/* Modal visor de evidencias */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth PaperProps={{ className: "shipment-evidence-dialog" }}>
         <DialogTitle>
-          📸 Evidencias de Pre-Embarque — Serie: <b>{selectedSerial}</b> ({selectedImages.length})
+          Evidencias de Pre-Embarque — Serie: <b>{selectedSerial}</b> ({selectedImages.length})
         </DialogTitle>
         <DialogContent dividers>
           {selectedImages.length === 0 ? (
             <Typography color="text.secondary">No hay imágenes disponibles para este registro.</Typography>
           ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 2,
-                p: 1,
-              }}
-            >
+            <Box className="shipment-evidence-dialog__grid">
               {selectedImages.map((url, idx) => (
                 <Box
                   key={idx}
@@ -240,21 +242,13 @@ export default function EmbarquesList() {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{
-                    display: "block",
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: "1px solid #ddd",
-                    transition: "transform 0.2s",
-                    "&:hover": { transform: "scale(1.02)", boxShadow: 3 },
-                  }}
+                  className="shipment-evidence-dialog__photo"
                 >
                   <img
                     src={url}
                     alt={`Evidencia ${idx + 1}`}
-                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
                   />
-                  <Typography variant="caption" sx={{ display: "block", p: 0.5, textAlign: "center", bgcolor: "#fafafa" }}>
+                  <Typography variant="caption" className="shipment-evidence-dialog__caption">
                     Foto {idx + 1} (Clic para abrir original)
                   </Typography>
                 </Box>

@@ -24,6 +24,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import ImageIcon from "@mui/icons-material/Image";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import "./desviaciones-list.css";
 
 export interface DesviacionItem {
   id: number;
@@ -99,27 +100,35 @@ export default function DesviacionesList() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h5" component="h1" fontWeight="bold">
-          ⚠️ Desviaciones de Calidad
-        </Typography>
+    <Box className="deviation-list">
+      <Box component="header" className="deviation-list__header">
+        <Box>
+          <Typography className="deviation-list__eyebrow">Calidad</Typography>
+          <Typography component="h1" className="deviation-list__title">
+            Desviaciones de Calidad
+          </Typography>
+          <Typography className="deviation-list__intro">
+            Consulta los defectos registrados y sus evidencias.
+          </Typography>
+        </Box>
         <Tooltip title="Actualizar lista">
           <span>
-            <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
+            <IconButton aria-label="Actualizar lista" className="deviation-list__refresh" onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
               <RefreshIcon />
             </IconButton>
           </span>
         </Tooltip>
       </Box>
 
-      <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
+      <Box className="deviation-list__toolbar">
         <TextField
+          className="deviation-list__search"
           size="small"
+          label="Buscar registros"
           placeholder="Buscar por serie, máquina, técnico, parte afectada o causa raíz..."
+          helperText="Serie, máquina, técnico, parte afectada, causa raíz o clasificación."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 400 }}
           InputProps={{
             startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
           }}
@@ -131,8 +140,8 @@ export default function DesviacionesList() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} elevation={0} className="deviation-list__table-container" tabIndex={0} aria-label="Tabla de desviaciones de calidad">
+          <Table size="small" className="deviation-list__table">
             <TableHead>
               <TableRow>
                 <TableCell><b>ID</b></TableCell>
@@ -187,7 +196,7 @@ export default function DesviacionesList() {
                       </TableCell>
                       <TableCell>{row.tipo_defectivo ?? "—"}</TableCell>
                       <TableCell>{row.nombre_tecnico ?? row.usuario ?? "—"}</TableCell>
-                      <TableCell sx={{ maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <TableCell>
                         {row.comentarios || "—"}
                       </TableCell>
                       <TableCell align="center">
@@ -216,22 +225,15 @@ export default function DesviacionesList() {
       )}
 
       {/* Modal visor de evidencias */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth PaperProps={{ className: "deviation-evidence-dialog" }}>
         <DialogTitle>
-          📸 Evidencias de Desviación — Serie: <b>{selectedSerial}</b> ({selectedImages.length})
+          Evidencias de Desviación — Serie: <b>{selectedSerial}</b> ({selectedImages.length})
         </DialogTitle>
         <DialogContent dividers>
           {selectedImages.length === 0 ? (
             <Typography color="text.secondary">No hay imágenes disponibles para este registro.</Typography>
           ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 2,
-                p: 1,
-              }}
-            >
+            <Box className="deviation-evidence-dialog__grid">
               {selectedImages.map((url, idx) => (
                 <Box
                   key={idx}
@@ -239,21 +241,13 @@ export default function DesviacionesList() {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{
-                    display: "block",
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: "1px solid #ddd",
-                    transition: "transform 0.2s",
-                    "&:hover": { transform: "scale(1.02)", boxShadow: 3 },
-                  }}
+                  className="deviation-evidence-dialog__photo"
                 >
                   <img
                     src={url}
                     alt={`Evidencia ${idx + 1}`}
-                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
                   />
-                  <Typography variant="caption" sx={{ display: "block", p: 0.5, textAlign: "center", bgcolor: "#fafafa" }}>
+                  <Typography variant="caption" className="deviation-evidence-dialog__caption">
                     Foto {idx + 1} (Clic para abrir original)
                   </Typography>
                 </Box>

@@ -1,0 +1,57 @@
+/* B1: only Production's list and toolbar. Detail portals and other pages are untouched. */
+.production-list .production-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:22px; }
+.production-list .production-eyebrow { color:#C5BCB5; font-size:11px; line-height:18px; letter-spacing:1.2px; text-transform:uppercase; }
+.production-list .production-title { margin:4px 0 8px; color:#F7F3EF; font-size:28px; line-height:36px; letter-spacing:-.6px; font-weight:650; }
+.production-list .production-intro { color:#C5BCB5; font-size:13px; line-height:20px; }
+.production-list .production-refresh { border:1px solid #817267; border-radius:8px; min-height:40px; color:#F7F3EF; flex-shrink:0; font-size:12px; text-transform:none; }
+.production-list .production-views { display:flex; gap:24px; flex-wrap:wrap; border-bottom:1px solid #46403A; margin-bottom:24px; }
+.production-list .production-view-button { min-height:44px; padding:10px 0 14px; border:0; border-radius:0; border-bottom:2px solid transparent; color:#C5BCB5; font-size:13px; text-transform:none; background:transparent; }
+.production-list .production-view-button[aria-pressed=true] { color:#F7F3EF; border-bottom-color:#E63946; }
+.production-list .production-view-button:hover { background:transparent; color:#F7F3EF; }
+.production-list .production-toolbar { display:flex; flex-wrap:wrap; align-items:flex-start; gap:20px; padding:20px; margin-bottom:20px; border:1px solid #5C534C; border-radius:12px; background:#2C2926; }
+.production-list .production-search { width:360px; max-width:100%; min-width:0; }
+.production-list .production-search .MuiOutlinedInput-root { background:#22201E; color:#F7F3EF; border-radius:8px; font-size:13px; }
+.production-list .production-search .MuiOutlinedInput-notchedOutline { border-color:#817267; }
+.production-list .production-search .MuiInputLabel-root, .production-list .production-search .MuiInputAdornment-root { color:#C5BCB5; }
+.production-list .production-search .MuiFormHelperText-root { color:#C5BCB5; font-size:11px; line-height:18px; }
+.production-list .production-filter { display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-width:160px; }
+.production-list .production-filter-label { color:#C5BCB5; font-size:11px; line-height:16px; }
+.production-list .production-filter .MuiButton-root { min-height:40px; border:1px solid #817267; border-radius:8px; background:#22201E; color:#F7F3EF; justify-content:flex-start; font-size:13px; text-transform:none; }
+.production-list .production-surface { min-width:0; max-width:100%; border:1px solid #5C534C; border-radius:12px; background:#2C2926; }
+.production-list [data-production-scroll] { max-width:100%; overflow-x:auto; border-radius:12px 12px 0 0; }
+.production-list .production-table { table-layout:fixed; min-width:1080px; width:100%; border-collapse:collapse; }
+.production-list .production-table .MuiTableCell-root { padding:18px 12px; color:#F7F3EF; font-size:12px; line-height:19px; vertical-align:middle; overflow-wrap:anywhere; border-bottom:1px solid #46403A; }
+.production-list .production-table thead .MuiTableCell-root { padding:14px 12px; color:#C5BCB5; background:#37322E; font-size:11px; font-weight:550; line-height:18px; border-bottom-color:#5C534C; white-space:nowrap; }
+.production-list .production-table tbody tr:last-child .MuiTableCell-root { border-bottom:0; }
+.production-list .production-table tbody tr:hover { background:#312D29; }
+.production-list .production-order-id { display:block; font-size:14px; line-height:20px; font-weight:650; font-variant-numeric:tabular-nums; }
+.production-list .production-primary { display:block; font-size:13px; font-weight:600; line-height:20px; }
+.production-list .production-serial { display:block; font:600 12px/20px ui-monospace,Consolas,monospace; }
+.production-list .production-secondary { display:block; color:#C5BCB5; font-size:11px; line-height:18px; margin-top:4px; font-weight:400; }
+.production-list .production-progress-label { display:flex; justify-content:space-between; gap:8px; font-size:12px; line-height:18px; font-variant-numeric:tabular-nums; }
+.production-list .production-progress-label span:first-child { font-weight:650; }
+.production-list .production-progress-label span:last-child { color:#C5BCB5; }
+.production-list .production-state { padding:0; border:1px solid #5C534C; border-radius:5px; background:#37322E; color:#C5BCB5; font-size:11px; font-weight:550; }
+.production-list .production-state[data-production-state=OPEN] { background:#293A30; border-color:#4B765A; color:#9DD9B7; }
+.production-list .production-state[data-production-state=IN_PROGRESS] { background:#403329; border-color:#826443; color:#EFB679; }
+.production-list .production-state .MuiChip-label { padding:0 7px; }
+.production-list .production-date { display:block; font-size:11px; line-height:19px; font-variant-numeric:tabular-nums; }
+.production-list .production-detail-button { min-width:64px; min-height:40px; padding:8px 7px; border:1px solid #817267; border-radius:8px; color:#F7F3EF; font-size:12px; text-transform:none; white-space:nowrap; }
+.production-list .production-detail-button .MuiButton-endIcon { margin-left:4px; margin-right:0; }
+.production-list .production-detail-button .MuiSvgIcon-root { font-size:16px; }
+.production-list .production-table-footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:14px 20px; border-top:1px solid #46403A; color:#C5BCB5; font-size:11px; line-height:18px; }
+.production-list .production-progress-note { margin:16px 0 0; color:#C5BCB5; font-size:12px; line-height:20px; }
+.production-list .production-table .production-empty { text-align:center; padding:32px; color:#C5BCB5; }
+.production-list .production-view-button:focus-visible, .production-list .production-refresh:focus-visible, .production-list .production-detail-button:focus-visible, .production-list [data-production-scroll]:focus-visible, .production-list .production-filter button:focus-visible { outline:2px solid #EFB679; outline-offset:2px; }
+@media(max-width:599px) {
+  .production-list .production-heading { flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+  .production-list .production-title { font-size:24px; line-height:31px; }
+  .production-list .production-intro { font-size:12px; line-height:19px; }
+  .production-list .production-views { gap:24px; margin-bottom:20px; }
+  .production-list .production-view-button { font-size:12px; }
+  .production-list .production-toolbar { padding:16px; gap:14px; }
+  .production-list .production-search, .production-list .production-filter { width:100%; }
+  .production-list .production-filter .MuiButton-root { width:100%; }
+  .production-list .production-table-footer { padding:14px 16px; gap:4px; }
+  .production-list .production-progress-note { font-size:11px; line-height:18px; }
+}

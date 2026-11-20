@@ -4,18 +4,27 @@ import { getProductionTechnicians } from "../services/productionTechnicians";
 import { fetchApi } from "../services/apiResponse";
 import { canCompleteProductionTask, completeProductionTask, isQualityRelease, productionErrorMessage } from "../services/productionProgress";
 import type { ProductionTask } from "../services/productionProgress";
+import CloseIcon from "@mui/icons-material/Close";
 import React, { useState, useEffect, useRef } from "react";
-import { Alert, Menu, MenuItem, Select, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, List, ListItem, ListItemText, ListSubheader, Chip, Divider, Grid, Card, LinearProgress, Button, TextField, Stack, IconButton } from "@mui/material";
+import { Alert, Menu, MenuItem, Select, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, List, ListItem, ListItemText, ListSubheader, Chip, Divider, Table, TableContainer, TableHead, TableBody, TableRow, TableCell, InputAdornment, Card, LinearProgress, Button, TextField, Stack, IconButton, useMediaQuery, useTheme } from "@mui/material";
 import { useCustom, useList } from "@refinedev/core";
-import { MdFilterList } from 'react-icons/md';
+
 import { FaEye } from 'react-icons/fa6';
 import { IoBuildOutline } from 'react-icons/io5';
-import { BsClockHistory } from 'react-icons/bs';
+
 import Bonds from "./Bonds";
-import { MdOutlineDashboardCustomize } from 'react-icons/md';
+
 import LocalAtmOutlinedIcon from '@mui/icons-material/LocalAtmOutlined';
 import ProductionHistory from "./ProductionHistory";
 import ProductionInspectionRequest from "./components/ProductionInspectionRequest";
+import PrecisionManufacturingOutlinedIcon from '@mui/icons-material/PrecisionManufacturingOutlined';
+import HistoryIcon from '@mui/icons-material/History';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import './production-list.css';
+import './production-detail.css';
 const COLORS = {
     red: "#8B0000",
     redSoft: "#B22222",
@@ -106,6 +115,7 @@ const statusClass = (st?: string) => {
 
 
 export default function PlantelProduccion() {
+    const compactDetail = useMediaQuery(useTheme().breakpoints.down("md"));
 
     const [q, setQ] = React.useState("");
 
@@ -342,386 +352,208 @@ export default function PlantelProduccion() {
 
 
     return (
-        <Box sx={{ p: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                <Typography variant="h4" gutterBottom sx={{ flexShrink: 0 }}>
-                    Plantel de Producción
-                </Typography>
-                <Box sx={{ position: "relative" }}>
-                    {/* Botón filtro (igual que antes) */}
-                    <IconButton
-                        sx={{
-                            color: COLORS.white,
-                            transition: 'color 0.3s, transform 0.3s',
-                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
-                        }}
-                        onClick={e => {
-                            setFilterAnchorEl(e.currentTarget);
-                        }}
-                    >
-                        <MdFilterList />
-                    </IconButton>
-
-                    <Menu
-                        anchorEl={filterAnchorEl}
-                        open={filterOpen}
-                        onClose={() => setFilterAnchorEl(null)}
-                        anchorOrigin={{
-                            vertical: "bottom",
-                            horizontal: "right",
-                        }}
-                        transformOrigin={{
-                            vertical: "top",
-                            horizontal: "right",
-                        }}
-                        PaperProps={{
-                            sx: {
-                                borderRadius: 2,
-                                minWidth: 200,
-                                boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
-                            },
-                        }}
-                    >
-
-                        {["OPEN", "PENDING", "CLOSED", "FINISHED"].map((status) => (
-                            <MenuItem
-                                key={status}
-                                selected={filterStatus === status}
-                                onClick={() => {
-                                    setFilterStatus(status as any);
-                                    setFilterAnchorEl(null);
-                                }}
-                            >
-                                {STATUS_LABELS[status]}
-                            </MenuItem>
-                        ))}
-
-                        <MenuItem
-                            selected={filterStatus === ""}
-                            onClick={() => {
-                                setFilterStatus("");
-                                setFilterAnchorEl(null);
-                            }}
-                        >
-                            Todas
-                        </MenuItem>
-                    </Menu>
-
-
-                    {/* DASHBOARD → PLANTEL */}
-                    <IconButton
-                        sx={{
-                            color: COLORS.white,
-                            transition: 'color 0.3s, transform 0.3s',
-                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
-                        }}
-                        onClick={() => setView("plantel")}
-                    >
-                        <MdOutlineDashboardCustomize />
-                    </IconButton>
-
-                    {/* HISTORIAL → WorkOrdersHistory */}
-                    <IconButton
-                        sx={{
-                            color: COLORS.white,
-                            transition: 'color 0.3s, transform 0.3s',
-                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
-                        }}
-                        onClick={() => setView("historial")}
-                    >
-                        <BsClockHistory />
-                    </IconButton>
-
-                    {/* BONOS → Bonds */}
-                    <IconButton
-                        sx={{
-                            color: COLORS.white,
-                            transition: 'color 0.3s, transform 0.3s',
-                            "&:hover": { color: COLORS.red, transform: 'scale(1.5)' },
-                        }}
-                        onClick={() => setView("bonos")}
-                    >
-                        <LocalAtmOutlinedIcon />
-                    </IconButton>
+        <Box className="production-list">
+            <Box className="production-heading">
+                <Box>
+                    <Typography className="production-eyebrow">Operación / Ensamble</Typography>
+                    <Typography component="h1" className="production-title">Plantel de Producción</Typography>
+                    <Typography className="production-intro">Órdenes, responsables y avance de actividades en un mismo lugar.</Typography>
                 </Box>
-
-                <TextField
-                    size="small"
-                    placeholder="Buscar orden..."
-                    value={q}
-                    onChange={e => setQ(e.target.value)}
-                    sx={{ minWidth: 220, bgcolor: "#2A2522", borderRadius: 1 }}
-                />
+                <Button className="production-refresh" variant="outlined" startIcon={<RefreshIcon />}
+                    aria-label="Actualizar órdenes de producción" onClick={() => void refetch()}>Actualizar</Button>
+            </Box>
+            <Box className="production-views" role="group" aria-label="Vistas de Producción">
+                <Button className="production-view-button" data-production-view="plantel" aria-pressed={view === "plantel"}
+                    startIcon={<PrecisionManufacturingOutlinedIcon />} onClick={() => setView("plantel")}>Plantel</Button>
+                <Button className="production-view-button" data-production-view="historial" aria-pressed={view === "historial"}
+                    startIcon={<HistoryIcon />} onClick={() => setView("historial")}>Historial</Button>
+                <Button className="production-view-button" data-production-view="bonos" aria-pressed={view === "bonos"}
+                    startIcon={<LocalAtmOutlinedIcon />} onClick={() => setView("bonos")}>Bonos</Button>
+            </Box>
+            <Box className="production-toolbar">
+                <TextField className="production-search" size="small" label="Buscar orden" placeholder="Buscar orden..."
+                    value={q} onChange={e => setQ(e.target.value)}
+                    helperText="Serie, ID, cliente, sitio o correo del técnico."
+                    slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }} />
+                <Box className="production-filter">
+                    <Button variant="outlined" startIcon={<FilterListIcon />} aria-label="Filtrar por estado operativo"
+                        aria-describedby="production-filter-helper"
+                        aria-haspopup="menu" aria-expanded={filterOpen}
+                        onClick={e => { setFilterAnchorEl(e.currentTarget); }}>
+                        {filterStatus ? (STATUS_LABELS[filterStatus] || filterStatus) : "Todas"}
+                    </Button>
+                    <Typography id="production-filter-helper" component="span" className="production-filter-label">Estado operativo</Typography>
+                </Box>
+                <Menu anchorEl={filterAnchorEl} open={filterOpen} onClose={() => setFilterAnchorEl(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                    transformOrigin={{ vertical: "top", horizontal: "left" }}
+                    PaperProps={{ sx: { borderRadius: "8px", minWidth: 200, bgcolor: "#2C2926", color: "#F7F3EF", border: "1px solid #5C534C" } }}>
+                    {["OPEN", "PENDING", "CLOSED", "FINISHED"].map((status) => (
+                        <MenuItem key={status} selected={filterStatus === status}
+                            onClick={() => { setFilterStatus(status as any); setFilterAnchorEl(null); }}>
+                            {STATUS_LABELS[status] || status}
+                        </MenuItem>
+                    ))}
+                    <MenuItem selected={filterStatus === ""} onClick={() => { setFilterStatus(""); setFilterAnchorEl(null); }}>Todas</MenuItem>
+                </Menu>
             </Box>
 
             {view === "plantel" && (
                 <Box>
-                    <Grid container spacing={2}>
-                        {items.map((wo) => {
-                            const template = wo.template_id ? templateMap.get(wo.template_id) : null;
-                            const tecnico = wo.assigned_tech_email ? techs.find(t => t.correo_tecnico === wo.assigned_tech_email) : null;
-                            const model = wo.model_id ? modelMap.get(wo.model_id) : null;
-                            const avance = wo.tasks?.filter(t => t.status === "DONE").length;
-                            const total = wo.tasks?.length;
-                            const orden = {
-                                ...wo,
-                                avance: total && avance ? Math.round((avance / total) * 100) : 0,
-                            };
-
-                            return (
-                                <Grid item sx={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={wo.id}>
-                                    <Card
-                                        sx={{
-                                            p: 2.5,
-                                            height: '100%',
-                                            transition: 'all 0.25s ease',
-                                            maxWidth: 350,
-                                            cursor: 'pointer',
-                                            bgcolor: '#1F1B19',
-                                            border: '1px solid #3A3633',
-                                            borderRadius: 3,
-                                            color: '#F5F1ED',
-                                            boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-                                            '&:hover': {
-                                                boxShadow: '0 6px 20px rgba(230, 57, 70, 0.25)',
-                                                transform: 'translateY(-3px)',
-                                                borderColor: '#E63946',
-                                                bgcolor: '#25201D',
-                                            },
-                                        }}
-                                        onClick={() => handleOpenDialog(wo.id)}
-                                    >
-                                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: '#F5F1ED', fontSize: '1.1rem' }}>
-                                            {template?.name}
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
-                                            <strong style={{ color: '#F5F1ED' }}>Técnico Asignado:</strong> {tecnico?.nombre_tecnico || "—"}
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
-                                            <strong style={{ color: '#F5F1ED' }}>Modelo:</strong> {model?.name || "—"}
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
-                                            <strong style={{ color: '#F5F1ED' }}>Estado:</strong> <span className={statusClass(wo.status)}>{STATUS_LABELS[wo.status] || "—"}</span>
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 0.5 }}>
-                                            <strong style={{ color: '#F5F1ED' }}>Fecha de programación:</strong> {fdt(wo.scheduled_at)}
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: '#B8B0A9', mb: 1 }}>
-                                            <strong style={{ color: '#F5F1ED' }}>Creada el:</strong> {fdt(wo.created_at)}
-                                        </Typography>
-                                        <Box sx={{ position: "relative", width: "100%", mt: 1.5 }}>
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={orden.avance ? orden.avance : 0}
-                                                sx={{
-                                                    height: 22,
-                                                    borderRadius: 11,
-                                                    backgroundColor: '#2A2522',
-                                                    border: '1px solid #3A3633',
-                                                    "& .MuiLinearProgress-bar": {
-                                                        backgroundColor: Number(orden.avance) >= 100 ? '#5BBF8A' : '#E63946',
-                                                        borderRadius: 11,
-                                                    },
-                                                }}
-                                            />
-                                            <Typography
-                                                variant="body2"
-                                                sx={{
-                                                    position: "absolute",
-                                                    top: 0,
-                                                    left: "50%",
-                                                    transform: "translateX(-50%)",
-                                                    lineHeight: "22px",
-                                                    fontWeight: 700,
-                                                    fontSize: '0.75rem',
-                                                    letterSpacing: '0.02em',
-                                                    color: '#FFFFFF',
-                                                    textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                                                }}
-                                            >
-                                                Progreso {`${Math.round(Number(orden.avance))}%`}
-                                            </Typography>
-                                        </Box>
-                                    </Card>
-                                </Grid>
-                            );
-                        })}
-                    </Grid>
+                    <Box className="production-surface">
+                        <TableContainer data-production-scroll tabIndex={0} role="region"
+                            aria-label="Órdenes de producción: tabla desplazable" aria-describedby="production-progress-note">
+                            <Table className="production-table" size="small" aria-label="Órdenes de producción">
+                                <colgroup>
+                                    <col style={{ width: "13%" }} /><col style={{ width: "20%" }} /><col style={{ width: "14%" }} />
+                                    <col style={{ width: "10%" }} /><col style={{ width: "14%" }} /><col style={{ width: "11%" }} />
+                                    <col style={{ width: "10%" }} /><col style={{ width: "8%" }} />
+                                </colgroup>
+                                <TableHead><TableRow>
+                                    {["Orden / Folio SAI", "Equipo / Plantilla", "Técnico asignado", "Estado operativo", "Actividades", "Programación", "Creación", "Detalle"].map(label => <TableCell key={label} scope="col">{label}</TableCell>)}
+                                </TableRow></TableHead>
+                                <TableBody>
+                                    {items.map((wo) => {
+                                        const template = wo.template_id ? templateMap.get(wo.template_id) : null;
+                                        const tecnico = wo.assigned_tech_email ? techs.find(t => t.correo_tecnico === wo.assigned_tech_email) : null;
+                                        const model = wo.model_id ? modelMap.get(wo.model_id) : null;
+                                        const avance = wo.tasks?.filter(t => t.status === "DONE").length;
+                                        const total = wo.tasks?.length;
+                                        const orden = {
+                                            ...wo,
+                                            avance: total && avance ? Math.round((avance / total) * 100) : 0,
+                                        };
+                                        return <TableRow key={wo.id} data-production-order={wo.id}>
+                                            <TableCell component="th" scope="row">
+                                                <span className="production-order-id">#{wo.id}</span>
+                                                <span className="production-secondary">{wo.folio_sai || "—"}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="production-serial">{wo.machine_serial || "—"}</span>
+                                                <span className="production-secondary">{model?.name || "—"}</span>
+                                                <span className="production-secondary">{template?.name || "—"}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="production-primary">{tecnico?.nombre_tecnico || "—"}</span>
+                                                <span className="production-secondary">{wo.assigned_tech_email || "—"}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip size="small" className={`production-state ${statusClass(wo.status)}`} data-production-state={wo.status}
+                                                    label={STATUS_LABELS[wo.status] || "—"} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Box className="production-progress-label"><span>{Math.round(Number(orden.avance))} %</span><span>{avance ?? 0} / {total ?? 0}</span></Box>
+                                                <LinearProgress variant="determinate" value={orden.avance ? orden.avance : 0}
+                                                    aria-label={`Avance de actividades de orden ${wo.id}`}
+                                                    sx={{ height: 4, borderRadius: "2px", bgcolor: "#63564C", my: 1,
+                                                        "& .MuiLinearProgress-bar": { bgcolor: Number(orden.avance) >= 100 ? "#5BBF8A" : "#E63946" } }} />
+                                                <span className="production-secondary">actividades completadas</span>
+                                            </TableCell>
+                                            <TableCell><span className="production-date">{fdt(wo.scheduled_at)}</span></TableCell>
+                                            <TableCell><span className="production-date">{fdt(wo.created_at)}</span></TableCell>
+                                            <TableCell><Button className="production-detail-button" variant="outlined" data-open-production={wo.id}
+                                                aria-label={`Ver detalle de orden ${wo.id}`} endIcon={<ArrowForwardIcon />}
+                                                onClick={() => handleOpenDialog(wo.id)}>Ver</Button></TableCell>
+                                        </TableRow>;
+                                    })}
+                                    {items.length === 0 && <TableRow><TableCell colSpan={8} className="production-empty">No se muestran órdenes con los criterios actuales.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <Box className="production-table-footer"><span>{items.length} {items.length === 1 ? "orden" : "órdenes"} · {filterStatus ? (STATUS_LABELS[filterStatus] || filterStatus) : "Todos los estados"}</span><span>Desplaza la tabla para consultar todas las columnas cuando no quepan.</span></Box>
+                    </Box>
+                    <Typography id="production-progress-note" className="production-progress-note">El avance de actividades y el estado operativo son distintos. Una orden al 100 % puede seguir Abierta (OPEN).</Typography>
                     <Dialog
                         open={open}
                         onClose={handleCloseDialog}
+                        fullScreen={compactDetail}
+                        aria-labelledby="production-detail-title"
                         maxWidth="lg"
                         fullWidth
-                        PaperProps={{
-                            sx: {
-                                overflow: "hidden",
-                                borderRadius: 3,
-                                border: '1px solid #3A3633',
-                                boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
-                                bgcolor: '#1F1B19',
-                                color: '#F5F1ED',
-                            },
-                        }}
+                        PaperProps={{ className: "production-detail" }}
                     >
+                        <DialogTitle id="production-detail-title" component="div" className="production-detail__header">
+                            <Box className="production-detail__identity">
+                                <Typography component="span" className="production-detail__eyebrow">Producción · Detalle de orden</Typography>
+                                <Box className="production-detail__heading">
+                                    <Typography component="h2" variant="h6">{woID ? `Orden de trabajo #${woID.id}` : "Orden de trabajo"}</Typography>
+                                    {woID && <Chip size="small" className="production-detail__state" data-order-status={woID.status} label={String(woID.status)} />}
+                                </Box>
+                                {woID && <Box className="production-detail__references">
+                                    <span><span>Folio SAI</span> {woID.folio_sai || "—"}</span>
+                                    <span><span>Serie</span> {woID.machine_serial || "—"}</span>
+                                    <span><span>Modelo</span> {model?.name || "—"}</span>
+                                </Box>}
+                            </Box>
+                            {woID && (() => {
+                                const total = woID.tasks?.length || 0;
+                                const done = woID.tasks?.filter(task => task.status === "DONE").length || 0;
+                                const avance = total > 0 ? Math.round((done / total) * 100) : 0;
+                                return <Box className="production-detail__progress" data-progress-complete={avance >= 100}>
+                                    <Typography component="span"><strong>{avance} %</strong> actividades</Typography>
+                                    <LinearProgress variant="determinate" value={avance} aria-label="Avance de actividades de la orden" />
+                                    <Typography component="span">{done}/{total} completadas · estado independiente</Typography>
+                                </Box>;
+                            })()}
+                            <IconButton aria-label="Cerrar detalle de producción" onClick={handleCloseDialog}
+                                className="production-detail__close"><CloseIcon /></IconButton>
+                        </DialogTitle>
                         {(woID && template) ? (
-                            <Box sx={{ display: "flex", minWidth: 720, height: 640 }}>
-                                {/* Columna izquierda: encabezado + info general */}
-                                <Box
-                                    sx={{
-                                        width: 280,
-                                        borderRight: '1px solid #3A3633',
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        bgcolor: "#14110F",
-                                    }}
-                                >
-                                    {/* Header con gradiente */}
-                                    <Box
-                                        sx={{
-                                            p: 3,
-                                            background: 'linear-gradient(135deg, #5B1A1F 0%, #1F1B19 100%)',
-                                            borderBottom: '1px solid #3A3633',
-                                            color: '#F5F1ED',
-                                        }}
-                                    >
-                                        <Typography variant="overline" sx={{ opacity: 0.8, color: '#B8B0A9', letterSpacing: '0.05em' }}>
-                                            Orden de trabajo
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1, color: '#E63946' }}>
-                                            {template.name}
-                                        </Typography>
-                                        <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                            <Chip size="small" label={`#${woID.id}`} sx={{ bgcolor: "rgba(230, 57, 70, 0.2)", color: "#FFFFFF", border: '1px solid #E63946' }} />
-                                            <Chip
-                                                size="small"
-                                                label={String(woID.status)}
-                                                sx={{
-                                                    bgcolor: "rgba(255,255,255,0.08)",
-                                                    color: "#F5F1ED",
-                                                    textTransform: "capitalize",
-                                                }}
-                                            />
-                                        </Box>
+                            <Box className="production-detail__body">
+                                <Box className="production-detail__information">
+                                    <Box className="production-detail__template">
+                                        <Typography component="h3">Información de la orden</Typography>
+                                        <Typography className="production-detail__eyebrow">Plantilla · Versión {woID.template_version ?? "—"}</Typography>
+                                        <Typography className="production-detail__template-name">{template.name}</Typography>
                                     </Box>
 
                                     {/* Datos generales o formulario de edición */}
                                     {!editMode ? (
-                                        <Box sx={{ p: 3, display: "Grid", rowGap: 1.25, overflowY: "scroll", overflowX: "hidden", flex: 1, color: '#F5F1ED' }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                <Box sx={{ mr: 2 }}>
-                                                    <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
-                                                        Modelo
-                                                    </Typography>
-
-                                                    <Typography variant="body1" sx={{ color: '#F5F1ED', fontWeight: 600 }}>
-                                                        {model?.name || "—"}
-                                                    </Typography>
-                                                </Box>
-                                                <Button variant='outlined'
-                                                    size='small'
-                                                    onClick={() => setCustomSee(prev => !prev)}
-                                                    sx={{ borderColor: '#3A3633', color: '#B8B0A9' }}>
-                                                    <FaEye style={{ marginRight: 4 }} />
-                                                    customs
-                                                </Button>
-
+                                        <Box className="production-detail__fields">
+                                            <Box className="production-detail__field">
+                                                <Typography component="span">Modelo</Typography>
+                                                <Typography>{model?.name || "—"}</Typography>
                                             </Box>
-
-                                            <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
-
+                                            <Button variant="outlined" size="small" className="production-detail__customs-toggle"
+                                                onClick={() => setCustomSee(prev => !prev)}>
+                                                <FaEye style={{ marginRight: 4 }} />customs
+                                            </Button>
                                             {customSee && (
-                                                <Box>
-                                                    <Card sx={{ bgcolor: '#2A2522', p: 1, border: '1px solid #3A3633' }}>
+                                                <Box className="production-detail__customs">
+                                                    <Card>
                                                         {(customs ?? []).map((custom: any, idx: number) => (
-                                                            <Box key={custom.id || idx} sx={{ mb: 1, p: 0.5 }}>
-                                                                <Typography variant="subtitle2" sx={{ color: '#F5F1ED', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <IoBuildOutline />
-                                                                    <b>{custom.custom_title || `Custom ${idx + 1}`}</b>
-                                                                </Typography>
+                                                            <Box key={custom.id || idx}>
+                                                                    <Typography variant="subtitle2"><IoBuildOutline /> <b>{custom.custom_title || `Custom ${idx + 1}`}</b></Typography>
                                                             </Box>
                                                         ))}
                                                     </Card>
-                                                    <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
                                                 </Box>
                                             )}
-
-                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
-                                                Técnico asignado
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                {woID.assigned_tech_email || "—"}
-                                            </Typography>
-
-
-                                            {
-                                                woID.tech_support && (
-                                                    <Box>
-                                                        <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
-                                                            Técnico de soporte asignado
-                                                        </Typography>
-                                                        <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                            {woID.tech_support || "—"}
-                                                        </Typography>
-
-                                                    </Box>
-
-                                                )
-                                            }
-
-                                            <Divider sx={{ my: 1, borderColor: '#2A2522' }} />
-
-                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9' }}>
-                                                Programada para
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                {fdt(woID.scheduled_at)}
-                                            </Typography>
-
-                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
-                                                Creada el
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                {fdt(woID.created_at)}
-                                            </Typography>
-
-                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
-                                                Folio SAI
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                {woID.folio_sai || "—"}
-                                            </Typography>
-
-                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
-                                                Número de serie
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                {woID.machine_serial || "—"}
-                                            </Typography>
-                                            {
-                                                woID.comments && (
-                                                    <Box>
-                                                        <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
-                                                            Comentarios
-                                                        </Typography>
-                                                        <Card sx={{ p: 1, bgcolor: '#2A2522', minHeight: 60, border: '1px solid #3A3633' }}>
-                                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                                {woID.comments}
-                                                            </Typography>
-                                                        </Card>
-                                                    </Box>
-                                                )
-                                            }
-
-
-                                            <Typography variant="subtitle2" sx={{ color: '#B8B0A9', mt: 0.5 }}>
-                                                Estado inicial de la máquina
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: '#F5F1ED' }}>
-                                                {woID.initial_status || "—"}
-                                            </Typography>
+                                            <Box className="production-detail__field">
+                                                <Typography component="span">Técnico asignado</Typography>
+                                                <Typography>{techs.find(t => t.correo_tecnico === woID.assigned_tech_email)?.nombre_tecnico || "—"}</Typography>
+                                                <Typography className="production-detail__email">{woID.assigned_tech_email || "—"}</Typography>
+                                            </Box>
+                                            {woID.tech_support && (
+                                                <Box className="production-detail__field">
+                                                    <Typography component="span">Técnico de soporte asignado</Typography>
+                                                    <Typography>{woID.tech_support || "—"}</Typography>
+                                                </Box>
+                                            )}
+                                            <Box className="production-detail__field"><Typography component="span">Programada para</Typography><Typography>{fdt(woID.scheduled_at)}</Typography></Box>
+                                            <Box className="production-detail__field"><Typography component="span">Creada el</Typography><Typography>{fdt(woID.created_at)}</Typography></Box>
+                                            <Box className="production-detail__field"><Typography component="span">Folio SAI</Typography><Typography>{woID.folio_sai || "—"}</Typography></Box>
+                                            <Box className="production-detail__field"><Typography component="span">Número de serie</Typography><Typography>{woID.machine_serial || "—"}</Typography></Box>
+                                            {woID.comments && (
+                                                <Box className="production-detail__field production-detail__comments">
+                                                    <Typography component="span">Comentarios</Typography>
+                                                    <Card><Typography>{woID.comments}</Typography></Card>
+                                                </Box>
+                                            )}
+                                            <Box className="production-detail__field"><Typography component="span">Estado inicial de la máquina</Typography><Typography>{woID.initial_status || "—"}</Typography></Box>
                                         </Box>
                                     ) : (
-                                        <Box component="form" sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", flex: 1 }}
+                                        <Box component="form" className="production-detail__edit" sx={{ p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", gap: 2 }}
                                             onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 try {
@@ -845,14 +677,14 @@ export default function PlantelProduccion() {
                                         </Box>
                                     )}
                                     {!editMode && (
-                                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                                            <Button variant='contained' disabled={savingTaskId !== null} sx={{ bgcolor: '#5B1A1F', color: '#FFFFFF', ml: 3, mr: 3, mb: 1, mt: 1, '&:hover': { bgcolor: '#E63946' } }} onClick={() => handleErase(woID.id)}>
+                                        <Box className="production-detail__actions">
+                                            <Button variant='contained' disabled={savingTaskId !== null} className="production-detail__delete" onClick={() => handleErase(woID.id)}>
                                                 Eliminar orden
                                             </Button>
                                             <Button
                                                 variant='outlined'
                                                 disabled={savingTaskId !== null}
-                                                sx={{ borderColor: '#3A3633', color: '#F5F1ED', ml: 3, mr: 3, mb: 1 }}
+                                                className="production-detail__edit-toggle"
                                                 onClick={() => {
                                                     setEditMode(!editMode);
                                                     setEditForm({
@@ -874,13 +706,9 @@ export default function PlantelProduccion() {
 
                                 </Box>
 
-                                {/* Columna derecha: Actividades agrupadas */}
-                                <Box sx={{ flex: 1, display: "flex", flexDirection: "column", bgcolor: '#1F1B19', color: '#F5F1ED' }}>
-                                    {/* Título de columna */}
-                                    <Box sx={{ p: 3, borderBottom: '1px solid #3A3633', bgcolor: '#1F1B19' }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#F5F1ED', textAlign: "center" }}>
-                                            Actividades por sección
-                                        </Typography>
+                                <Box className="production-detail__activities">
+                                    <Box className="production-detail__activity-header">
+                                        <Typography component="h3" variant="h6">Actividades por sección</Typography>
                                         {progressFeedback && (
                                             <Alert severity={progressFeedback.severity} sx={{ mt: 2 }}>
                                                 {progressFeedback.text}
@@ -890,9 +718,7 @@ export default function PlantelProduccion() {
                                             <ProductionInspectionRequest key={woID.id} workOrderId={woID.id} disabled={savingTaskId !== null} />
                                         )}
                                     </Box>
-
-                                    {/* Contenido scrollable */}
-                                    <Box sx={{ flex: 1, overflow: "auto" }}>
+                                    <Box className="production-detail__task-scroll">
                                         {(() => {
                                             const grouped: Record<string, WorkOrderWithTasks["tasks"]> = {};
                                             for (const t of (woID.tasks ?? [])) {
@@ -905,7 +731,7 @@ export default function PlantelProduccion() {
                                             if (entries.length === 0) {
                                                 return (
                                                     <Box sx={{ p: 3 }}>
-                                                        <Typography variant="body2" sx={{ color: COLORS.gray700 }}>
+                                                        <Typography variant="body2" sx={{ color: COLORS.white }}>
                                                             No hay actividades disponibles.
                                                         </Typography>
                                                     </Box>
@@ -913,83 +739,18 @@ export default function PlantelProduccion() {
                                             }
 
                                             return (
-                                                <List
-                                                    disablePadding
-                                                    sx={{
-                                                        width: "100%",
-                                                        bgcolor: '#1F1B19',
-                                                    }}
-                                                >
+                                                <List disablePadding className="production-detail__sections">
                                                     {entries.map(([section, tasks]) => (
-                                                        <Box key={section} component="li">
-                                                            <ListSubheader
-                                                                disableSticky={false}
-                                                                sx={{
-                                                                    position: "sticky",
-                                                                    top: 0,
-                                                                    zIndex: 2,
-                                                                    bgcolor: '#2A2522',
-                                                                    borderBottom: '1px solid #3A3633',
-                                                                    px: 3,
-                                                                    py: 1.5,
-                                                                    fontSize: 14,
-                                                                    fontWeight: 700,
-                                                                    color: '#FFFFFF',
-                                                                    letterSpacing: 0.3,
-                                                                }}
-                                                            >
-                                                                {section}
+                                                        <Box key={section} component="li" className="production-detail__section">
+                                                            <ListSubheader component="div" disableSticky={false} className="production-detail__section-title">
+                                                                <span>{section}</span>
+                                                                <span>{tasks!.filter(task => task.status === "DONE").length}/{tasks!.length} completadas</span>
                                                             </ListSubheader>
-
-                                                            {tasks!.map(task => (
-                                                                <ListItem
-                                                                    key={task.id}
-                                                                    disableGutters
-                                                                    sx={{
-                                                                        px: 3,
-                                                                        py: 1.25,
-                                                                    }}
-                                                                >
-                                                                    <Box
-                                                                        sx={{
-                                                                            width: "100%",
-                                                                            p: 1.5,
-                                                                            borderRadius: 2,
-                                                                            border: '1px solid #3A3633',
-                                                                            bgcolor: '#1F1B19',
-                                                                            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                                                                            display: "flex",
-                                                                            alignItems: "center",
-                                                                            gap: 2,
-                                                                            "&:hover": {
-                                                                                bgcolor: '#25201D',
-                                                                            },
-                                                                        }}
-                                                                    >
-                                                                        {/* Acento rojo lateral */}
-                                                                        <Box
-                                                                            sx={{
-                                                                                width: 6,
-                                                                                alignSelf: "stretch",
-                                                                                borderRadius: "8px",
-                                                                                bgcolor: task.status === "DONE" ? '#5BBF8A' : '#E63946',
-                                                                            }}
-                                                                        />
-                                                                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                                            <ListItemText
-                                                                                primaryTypographyProps={{
-                                                                                    sx: {
-                                                                                        fontWeight: 600,
-                                                                                        color: '#F5F1ED',
-                                                                                        overflow: "hidden",
-                                                                                        textOverflow: "ellipsis",
-                                                                                        whiteSpace: "nowrap",
-                                                                                    },
-                                                                                }}
-                                                                                secondaryTypographyProps={{
-                                                                                    sx: { color: '#B8B0A9', mt: 0.25 },
-                                                                                }}
-                                                                                primary={task.task_title || "Actividad"}
+                                                            <List disablePadding>
+                                                                {tasks!.map(task => (
+                                                                    <ListItem key={task.id} disableGutters className="production-detail__task" data-task-status={task.status}>
+                                                                        <Box className="production-detail__task-content">
+                                                                            <ListItemText primary={task.task_title || "Actividad"}
                                                                                 secondary={
                                                                                     `Tarea #${task.id} · ${task.code || "Sin código"} · ` +
                                                                                     (task.status === "DONE"
@@ -997,35 +758,28 @@ export default function PlantelProduccion() {
                                                                                         : (task.status || "Sin estado"))
                                                                                 }
                                                                             />
+                                                                            <Box className="production-detail__task-actions">
+                                                                                <Chip label={task.status === "DONE" ? "Completado" : (task.status || "Sin estado")}
+                                                                                    size="small" className="production-detail__task-state" />
+                                                                                {isQualityRelease(task) ? (
+                                                                                    <Typography variant="caption" className="production-detail__quality">Liberación por Calidad</Typography>
+                                                                                ) : template.template_type === "ENSAMBLE" && canCompleteProductionTask(task) && (
+                                                                                    <Button size="small" variant="contained"
+                                                                                        disabled={savingTaskId !== null || task.work_order_id !== woID.id}
+                                                                                        onClick={() => {
+                                                                                            setCompletionTask(task);
+                                                                                            setMinutes(task.actual_minutes == null ? "" : String(task.actual_minutes));
+                                                                                            setProgressFeedback(null);
+                                                                                        }}
+                                                                                        className="production-detail__complete">
+                                                                                        Marcar como completada
+                                                                                    </Button>
+                                                                                )}
+                                                                            </Box>
                                                                         </Box>
-
-                                                                        <Chip
-                                                                            label={task.status === "DONE" ? "Completado" : (task.status || "Sin estado")}
-                                                                            size="small"
-                                                                            sx={{
-                                                                                bgcolor: task.status === "DONE" ? "rgba(91, 191, 138, 0.15)" : "#2A2522",
-                                                                                border: task.status === "DONE" ? "1px solid #5BBF8A" : "1px solid #3A3633",
-                                                                                color: task.status === "DONE" ? "#5BBF8A" : "#B8B0A9",
-                                                                                fontWeight: 600,
-                                                                            }}
-                                                                        />
-                                                                        {isQualityRelease(task) ? (
-                                                                            <Typography variant="caption" sx={{ color: '#F2A65A' }}>Liberación por Calidad</Typography>
-                                                                        ) : template.template_type === "ENSAMBLE" && canCompleteProductionTask(task) && (
-                                                                            <Button size="small" variant="contained"
-                                                                                disabled={savingTaskId !== null || task.work_order_id !== woID.id}
-                                                                                onClick={() => {
-                                                                                    setCompletionTask(task);
-                                                                                    setMinutes(task.actual_minutes == null ? "" : String(task.actual_minutes));
-                                                                                    setProgressFeedback(null);
-                                                                                }}
-                                                                                sx={{ bgcolor: '#E63946', color: '#FFFFFF', textTransform: 'none', fontWeight: 600 }}>
-                                                                                Marcar como completada
-                                                                            </Button>
-                                                                        )}
-                                                                    </Box>
-                                                                </ListItem>
-                                                            ))}
+                                                                    </ListItem>
+                                                                ))}
+                                                            </List>
                                                         </Box>
                                                     ))}
                                                 </List>
@@ -1037,14 +791,14 @@ export default function PlantelProduccion() {
                         ) : (
                             <Box sx={{ p: 3 }}>
                                 {detailError ? <Alert severity="error">{detailError}</Alert> : (
-                                    <Typography variant="body2" sx={{ color: COLORS.gray700 }}>Cargando…</Typography>
+                                    <Typography variant="body2" sx={{ color: COLORS.white }}>Cargando…</Typography>
                                 )}
                             </Box>
                         )}
                     </Dialog>
                     <Dialog open={completionTask !== null} onClose={() => {
                         if (!savingProgress.current) setCompletionTask(null);
-                    }} fullWidth maxWidth="sm" PaperProps={{ sx: { bgcolor: '#1F1B19', color: '#F5F1ED', border: '1px solid #3A3633' } }}>
+                    }} fullWidth maxWidth="sm" PaperProps={{ className: "production-completion" }}>
                         <DialogTitle sx={{ color: '#F5F1ED' }}>Completar actividad productiva</DialogTitle>
                         <DialogContent>
                             <Typography sx={{ mb: 2, color: '#F5F1ED' }}>

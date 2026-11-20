@@ -18,6 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { retryApiQuery } from "../services/apiResponse";
 import { deleteEmptySection } from "../services/sectionDeletion";
 import { isPositiveId } from "../services/catalogQueries";
+import "./sections-builder.css";
 
 type Template = { id: number; name: string; model_name?: string; version: number; is_published: boolean; };
 type Section = { id: number; template_id: number; title: string; position: number; };
@@ -40,11 +41,13 @@ const SortableRow: React.FC<{
             <div className="handle" {...attributes} {...listeners}>⠿</div>
             <input
                 value={title}
+                aria-label={`Título de la sección #${id}`}
                 onChange={(e) => onTitleChange(e.target.value)}
                 placeholder="Section title"
                 disabled={disabled}
             />
-            <div className="right" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {title.length > 35 && <div className="sections-builder__long-title" aria-hidden="true">{title}</div>}
+            <div className="right sections-builder__row-actions">
                 <span className="badge">#{id}</span>
                 <button className="btn btn--ok" onClick={onSave} disabled={saving || disabled}>
                     {saving ? "…" : "Guardar"}
@@ -182,15 +185,19 @@ export default function SectionsBuilder() {
     };
 
     return (
-        <div className="row" style={{ gap: 16 }}>
-            <div className="card">
-                <h2>Sections Builder</h2>
-                <p style={{ color: "var(--muted)" }}>Elige una plantilla previamente creada y seccionala en orden a tus necesidades. </p>
+        <div className="sections-builder">
+            <header className="sections-builder__header">
+                <span className="sections-builder__eyebrow">Ingeniería y catálogos</span>
+                <h1>Constructor de secciones</h1>
+                <p>Elige una plantilla previamente creada y organiza sus secciones según tus necesidades.</p>
+            </header>
 
-                <div className="row cols-2">
-                    <div>
-                        <label>Elegir plantilla</label>
-                        <select value={selectedTemplate ?? ""} disabled={deletingId !== null} onChange={(e) => {
+            <section className="sections-builder__workspace" aria-labelledby="sections-builder-workspace-title">
+                <h2 id="sections-builder-workspace-title">Configuración de secciones</h2>
+                <div className="sections-builder__controls">
+                    <div className="sections-builder__field">
+                        <label htmlFor="sections-builder-template">Elegir plantilla</label>
+                        <select id="sections-builder-template" value={selectedTemplate ?? ""} disabled={deletingId !== null} onChange={(e) => {
                             setSelectedTemplate(Number(e.target.value) || null);
                             setDeleteError("");
                             setDeleteSuccess("");
@@ -203,17 +210,16 @@ export default function SectionsBuilder() {
                             ))}
                         </select>
                     </div>
-                    <div>
-                        <label>Acciones</label>
-                        <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={onAddSection} disabled={deletingId !== null} style={{backgroundColor:"#8B0000"}}>+ Añadir sección</button>
+                    <div className="sections-builder__actions">
+                        <span className="sections-builder__actions-label">Acciones</span>
+                        <div className="sections-builder__actions-content">
+                            <button className="sections-builder__primary" onClick={onAddSection} disabled={deletingId !== null}>+ Añadir sección</button>
                             {savingOrder ? <span className="badge">Guardando orden…</span> : null}
                         </div>
                     </div>
                 </div>
 
-                <br></br>
-
+                <div className="sections-builder__content">
                 {sectionsError && <div role="alert">No se pudieron cargar las secciones: {sectionsError.message}</div>}
                 {selectedTemplate !== null && !isPositiveId(selectedTemplate) && <div role="alert">El identificador de la plantilla no es válido.</div>}
                 {deleteError && <div role="alert">No se pudo eliminar la sección: {deleteError}</div>}
@@ -246,7 +252,8 @@ export default function SectionsBuilder() {
                         </SortableContext>
                     </DndContext>
                 )}
-            </div>
+                </div>
+            </section>
         </div>
     );
 }

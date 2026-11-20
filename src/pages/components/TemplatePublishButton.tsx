@@ -75,7 +75,7 @@ export default function TemplatePublishButton({ templateId, disabled = false, on
             </button>
         )}
         {feedback && <span role="status" style={{ maxWidth: 420, whiteSpace: "normal" }}>{feedback}</span>}
-        <Dialog open={!!review} onClose={() => { if (!busy.current) setReview(null); }} aria-labelledby={titleId} fullWidth maxWidth="sm">
+        <Dialog open={!!review} onClose={() => { if (!busy.current) setReview(null); }} aria-labelledby={titleId} fullWidth maxWidth="sm" PaperProps={{ className: "templates-publish-dialog" }}>
             <DialogTitle id={titleId}>Revisar publicación</DialogTitle>
             <DialogContent>
                 {review && <>

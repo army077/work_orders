@@ -10,6 +10,7 @@ import { FaRegEdit } from 'react-icons/fa';
 import { FaSave } from 'react-icons/fa';
 import { MdDeleteForever } from "react-icons/md";
 import { apiAxios as axios } from "../services/apiTransport";
+import "./templates.css";
 
 
 type MachineModel = {
@@ -250,23 +251,30 @@ export default function Templates() {
   }, [data?.data, searchQuery]);
 
   return (
-    <div className="card">
-      <h2>Templates</h2>
-      <p className="muted">Crea nuevas plantillas y publícalas cuando estén listas.</p>
+    <div className="templates">
+      <header className="templates__header">
+        <span className="templates__eyebrow">Ingeniería y catálogos</span>
+        <h1>Plantillas de trabajo</h1>
+        <p>Crea nuevas plantillas y publícalas cuando estén listas.</p>
+      </header>
 
       {/* Crear */}
-      <div className="row cols-3" style={{ alignItems: "end" }}>
-        <div>
-          <label>Nombre</label>
+      <section className="templates__create" aria-labelledby="templates-create-title">
+        <h2 id="templates-create-title">Nueva plantilla</h2>
+        <div className="templates__create-grid">
+        <div className="templates__field">
+          <label htmlFor="templates-name">Nombre</label>
           <input
+            id="templates-name"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Ej. Mantenimiento preventivo VMC-850"
           />
         </div>
-        <div>
-          <label>Tipo</label>
+        <div className="templates__field">
+          <label htmlFor="templates-type">Tipo</label>
           <select
+            id="templates-type"
             value={form.template_type}
             onChange={(e) => setForm((f) => ({ ...f, template_type: e.target.value }))}
           >
@@ -279,9 +287,10 @@ export default function Templates() {
             <option value="INSPECCION">INSPECCIÓN</option>
           </select>
         </div>
-        <div>
-          <label>Modelo</label>
+        <div className="templates__field">
+          <label htmlFor="templates-model">Modelo</label>
           <select
+            id="templates-model"
             value={form.model_id}
             onChange={(e) => setForm((f) => ({ ...f, model_id: e.target.value }))}
             disabled={loadingModels}
@@ -295,8 +304,9 @@ export default function Templates() {
           </select>
           {loadingModels && <div className="muted" style={{ marginTop: 6 }}>Cargando modelos…</div>}
         </div>
-        <div style={{ marginTop: 16 }}>
-          <button onClick={form.template_type === 'INSPECCION' ? onCreateInspeccion : onCreateEnsamble} disabled={creating || loadingModels}>
+        </div>
+        <div className="templates__create-actions">
+          <button className="templates__primary" onClick={form.template_type === 'INSPECCION' ? onCreateInspeccion : onCreateEnsamble} disabled={creating || loadingModels}>
             {creating ? "Creando…" : "Crear plantilla"}
           </button>
           <button onClick={() => {
@@ -304,13 +314,14 @@ export default function Templates() {
               if (prev) setSearchQuery(""); // Si se va a desactivar, limpia el query
               return !prev;
             });
-          }} style={{ margin: 2 }}><BsSearch></BsSearch></button>
+          }} aria-label="Buscar plantillas" title="Buscar plantillas"><BsSearch></BsSearch></button>
         </div>
 
-        {search && <div style={{ marginTop: 16 }}>
+        {search && <div className="templates__search">
           <input
             type="text"
             placeholder="Buscar por plantilla..."
+            aria-label="Buscar por plantilla"
             onChange={(e) => setSearchQuery(e.target.value)}
             onBlur={() => {
               setSearch(false);
@@ -320,11 +331,11 @@ export default function Templates() {
           />
         </div>}
 
-      </div>
-
-      <br />
+      </section>
 
       {/* Lista tipo ListTile */}
+      <section className="templates__records" aria-labelledby="templates-records-title">
+      <h2 id="templates-records-title">Plantillas registradas</h2>
       {isLoading ? (
         <div className="badge">Cargando…</div>
       ) : (
@@ -346,16 +357,10 @@ export default function Templates() {
                   <input
                     type="text"
                     value={editedName}
+                    aria-label={`Editar nombre de ${t.name}`}
                     onChange={(e) => setEditedName(e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, t)}
                     autoFocus
-                    style={{
-                      fontSize: "1rem",
-                      padding: "6px",
-                      borderRadius: "6px",
-                      border: "1px solid #ccc",
-                      width: "90%",
-                    }}
                   />
                 ) : (
                   <>
@@ -372,13 +377,12 @@ export default function Templates() {
                 {editingId === t.id ? (
                   <>
                     <button
-                      className="btn btn--secondary"
+                      className="btn btn--secondary templates__danger"
                       onClick={() => {
                         handleEliminarPlantilla(t.id);
                       }}
                       disabled={updating}
                       title="Eliminar Plantilla"
-                      style={{ backgroundColor: "#ff4d4f", color: "white", marginRight: "8px" }}
                     >
                       <MdDeleteForever />
                     </button>
@@ -426,7 +430,7 @@ export default function Templates() {
           ))}
         </div>
       )}
-
+      </section>
 
       {/* Drawer */}
       {openTmpl && (

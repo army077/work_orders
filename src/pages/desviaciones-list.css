@@ -1,0 +1,155 @@
+.deviation-list {
+  --deviation-surface: #2c2926;
+  --deviation-raised: #37322e;
+  --deviation-border: #5c534c;
+  --deviation-text: #f7f3ef;
+  --deviation-muted: #c5bcb5;
+  min-width: 0;
+  color: var(--deviation-text);
+}
+.deviation-list__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-left: 16px;
+  border-left: 3px solid #a64d56;
+}
+.deviation-list .deviation-list__eyebrow {
+  color: var(--deviation-muted);
+  font-size: 11px;
+  line-height: 18px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.deviation-list .deviation-list__title {
+  margin: 4px 0 6px;
+  color: var(--deviation-text);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 650;
+  letter-spacing: -.6px;
+}
+.deviation-list .deviation-list__intro { color: var(--deviation-muted); font-size: 13px; line-height: 20px; }
+.deviation-list .deviation-list__refresh { width: 40px; height: 40px; color: var(--deviation-text); border: 1px solid #817267; border-radius: 8px; }
+.deviation-list .deviation-list__refresh:hover { background: #40262a; border-color: #a0545d; }
+.deviation-list .deviation-list__refresh.Mui-disabled { color: #a79b91; border-color: #5c534c; }
+.deviation-list__toolbar {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--deviation-border);
+  border-radius: 10px;
+  background: var(--deviation-surface);
+}
+.deviation-list .deviation-list__search { width: 100%; max-width: 620px; min-width: 0; }
+.deviation-list .deviation-list__search .MuiOutlinedInput-root { color: var(--deviation-text); background: #22201e; border-radius: 8px; font-size: 13px; }
+.deviation-list .deviation-list__search .MuiInputBase-input { border: 0; margin: 0; background: transparent; font: inherit; }
+.deviation-list .deviation-list__search .MuiOutlinedInput-notchedOutline { border-color: #817267; }
+.deviation-list .deviation-list__search .MuiInputLabel-root,
+.deviation-list .deviation-list__search .MuiFormHelperText-root { color: var(--deviation-muted); }
+.deviation-list .deviation-list__search .MuiFormHelperText-root { font-size: 11px; line-height: 18px; }
+.deviation-list .deviation-list__search .Mui-focused .MuiOutlinedInput-notchedOutline { border-color: #efb679; }
+.deviation-list .deviation-list__search .MuiInputLabel-root.Mui-focused { color: #efb679; }
+.deviation-list .deviation-list__table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--deviation-border);
+  border-radius: 10px;
+  background: var(--deviation-surface);
+  background-image: none;
+}
+.deviation-list .deviation-list__table { width: 100%; min-width: 990px; table-layout: fixed; border-collapse: collapse; }
+.deviation-list .deviation-list__table .MuiTableCell-root {
+  padding: 12px 10px;
+  color: var(--deviation-text);
+  border-bottom: 1px solid #46403a;
+  font-size: 12px;
+  line-height: 19px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.deviation-list .deviation-list__table thead .MuiTableCell-root {
+  padding: 12px 6px;
+  color: var(--deviation-muted);
+  background: var(--deviation-raised);
+  border-bottom: 1px solid var(--deviation-border);
+  font-size: 11px;
+  line-height: 18px;
+  overflow-wrap: normal;
+}
+.deviation-list .deviation-list__table th:nth-child(1) { width: 5%; }
+.deviation-list .deviation-list__table th:nth-child(2),
+.deviation-list .deviation-list__table th:nth-child(3),
+.deviation-list .deviation-list__table th:nth-child(5),
+.deviation-list .deviation-list__table th:nth-child(9) { width: 9%; }
+.deviation-list .deviation-list__table th:nth-child(4),
+.deviation-list .deviation-list__table th:nth-child(8) { width: 8%; }
+.deviation-list .deviation-list__table th:nth-child(6),
+.deviation-list .deviation-list__table th:nth-child(7),
+.deviation-list .deviation-list__table th:nth-child(11) { width: 10%; }
+.deviation-list .deviation-list__table th:nth-child(10) { width: 13%; }
+.deviation-list .deviation-list__table tbody tr:last-child .MuiTableCell-root { border-bottom: 0; }
+.deviation-list .deviation-list__table tbody tr:hover { background: #312d29; }
+.deviation-list .deviation-list__table tbody td:first-child { font-weight: 650; font-variant-numeric: tabular-nums; }
+.deviation-list .deviation-list__table tbody td:nth-child(2) { color: var(--deviation-muted); font-variant-numeric: tabular-nums; }
+.deviation-list .deviation-list__table tbody td:nth-child(4) { font-weight: 600; }
+.deviation-list .deviation-list__table .MuiChip-root { max-width: 100%; height: auto; min-height: 24px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+.deviation-list .deviation-list__table .MuiChip-label { display: block; padding: 3px 7px; white-space: normal; overflow-wrap: anywhere; }
+.deviation-list .deviation-list__table .MuiChip-colorError { color: #f7f3ef; background: #40262a; border-color: #92545b; }
+.deviation-list .deviation-list__table .MuiChip-colorWarning { color: #f5c68b; background: #403329; border: 1px solid #826443; }
+.deviation-list .deviation-list__table .MuiButton-root { min-height: 36px; border-color: #817267; border-radius: 6px; color: var(--deviation-text); font-size: 12px; text-transform: none; white-space: nowrap; }
+.deviation-list .deviation-list__table .MuiButton-root:hover { background: #40262a; border-color: #a0545d; }
+.deviation-list .deviation-list__table .MuiTypography-caption { color: var(--deviation-muted); }
+.deviation-list :is(button, input, .deviation-list__table-container):focus-visible { outline: 2px solid #efb679; outline-offset: 2px; }
+.deviation-evidence-dialog.MuiPaper-root {
+  color: #f7f3ef;
+  background: #2c2926;
+  background-image: none;
+  border: 1px solid #5c534c;
+  border-radius: 14px;
+}
+.deviation-evidence-dialog .MuiDialogTitle-root {
+  padding: 16px 20px;
+  background: linear-gradient(110deg, #5b1a1f, #40262a 48%, #2c2926);
+  border-top: 3px solid #82414a;
+  font-size: 18px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+.deviation-evidence-dialog .MuiDialogContent-root { padding: 16px 20px; border-color: #514940; }
+.deviation-evidence-dialog__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 16px; }
+.deviation-evidence-dialog .deviation-evidence-dialog__photo {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #f7f3ef;
+  background: #22201e;
+  border: 1px solid #5c534c;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.deviation-evidence-dialog .deviation-evidence-dialog__photo:hover { border-color: #a0545d; }
+.deviation-evidence-dialog .deviation-evidence-dialog__photo:focus-visible,
+.deviation-evidence-dialog button:focus-visible { outline: 2px solid #efb679; outline-offset: 2px; }
+.deviation-evidence-dialog__photo img { display: block; width: 100%; height: 180px; object-fit: contain; }
+.deviation-evidence-dialog .deviation-evidence-dialog__caption { display: block; padding: 8px; color: #c5bcb5; background: #37322e; text-align: center; }
+.deviation-evidence-dialog .MuiDialogActions-root { padding: 12px 20px; }
+.deviation-evidence-dialog .MuiDialogActions-root .MuiButton-root { min-height: 40px; color: #f7f3ef; border: 1px solid #817267; border-radius: 6px; text-transform: none; }
+@media (max-width: 599px) {
+  .deviation-list__header { padding-left: 12px; margin-bottom: 16px; }
+  .deviation-list .deviation-list__title { font-size: 24px; line-height: 31px; }
+  .deviation-list__toolbar { padding: 14px; }
+  .deviation-list .deviation-list__refresh { width: 44px; height: 44px; }
+  .deviation-list .deviation-list__table .MuiButton-root { min-height: 44px; }
+  .deviation-evidence-dialog.MuiPaper-root { width: calc(100% - 32px); margin: 16px; }
+  .deviation-evidence-dialog .MuiDialogTitle-root { padding: 14px 16px; font-size: 16px; line-height: 23px; }
+  .deviation-evidence-dialog .MuiDialogContent-root { padding: 14px 16px; }
+  .deviation-evidence-dialog .MuiDialogActions-root { padding: 10px 16px; }
+  .deviation-evidence-dialog .MuiDialogActions-root .MuiButton-root { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deviation-list *, .deviation-evidence-dialog * { transition-duration: .01ms; scroll-behavior: auto; }
+}

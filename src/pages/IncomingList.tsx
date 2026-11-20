@@ -12,18 +12,19 @@ import {
   Chip,
   Box,
   TextField,
-  IconButton,
+  InputAdornment,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Button,
-  CircularProgress,
-  Tooltip
+  CircularProgress
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ImageIcon from "@mui/icons-material/Image";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import "./incoming-list.css";
 
 export interface IncomingInspection {
   id: number;
@@ -45,7 +46,7 @@ export default function IncomingList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSerial, setSelectedSerial] = useState("");
 
-  const { data, isLoading, refetch, isFetching } = useList<IncomingInspection>({
+  const { data, isLoading, refetch, isFetching, error } = useList<IncomingInspection>({
     resource: "incoming",
     pagination: { pageSize: 100 },
   });
@@ -92,59 +93,85 @@ export default function IncomingList() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h5" component="h1" fontWeight="bold">
-          📦 Registro de Incomings (Calidad)
-        </Typography>
-        <Tooltip title="Actualizar lista">
-          <span>
-            <IconButton onClick={() => refetch()} disabled={isLoading || isFetching} color="primary">
-              <RefreshIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
+    <Box className="incoming-list">
+      <Box component="header" className="incoming-list__header">
+        <Box className="incoming-list__identity">
+          <Typography className="incoming-list__eyebrow" variant="overline">
+            Calidad
+          </Typography>
+          <Typography component="h1" className="incoming-list__title">
+            Registro de Incomings
+          </Typography>
+          <Typography className="incoming-list__intro" variant="body2">
+            Inspecciones de recepción y sus evidencias.
+          </Typography>
+        </Box>
+        <Button className="incoming-list__refresh" onClick={() => refetch()} disabled={isLoading || isFetching}
+          color="primary" variant="outlined"
+          startIcon={isFetching ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}>
+          Actualizar
+        </Button>
       </Box>
 
-      <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
+      <Box className="incoming-list__toolbar">
         <TextField
+          className="incoming-list__search"
           size="small"
-          placeholder="Buscar por serie, equipo, proveedor o usuario..."
+          label="Buscar registros"
+          placeholder="Escribe para buscar…"
+          helperText="Serie, equipo, proveedor, usuario o clasificación."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 350 }}
           InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
+            startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: "text.secondary" }} /></InputAdornment>,
           }}
         />
+        <Typography className="incoming-list__count" variant="body2" role="status">
+          {isLoading ? "Consultando registros…" : error ? "Consulta no disponible" : `${filteredIncomings.length} de ${incomings.length} registros`}
+        </Typography>
       </Box>
 
+      {error && (
+        <Alert className="incoming-list__error" severity="error">
+          <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>No se pudo consultar Incoming. </Typography>
+          {incomings.length > 0 ? "Se muestran los datos de la última consulta disponible. " : "No se puede confirmar si hay registros. "}
+          Usa Actualizar para reintentar.
+        </Alert>
+      )}
+
       {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
-          <CircularProgress />
+        <Box className="incoming-list__loading" role="status">
+          <CircularProgress size={28} aria-label="Cargando registros de incoming" sx={{ color: "#FF6B77" }} />
+          <Typography variant="body2" color="text.secondary">Cargando registros de incoming…</Typography>
         </Box>
       ) : (
-        <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} elevation={0} tabIndex={0} role="region"
+          className="incoming-list__table-container"
+          aria-label="Registros de incoming: tabla desplazable" aria-describedby="incoming-table-hint">
+          <Table className="incoming-list__table" size="small" aria-label="Registro de Incomings">
             <TableHead>
               <TableRow>
-                <TableCell><b>ID</b></TableCell>
-                <TableCell><b>Fecha</b></TableCell>
-                <TableCell><b>No. Serie</b></TableCell>
-                <TableCell><b>Equipo</b></TableCell>
-                <TableCell><b>Proveedor</b></TableCell>
-                <TableCell><b>STL</b></TableCell>
-                <TableCell><b>Clasificación de Defecto</b></TableCell>
-                <TableCell><b>Usuario</b></TableCell>
-                <TableCell><b>Descripción</b></TableCell>
-                <TableCell align="center"><b>Evidencias</b></TableCell>
+                <TableCell sx={{ width: 56 }}>ID</TableCell>
+                <TableCell sx={{ width: 168 }}>Fecha</TableCell>
+                <TableCell sx={{ width: 128 }}>No. Serie</TableCell>
+                <TableCell sx={{ width: 144 }}>Equipo</TableCell>
+                <TableCell sx={{ width: 120 }}>Proveedor</TableCell>
+                <TableCell sx={{ width: 88 }}>STL</TableCell>
+                <TableCell sx={{ width: 152 }}>Clasificación de Defecto</TableCell>
+                <TableCell sx={{ width: 128 }}>Usuario</TableCell>
+                <TableCell sx={{ width: 240 }}>Descripción</TableCell>
+                <TableCell align="center" sx={{ width: 128 }}>Evidencias</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredIncomings.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 3, color: "text.secondary" }}>
-                    No se encontraron registros de incoming.
+                  <TableCell colSpan={10} sx={{ color: "text.secondary" }}>
+                    <Box sx={{ position: "sticky", left: 16, maxWidth: { xs: 240, sm: 480 }, py: 3 }}>
+                      {error ? "No hay datos disponibles mientras la consulta falla." : incomings.length === 0
+                        ? "Aún no hay registros de incoming."
+                        : "No hay coincidencias. Prueba con otro término de búsqueda."}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -162,9 +189,9 @@ export default function IncomingList() {
 
                   return (
                     <TableRow key={row.id} hover>
-                      <TableCell>#{row.id}</TableCell>
-                      <TableCell>{formatDate(row.created_at)}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ fontVariantNumeric: "tabular-nums", color: "text.secondary", whiteSpace: "nowrap" }}>#{row.id}</TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{formatDate(row.created_at)}</TableCell>
+                      <TableCell sx={{ "& .MuiChip-root": { color: "text.primary", borderColor: "#4A4441", borderRadius: "6px", fontWeight: 600 } }}>
                         <Chip label={row.num_serie} color="primary" variant="outlined" size="small" />
                       </TableCell>
                       <TableCell>{row.equipo ?? "—"}</TableCell>
@@ -182,12 +209,13 @@ export default function IncomingList() {
                         )}
                       </TableCell>
                       <TableCell>{row.usuario ?? row.correo ?? "—"}</TableCell>
-                      <TableCell sx={{ maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <TableCell sx={{ whiteSpace: "normal", color: "text.secondary" }}>
                         {row.descripcion || "—"}
                       </TableCell>
                       <TableCell align="center">
                         {imgCount > 0 ? (
                           <Button
+                            className="incoming-list__evidence-button"
                             size="small"
                             variant="outlined"
                             startIcon={<ImageIcon />}
@@ -210,23 +238,40 @@ export default function IncomingList() {
         </TableContainer>
       )}
 
+      <Typography id="incoming-table-hint" className="incoming-list__table-hint" variant="caption">
+        Desplaza la tabla horizontalmente para consultar todos los datos cuando no quepan en pantalla.
+      </Typography>
+
       {/* Modal visor de evidencias */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          📸 Evidencias de Incoming — Serie: <b>{selectedSerial}</b> ({selectedImages.length})
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth
+        aria-labelledby="incoming-evidence-title" aria-describedby="incoming-evidence-description"
+        PaperProps={{ className: "incoming-evidence-dialog", sx: {
+          m: { xs: 2, sm: 4 }, width: { xs: "calc(100% - 32px)", sm: "calc(100% - 64px)" },
+          maxHeight: { xs: "calc(100dvh - 32px)", sm: "calc(100dvh - 64px)" },
+          minWidth: 0, borderRadius: "16px", bgcolor: "background.paper", color: "text.primary",
+          "& .MuiButtonBase-root:focus-visible, & a:focus-visible": { outline: "2px solid #F2A65A", outlineOffset: 3 },
+          "@media (prefers-reduced-motion: reduce)": { "& *": { transition: "none" } },
+        } }}>
+        <DialogTitle component="div" className="incoming-evidence-dialog__title">
+          <Typography id="incoming-evidence-title" component="h2" variant="h6" className="incoming-evidence-dialog__heading">
+            Evidencias de Incoming
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1, mt: 0.75 }}>
+            <Typography variant="body2" sx={{ color: "text.secondary", overflowWrap: "anywhere", minWidth: 0 }}>
+              Serie: <b style={{ color: "#F5F1ED" }}>{selectedSerial}</b>
+            </Typography>
+            <Chip size="small" label={`${selectedImages.length} foto${selectedImages.length === 1 ? "" : "s"}`}
+              sx={{ borderRadius: "6px", bgcolor: "#2A2522", color: "text.secondary" }} />
+          </Box>
+          <Typography id="incoming-evidence-description" variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+            Selecciona una fotografía para abrir su enlace original.
+          </Typography>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent className="incoming-evidence-dialog__content" dividers sx={{ minWidth: 0 }}>
           {selectedImages.length === 0 ? (
             <Typography color="text.secondary">No hay imágenes disponibles para este registro.</Typography>
           ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 2,
-                p: 1,
-              }}
-            >
+            <Box className="incoming-evidence-dialog__grid">
               {selectedImages.map((url, idx) => (
                 <Box
                   key={idx}
@@ -234,21 +279,14 @@ export default function IncomingList() {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{
-                    display: "block",
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: "1px solid #ddd",
-                    transition: "transform 0.2s",
-                    "&:hover": { transform: "scale(1.02)", boxShadow: 3 },
-                  }}
+                  className="incoming-evidence-dialog__photo"
                 >
                   <img
                     src={url}
                     alt={`Evidencia ${idx + 1}`}
-                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
+                    style={{ width: "100%", height: 220, objectFit: "contain", display: "block" }}
                   />
-                  <Typography variant="caption" sx={{ display: "block", p: 0.5, textAlign: "center", bgcolor: "#fafafa" }}>
+                  <Typography variant="caption" className="incoming-evidence-dialog__caption">
                     Foto {idx + 1} (Clic para abrir original)
                   </Typography>
                 </Box>
@@ -256,8 +294,8 @@ export default function IncomingList() {
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setModalOpen(false)}>Cerrar</Button>
+        <DialogActions className="incoming-evidence-dialog__actions">
+          <Button className="incoming-evidence-dialog__close" onClick={() => setModalOpen(false)} variant="outlined">Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>

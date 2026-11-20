@@ -151,7 +151,14 @@ function panel(app) {
     };
     app.bindings.react = { default: react, ...react };
     app.bindings['react/jsx-runtime'] = { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
-    app.bindings['@mui/material'] = new Proxy({}, { get: (_, name) => name });
+    app.bindings['@mui/material'] = new Proxy({}, { get: (_, name) => name === 'useMediaQuery' ? () => false
+        : name === 'useTheme' ? () => ({ breakpoints: { down: () => '(max-width:899.95px)' } }) : name });
+    app.bindings['@mui/icons-material/Close'] = { default: 'CloseIcon' };
+    app.bindings['./production-list.css'] = {};
+    app.bindings['./production-detail.css'] = {};
+    for (const name of ['PrecisionManufacturingOutlined', 'History', 'FilterList', 'Refresh', 'Search', 'ArrowForward']) {
+        app.bindings['@mui/icons-material/' + name] = { default: 'PresentationIcon' };
+    }
     for (const name of ['react-icons/md', 'react-icons/fa6', 'react-icons/io5', 'react-icons/bs']) app.bindings[name] = {};
     for (const name of ['@mui/icons-material/LocalAtmOutlined', './Bonds', './ProductionHistory']) app.bindings[name] = { default: 'OtherPanel' };
     app.bindings['./components/ProductionInspectionRequest'] = { default: 'InspectionRequestControl' };
@@ -180,7 +187,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 async function openPanel(app) {
     const ui = panel(app);
     ui.render(); await settle();
-    nodes(ui.render(), 'Card').find(node => node.props.onClick).props.onClick();
+    nodes(ui.render(), 'Button').find(node => node.props['data-open-production'] === app.orders[0].id).props.onClick();
     await settle();
     return ui;
 }
@@ -251,7 +258,7 @@ test('failed order read displays its error without exposing previous order actio
     const app = fixture(), ui = await openPanel(app);
     nodes(ui.render(), 'Dialog').find(node => node.props.open).props.onClose();
     app.respond(url => url.includes('/customs/') ? Response.json([]) : Response.json({ error: 'Orden no disponible' }, { status: 404 }));
-    nodes(ui.render(), 'Card').find(node => node.props.onClick).props.onClick(); await settle();
+    nodes(ui.render(), 'Button').find(node => node.props['data-open-production'] === app.orders[0].id).props.onClick(); await settle();
     assert.match(text(ui.render()), /Orden no disponible/);
     assert.equal(button(ui.render(), 'Marcar como completada'), undefined);
 });

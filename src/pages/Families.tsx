@@ -1,5 +1,6 @@
 import React from "react";
 import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
+import "./families.css";
 
 type Family = { id: number; name: string };
 
@@ -64,98 +65,101 @@ export default function Families() {
     };
 
     return (
-        <div className="card">
-            <h2>Familias de equipo</h2>
-            <p style={{ color: "var(--muted)" }}>
-                Crea y administra las familias de los equipos de las máquinas.
-            </p>
+        <div className="families">
+            <header className="families__header">
+                <span className="families__eyebrow">Ingeniería y catálogos</span>
+                <h1>Familias de equipo</h1>
+                <p>Crea y administra las familias de los equipos de las máquinas.</p>
+            </header>
 
-            {/* Crear */}
-            <div className="row cols-3" style={{ alignItems: "end", margin: 5 }}>
-                <div>
-                    <label>Nombre</label>
-                    <input
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        placeholder="Ej. CNC"
-                    />
-                </div>
-                <div style={{marginTop: 16}}>
-                    <button onClick={onCreate} disabled={creating}>
+            <section className="families__create" aria-labelledby="families-create-title">
+                <h2 id="families-create-title">Nueva familia</h2>
+                <div className="families__create-controls">
+                    <div className="families__field">
+                        <label htmlFor="family-new-name">Nombre</label>
+                        <input
+                            id="family-new-name"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder="Ej. CNC"
+                        />
+                    </div>
+                    <button className="families__primary" onClick={onCreate} disabled={creating}>
                         {creating ? "Creando…" : "Crear familia"}
                     </button>
                 </div>
-            </div>
+            </section>
 
-            <br></br>
+            <section className="families__records" aria-labelledby="families-records-title">
+                <h2 id="families-records-title">Familias registradas</h2>
+                {isLoading ? (
+                    <div className="badge">Cargando…</div>
+                ) : (data?.data ?? []).length === 0 ? (
+                    <div className="badge">No hay familias.</div>
+                ) : (
+                    <div className="list-tiles">
+                        {(data?.data ?? []).map((f) => {
+                            const isEditing = editing[f.id] !== undefined;
+                            return (
+                                <div key={f.id} className="list-tile">
+                                    {/* leading */}
+                                    <div className="list-tile__leading" aria-hidden>
+                                        <div className="avatar">{f.name.slice(0, 1).toUpperCase()}</div>
+                                    </div>
 
-            {/* Lista */}
-            {isLoading ? (
-                <div className="badge">Cargando…</div>
-            ) : (data?.data ?? []).length === 0 ? (
-                <div className="badge">No hay familias.</div>
-            ) : (
-                <div className="list-tiles">
-                    {(data?.data ?? []).map((f) => {
-                        const isEditing = editing[f.id] !== undefined;
-                        return (
-                            <div key={f.id} className="list-tile">
-                                {/* leading */}
-                                <div className="list-tile__leading" aria-hidden>
-                                    <div className="avatar">{f.name.slice(0, 1).toUpperCase()}</div>
-                                </div>
-
-                                {/* content */}
-                                <div className="list-tile__content">
-                                    {!isEditing ? (
-                                        <>
-                                            <div className="list-tile__title">{f.name}</div>
-                                            <div className="list-tile__subtitle">ID #{f.id}</div>
-                                        </>
-                                    ) : (
-                                        <div className="list-tile__edit">
-                                            <input
-                                                value={editing[f.id]}
-                                                onChange={(e) =>
-                                                    setEditing((prev) => ({ ...prev, [f.id]: e.target.value }))
-                                                }
-                                                placeholder="Nombre de la familia"
-                                                autoFocus
-                                            />
-                                            <div className="list-tile__edit-actions">
-                                                <button
-                                                    className="btn btn--ok"
-                                                    onClick={() => onEditSave(f.id)}
-                                                    disabled={updating}
-                                                >
-                                                    Guardar
-                                                </button>
-                                                <button className="btn" onClick={() => onEditCancel(f.id)}>
-                                                    Cancelar
-                                                </button>
+                                    {/* content */}
+                                    <div className="list-tile__content">
+                                        {!isEditing ? (
+                                            <>
+                                                <div className="list-tile__title">{f.name}</div>
+                                                <div className="list-tile__subtitle">ID #{f.id}</div>
+                                            </>
+                                        ) : (
+                                            <div className="list-tile__edit">
+                                                <input
+                                                    aria-label="Nombre de la familia"
+                                                    value={editing[f.id]}
+                                                    onChange={(e) =>
+                                                        setEditing((prev) => ({ ...prev, [f.id]: e.target.value }))
+                                                    }
+                                                    placeholder="Nombre de la familia"
+                                                    autoFocus
+                                                />
+                                                <div className="list-tile__edit-actions">
+                                                    <button
+                                                        className="btn btn--ok"
+                                                        onClick={() => onEditSave(f.id)}
+                                                        disabled={updating}
+                                                    >
+                                                        Guardar
+                                                    </button>
+                                                    <button className="btn" onClick={() => onEditCancel(f.id)}>
+                                                        Cancelar
+                                                    </button>
+                                                </div>
                                             </div>
+                                        )}
+                                    </div>
+
+                                    {/* trailing */}
+                                    {!isEditing && (
+                                        <div className="list-tile__trailing">
+                                            <button className="btn" onClick={() => onEditStart(f)}>Editar</button>
+                                            <button
+                                                className="btn btn--danger"
+                                                onClick={() => onDelete(f.id)}
+                                                disabled={deleting || updating}
+                                            >
+                                                Eliminar
+                                            </button>
                                         </div>
                                     )}
                                 </div>
-
-                                {/* trailing */}
-                                {!isEditing && (
-                                    <div className="list-tile__trailing">
-                                        <button className="btn" onClick={() => onEditStart(f)}>Editar</button>
-                                        <button
-                                            className="btn btn--danger"
-                                            onClick={() => onDelete(f.id)}
-                                            disabled={deleting || updating}
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
         </div>
     );
 }

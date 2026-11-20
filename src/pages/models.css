@@ -1,0 +1,161 @@
+.models {
+  --model-surface: #2c2926;
+  --model-border: #554b44;
+  --model-text: #f7f3ef;
+  --model-muted: #c5bcb5;
+  max-width: 1152px;
+  min-width: 0;
+  color: var(--model-text);
+}
+.models__header {
+  padding: 18px 22px 19px;
+  background: linear-gradient(110deg, #5b1a1f, #40262a 48%, #22201e);
+  border: 1px solid #70434a;
+  border-top: 3px solid #a64d56;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px #100d0b38;
+}
+.models__eyebrow {
+  color: #e4c2c3;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.models__header h1 {
+  margin: 3px 0 5px;
+  color: var(--model-text);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -.6px;
+}
+.models__header p { margin: 0; color: #e2d4d0; font-size: 13px; line-height: 20px; }
+.models__filter, .models__create, .models__records {
+  min-width: 0;
+  margin-top: 12px;
+  background: var(--model-surface);
+  border: 1px solid var(--model-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px #100d0b26;
+}
+.models__filter, .models__create { padding: 15px 20px 17px; }
+.models__create { background: linear-gradient(110deg, #3e2c2b, #302a27 55%, var(--model-surface)); }
+.models :is(.models__filter, .models__create, .models__records) h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--model-text);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.models :is(.models__filter, .models__create, .models__records) h2::before {
+  content: "";
+  width: 3px;
+  height: 15px;
+  flex: 0 0 auto;
+  background: #c7646d;
+  border-radius: 2px;
+}
+.models__filter-controls { display: flex; align-items: end; gap: 12px; margin-top: 12px; }
+.models__filter-controls .models__field { width: min(100%, 440px); }
+.models__create-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 12px; }
+.models__create-actions { margin-top: 14px; }
+.models__field { min-width: 0; }
+.models__field label { display: block; margin: 0 0 6px; color: #ded5cf; font-size: 12px; line-height: 18px; font-weight: 600; }
+.models :is(input, select) {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 9px 12px;
+  color: var(--model-text);
+  background: #24211f;
+  border: 1px solid #76695f;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 2px #0e0b0a45;
+  font: inherit;
+  font-size: 13px;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.models input::placeholder { color: #aa9d94; }
+.models :is(input, select):not(:disabled):hover { background: #302a27; border-color: #ae9588; }
+.models :is(input, select):focus { border-color: #d77880; box-shadow: 0 0 0 3px #a64d563d; }
+.models button {
+  min-height: 40px;
+  padding: 8px 14px;
+  color: var(--model-text);
+  background: #37322e;
+  border: 1px solid #817267;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.models button:not(:disabled):hover { background: #4a403a; border-color: #ae9588; filter: none; }
+.models .models__primary, .models .btn--ok { background: #b52e3b; border-color: #d75964; }
+.models :is(.models__primary, .btn--ok):not(:disabled):hover { background: #c63240; border-color: #ed7480; }
+.models .btn--danger { color: #ffbac0; background: #40262a; border-color: #92545b; }
+.models .btn--danger:not(:disabled):hover { background: #5b1a1f; border-color: #d77880; }
+.models button:disabled { opacity: .55; cursor: not-allowed; }
+.models :is(button, input, select):focus-visible { outline: 2px solid #efb679; outline-offset: 2px; }
+.models__records h2 { padding: 14px 20px; border-bottom: 1px solid var(--model-border); }
+.models .list-tiles { gap: 0; }
+.models .list-tile {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 20px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  transition: background-color 150ms ease;
+}
+.models .list-tile + .list-tile { margin: 0; border-top: 1px solid #4a423b; }
+.models .list-tile::after { display: none; }
+.models .list-tile:hover, .models .list-tile:focus-within { background: #322c29; }
+.models .list-tile:focus-within { outline: none; }
+.models .list-tile__leading { width: 38px; }
+.models .avatar {
+  width: 36px;
+  height: 36px;
+  color: #f5d9d9;
+  background: linear-gradient(145deg, #704047, #4a2d2e);
+  border: 1px solid #94616a;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.models .list-tile__title { color: var(--model-text); font-size: 14px; line-height: 20px; font-weight: 650; overflow-wrap: anywhere; }
+.models .list-tile__subtitle { color: var(--model-muted); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.models .list-tile__trailing, .models .list-tile__edit-actions { flex-wrap: wrap; }
+.models .list-tile__edit { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.models .list-tile__edit-actions { align-items: center; align-self: end; }
+.models :is(.badge, [role="alert"]) { display: block; margin: 16px 20px; padding: 10px 12px; color: var(--model-muted); background: #24211f; border: 1px solid var(--model-border); border-radius: 7px; overflow-wrap: anywhere; }
+.models [role="alert"] { color: #ffbac0; background: #40262a; border-color: #92545b; }
+@media (max-width: 899px) {
+  .models .list-tile__edit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 599px) {
+  .models__header { padding: 15px 16px 16px; }
+  .models__header h1 { font-size: 24px; line-height: 31px; }
+  .models__filter, .models__create { padding: 14px 15px 16px; }
+  .models__filter-controls { flex-direction: column; align-items: stretch; }
+  .models__filter-controls .models__field { width: 100%; }
+  .models__create-grid { grid-template-columns: minmax(0, 1fr); }
+  .models__records h2 { padding: 14px 15px; }
+  .models .list-tile { grid-template-columns: 36px minmax(0, 1fr); gap: 8px 10px; padding: 12px 15px; }
+  .models .list-tile__trailing { grid-column: 2; }
+  .models .list-tile__edit { grid-template-columns: minmax(0, 1fr); }
+  .models button { min-height: 44px; }
+  .models :is(.badge, [role="alert"]) { margin: 14px 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .models :is(input, select, button), .models .list-tile { transition: none; }
+}

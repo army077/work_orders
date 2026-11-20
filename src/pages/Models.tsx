@@ -1,6 +1,7 @@
 import React from "react";
 import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
 import { retryApiQuery } from "../services/apiResponse";
+import "./models.css";
 
 type Family = { id: number; name: string };
 type Model = {
@@ -134,211 +135,243 @@ export default function Models() {
   const models = data?.data ?? [];
 
   return (
-    <div className="card">
-      <h2>Modelos de máquina</h2>
-      <p style={{ color: "var(--muted)" }}>Crea y administra modelos de máquina.</p>
+    <div className="models">
+      <header className="models__header">
+        <span className="models__eyebrow">Ingeniería y catálogos</span>
+        <h1>Modelos de máquina</h1>
+        <p>Crea y administra modelos de máquina.</p>
+      </header>
       {familiesError && <div role="alert">No se pudieron cargar las familias: {familiesError.message}</div>}
 
-      {/* Filtro por familia */}
-      <div className="row cols-3" style={{ alignItems: "end" }}>
-        <div>
-          <label>Filtrar por familia</label>
-          <select
-            value={familyFilter}
-            onChange={(e) => setFamilyFilter(e.target.value === "" ? "" : Number(e.target.value))}
-          >
-            <option value="">Todas</option>
-            {families.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={{ marginTop: 16 }}>
+      <section className="models__filter" aria-labelledby="models-filter-title">
+        <h2 id="models-filter-title">Filtrar modelos</h2>
+        <div className="models__filter-controls">
+          <div className="models__field">
+            <label htmlFor="models-filter-family">Filtrar por familia</label>
+            <select
+              id="models-filter-family"
+              value={familyFilter}
+              onChange={(e) => setFamilyFilter(e.target.value === "" ? "" : Number(e.target.value))}
+            >
+              <option value="">Todas</option>
+              {families.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <button onClick={() => refetch()}>Aplicar</button>
         </div>
-      </div>
-      <br></br>
+      </section>
 
-      {/* Crear */}
-      <div className="row cols-3" style={{ alignItems: "end" }}>
-        <div>
-          <label>Nombre del modelo</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm((x) => ({ ...x, name: e.target.value }))}
-            placeholder="Ej. Router 1325"
-          />
+      <section className="models__create" aria-labelledby="models-create-title">
+        <h2 id="models-create-title">Nuevo modelo</h2>
+        <div className="models__create-grid">
+          <div className="models__field">
+            <label htmlFor="models-name">Nombre del modelo</label>
+            <input
+              id="models-name"
+              value={form.name}
+              onChange={(e) => setForm((x) => ({ ...x, name: e.target.value }))}
+              placeholder="Ej. Router 1325"
+            />
+          </div>
+          <div className="models__field">
+            <label htmlFor="models-family">Familia</label>
+            <select
+              id="models-family"
+              value={form.family_id}
+              onChange={(e) => setForm((x) => ({ ...x, family_id: e.target.value }))}
+            >
+              <option value="">— Sin familia —</option>
+              {families.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="models__field">
+            <label htmlFor="models-manufacturer">Fabricante (opcional)</label>
+            <input
+              id="models-manufacturer"
+              value={form.manufacturer}
+              onChange={(e) => setForm((x) => ({ ...x, manufacturer: e.target.value }))}
+              placeholder="Ej. Acme"
+            />
+          </div>
+          <div className="models__field">
+            <label htmlFor="models-bond">Valor en bono de la máquina (opcional)</label>
+            <input
+              id="models-bond"
+              type="number"
+              value={form.bond_value}
+              onChange={(e) => setForm((x) => ({ ...x, bond_value: Number(e.target.value) }))}
+              placeholder="Ej. Acme"
+            />
+          </div>
+          <div className="models__field">
+            <label htmlFor="models-days">Días estándar de la máquina (opcional)</label>
+            <input
+              id="models-days"
+              type="number"
+              value={form.standard_days}
+              onChange={(e) => setForm((x) => ({ ...x, standard_days: Number(e.target.value) }))}
+              placeholder="Ej. Acme"
+            />
+          </div>
         </div>
-        <div>
-          <label>Familia</label>
-          <select
-            value={form.family_id}
-            onChange={(e) => setForm((x) => ({ ...x, family_id: e.target.value }))}
-          >
-            <option value="">— Sin familia —</option>
-            {families.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>Fabricante (opcional)</label>
-          <input
-            value={form.manufacturer}
-            onChange={(e) => setForm((x) => ({ ...x, manufacturer: e.target.value }))}
-            placeholder="Ej. Acme"
-          />
-        </div>
-        <label>Valor en bono de la máquina (opcional)</label>
-        <input
-          type="number"
-          value={form.bond_value}
-          onChange={(e) => setForm((x) => ({ ...x, bond_value: Number(e.target.value) }))}
-          placeholder="Ej. Acme"
-        />
-        <label>Días estándar de la máquina (opcional)</label>
-        <input
-          type="number"
-          value={form.standard_days}
-          onChange={(e) => setForm((x) => ({ ...x, standard_days: Number(e.target.value) }))}
-          placeholder="Ej. Acme"
-        />
 
-        <div style={{ marginTop: 16 }}>
-          <button onClick={onCreate} disabled={creating}>
+        <div className="models__create-actions">
+          <button className="models__primary" onClick={onCreate} disabled={creating}>
             {creating ? "Creando…" : "Crear modelo"}
           </button>
         </div>
-      </div>
+      </section>
 
-      <br></br>
+      <section className="models__records" aria-labelledby="models-records-title">
+        <h2 id="models-records-title">Modelos registrados</h2>
+        {modelsError ? (
+          <div role="alert">No se pudieron cargar los modelos: {modelsError.message}</div>
+        ) : isLoading ? (
+          <div className="badge">Cargando…</div>
+        ) : models.length === 0 ? (
+          <div className="badge">No hay modelos.</div>
+        ) : (
+          <div className="list-tiles">
+            {models.map((m) => {
+              const edit = editing[m.id];
+              const isEditing = !!edit;
+              return (
+                <div key={m.id} className="list-tile">
+                  {/* leading: inicial del modelo */}
+                  <div className="list-tile__leading" aria-hidden>
+                    <div className="avatar">{m.name.slice(0, 1).toUpperCase()}</div>
+                  </div>
 
-      {/* Lista tipo ListTile */}
-      {modelsError ? (
-        <div role="alert">No se pudieron cargar los modelos: {modelsError.message}</div>
-      ) : isLoading ? (
-        <div className="badge">Cargando…</div>
-      ) : models.length === 0 ? (
-        <div className="badge">No hay modelos.</div>
-      ) : (
-        <div className="list-tiles">
-          {models.map((m) => {
-            const edit = editing[m.id];
-            const isEditing = !!edit;
-            return (
-              <div key={m.id} className="list-tile">
-                {/* leading: inicial del modelo */}
-                <div className="list-tile__leading" aria-hidden>
-                  <div className="avatar">{m.name.slice(0, 1).toUpperCase()}</div>
-                </div>
-
-                {/* content */}
-                <div className="list-tile__content" style={{ display: "grid", gap: 6 }}>
-                  {!isEditing ? (
-                    <>
-                      <div className="list-tile__title">{m.name}</div>
-                      <div className="list-tile__subtitle">
-                        ID #{m.id}
-                        {" · "}
-                        {m.family_name ? `Familia: ${m.family_name}` : "Sin familia"}
-                        {m.manufacturer ? ` · Fab.: ${m.manufacturer}` : ""}
+                  {/* content */}
+                  <div className="list-tile__content">
+                    {!isEditing ? (
+                      <>
+                        <div className="list-tile__title">{m.name}</div>
+                        <div className="list-tile__subtitle">
+                          ID #{m.id}
+                          {" · "}
+                          {m.family_name ? `Familia: ${m.family_name}` : "Sin familia"}
+                          {m.manufacturer ? ` · Fab.: ${m.manufacturer}` : ""}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="list-tile__edit">
+                        <div className="models__field">
+                          <label htmlFor={`models-edit-name-${m.id}`}>Nombre del modelo</label>
+                          <input
+                            id={`models-edit-name-${m.id}`}
+                            value={edit.name}
+                            onChange={(e) =>
+                              setEditing((prev) => ({
+                                ...prev,
+                                [m.id]: { ...prev[m.id], name: e.target.value },
+                              }))
+                            }
+                            placeholder="Nombre del modelo"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="models__field">
+                          <label htmlFor={`models-edit-family-${m.id}`}>Familia</label>
+                          <select
+                            id={`models-edit-family-${m.id}`}
+                            value={edit.family_id}
+                            onChange={(e) =>
+                              setEditing((prev) => ({
+                                ...prev,
+                                [m.id]: { ...prev[m.id], family_id: e.target.value },
+                              }))
+                            }
+                          >
+                            <option value="">— Sin familia —</option>
+                            {families.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="models__field">
+                          <label htmlFor={`models-edit-manufacturer-${m.id}`}>Fabricante (opcional)</label>
+                          <input
+                            id={`models-edit-manufacturer-${m.id}`}
+                            value={edit.manufacturer}
+                            onChange={(e) =>
+                              setEditing((prev) => ({
+                                ...prev,
+                                [m.id]: { ...prev[m.id], manufacturer: e.target.value },
+                              }))
+                            }
+                            placeholder="Fabricante (opcional)"
+                          />
+                        </div>
+                        <div className="models__field">
+                          <label htmlFor={`models-edit-bond-${m.id}`}>Valor en bono de la máquina (opcional)</label>
+                          <input
+                            id={`models-edit-bond-${m.id}`}
+                            value={edit.bond_value}
+                            onChange={(e) =>
+                              setEditing((prev) => ({
+                                ...prev,
+                                [m.id]: { ...prev[m.id], bond_value: Number(e.target.value) },
+                              }))
+                            }
+                            placeholder="Valor en bono"
+                          />
+                        </div>
+                        <div className="models__field">
+                          <label htmlFor={`models-edit-days-${m.id}`}>Días estándar de la máquina (opcional)</label>
+                          <input
+                            id={`models-edit-days-${m.id}`}
+                            value={edit.standard_days}
+                            onChange={(e) =>
+                              setEditing((prev) => ({
+                                ...prev,
+                                [m.id]: { ...prev[m.id], standard_days: Number(e.target.value) },
+                              }))
+                            }
+                            placeholder="Valor en bono"
+                          />
+                        </div>
+                        <div className="list-tile__edit-actions">
+                          <button className="btn btn--ok" onClick={() => saveEdit(m.id)} disabled={updating}>
+                            Guardar
+                          </button>
+                          <button className="btn" onClick={() => cancelEdit(m.id)}>
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <div className="list-tile__edit" style={{ gridTemplateColumns: "1fr 220px 220px" }}>
-                      <input
-                        value={edit.name}
-                        onChange={(e) =>
-                          setEditing((prev) => ({
-                            ...prev,
-                            [m.id]: { ...prev[m.id], name: e.target.value },
-                          }))
-                        }
-                        placeholder="Nombre del modelo"
-                        autoFocus
-                      />
-                      <select
-                        value={edit.family_id}
-                        onChange={(e) =>
-                          setEditing((prev) => ({
-                            ...prev,
-                            [m.id]: { ...prev[m.id], family_id: e.target.value },
-                          }))
-                        }
+                    )}
+                  </div>
+
+                  {/* trailing acciones */}
+                  {!isEditing && (
+                    <div className="list-tile__trailing">
+                      <button className="btn" onClick={() => startEdit(m)}>Editar</button>
+                      <button
+                        className="btn btn--danger"
+                        onClick={() => onDelete(m.id)}
+                        disabled={deleting || updating}
                       >
-                        <option value="">— Sin familia —</option>
-                        {families.map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        value={edit.manufacturer}
-                        onChange={(e) =>
-                          setEditing((prev) => ({
-                            ...prev,
-                            [m.id]: { ...prev[m.id], manufacturer: e.target.value },
-                          }))
-                        }
-                        placeholder="Fabricante (opcional)"
-                      />
-                      <input
-                        style={{ maxWidth: 100 }}
-                        value={edit.bond_value}
-                        onChange={(e) =>
-                          setEditing((prev) => ({
-                            ...prev,
-                            [m.id]: { ...prev[m.id], bond_value: Number(e.target.value) },
-                          }))
-                        }
-                        placeholder="Valor en bono"
-                      />
-                      <input
-                        style={{ maxWidth: 100 }}
-                        value={edit.standard_days}
-                        onChange={(e) =>
-                          setEditing((prev) => ({
-                            ...prev,
-                            [m.id]: { ...prev[m.id], standard_days: Number(e.target.value) },
-                          }))
-                        }
-                        placeholder="Valor en bono"
-                      />
-                      <div className="list-tile__edit-actions">
-                        <button className="btn btn--ok" onClick={() => saveEdit(m.id)} disabled={updating}>
-                          Guardar
-                        </button>
-                        <button className="btn" onClick={() => cancelEdit(m.id)}>
-                          Cancelar
-                        </button>
-                      </div>
+                        Eliminar
+                      </button>
                     </div>
                   )}
                 </div>
-
-                {/* trailing acciones */}
-                {!isEditing && (
-                  <div className="list-tile__trailing">
-                    <button className="btn" onClick={() => startEdit(m)}>Editar</button>
-                    <button
-                      className="btn btn--danger"
-                      onClick={() => onDelete(m.id)}
-                      disabled={deleting || updating}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useList, useCreate } from "@refinedev/core";
 import { Dialog, FormControl, InputLabel, Select, MenuItem, IconButton } from "@mui/material";
 import { FaEye } from 'react-icons/fa6';
+import "./create-work-order.css";
 
 type Template = { id: number; name: string; version: number; model_id: number; model_name?: string | null; is_published: boolean; template_type: string; };
 
@@ -396,17 +397,20 @@ export default function CreateWorkOrderFromTemplate() {
   };
 
   return (
-    <div className="card">
-      <h2>Crea una orden de trabajo desde la plantilla</h2>
-      <p className="muted">
-        Publica tu plantilla y luego crea una orden materializada (snapshot de secciones y tareas).
-      </p>
+    <div className="create-order">
+      <header className="create-order__header">
+        <span className="create-order__eyebrow">Producción</span>
+        <h1>Crea una orden de trabajo desde la plantilla</h1>
+        <p>Publica tu plantilla y luego crea una orden materializada (snapshot de secciones y tareas).</p>
+      </header>
 
-      <form className="row" onSubmit={onSubmit}>
-        <div className="row cols-3">
-          <div>
-            <label>Elige tu plantilla</label>
+      <form className="create-order__form" onSubmit={onSubmit}>
+        <section className="create-order__section">
+          <h2>Plantilla</h2>
+          <div className="create-order__field">
+            <label htmlFor="create-order-template">Elige tu plantilla</label>
             <select
+              id="create-order-template"
               value={form.template_id}
               onChange={(e) => setForm((f) => ({ ...f, template_id: e.target.value, template_type: (published.find(t => t.id === Number(e.target.value))?.template_type) || "" }))}
             >
@@ -421,46 +425,62 @@ export default function CreateWorkOrderFromTemplate() {
               </div>
             )}
           </div>
+        </section>
 
-          <div>
-            <label>Número de serie de la máquina</label>
-            <input value={form.machine_serial} onChange={onChange("machine_serial")} />
+        <section className="create-order__section">
+          <h2>Máquina y programación</h2>
+          <div className="create-order__grid">
+            <div className="create-order__field">
+              <label htmlFor="create-order-serial">Número de serie de la máquina</label>
+              <input id="create-order-serial" value={form.machine_serial} onChange={onChange("machine_serial")} />
+            </div>
+            <div className="create-order__field">
+              <label htmlFor="create-order-scheduled">Fecha programada</label>
+              <input
+                id="create-order-scheduled"
+                type="datetime-local"
+                value={isoToDateTimeInput(form.scheduled_at)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val || val === "0") {
+                    // evitar crash y resetear
+                    setForm((f) => ({ ...f, scheduled_at: "" }));
+                  } else {
+                    const d = new Date(val);
+                    if (!isNaN(d.getTime())) {
+                      setForm((f) => ({ ...f, scheduled_at: d.toISOString() })); // UTC
+                    }
+                  }
+                }}
+              />
+            </div>
           </div>
-          <label>Fecha programada</label>
-          <input
-            type="datetime-local"
-            value={isoToDateTimeInput(form.scheduled_at)}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!val || val === "0") {
-                // evitar crash y resetear
-                setForm((f) => ({ ...f, scheduled_at: "" }));
-              } else {
-                const d = new Date(val);
-                if (!isNaN(d.getTime())) {
-                  setForm((f) => ({ ...f, scheduled_at: d.toISOString() })); // UTC
-                }
-              }
-            }}
-          />
-        </div>
+        </section>
 
-        <div className="row cols-3">
-          {form.template_type !== "ENSAMBLE" && (
-            <div>
-              <label>Nombre del cliente (solo si aplica)</label>
-              <input value={form.customer_name} onChange={onChange("customer_name")} />
+        {form.template_type !== "ENSAMBLE" && (
+          <section className="create-order__section">
+            <h2>Cliente y domicilio</h2>
+            <div className="create-order__grid">
+              <div className="create-order__field">
+                <label htmlFor="create-order-customer">Nombre del cliente (solo si aplica)</label>
+                <input id="create-order-customer" value={form.customer_name} onChange={onChange("customer_name")} />
+              </div>
+              <div className="create-order__field">
+                <label htmlFor="create-order-address">Domicilio del sitio (solo si aplica)</label>
+                <input id="create-order-address" value={form.site_address} onChange={onChange("site_address")} />
+              </div>
+            </div>
+          </section>
+        )}
 
-              <label>Domicilio del sitio (solo si aplica)</label>
-              <input value={form.site_address} onChange={onChange("site_address")} />
-            </div>)}
-
-          {/* ====== Assigned Tech (select con API) ====== */}
-          <div>
-            <label>Técnico asignado</label>
+        <section className="create-order__section">
+          <h2>Asignación de técnico</h2>
+          <div className="create-order__field">
+            <label htmlFor="create-order-technician">Técnico asignado</label>
 
             {!manualEmail ? (
               <select
+                id="create-order-technician"
                 value={form.assigned_tech_email}
                 onChange={onChange("assigned_tech_email")}
                 disabled={loadingTechs || !!techsError}
@@ -475,6 +495,7 @@ export default function CreateWorkOrderFromTemplate() {
               </select>
             ) : (
               <input
+                id="create-order-technician"
                 type="email"
                 placeholder="correo@ejemplo.com"
                 value={form.assigned_tech_email}
@@ -483,39 +504,45 @@ export default function CreateWorkOrderFromTemplate() {
             )}
 
             {form.template_type === "ENSAMBLE" && (
-              <div>
-                <label>Operador de soporte</label>
-                <select
-                  value={form.tech_support}
-                  onChange={onChange("tech_support")}
-                  disabled={loadingTechs || !!techsError}
-                >
-                  <option value="">{loadingTechs ? "Cargando técnicos…" : "— seleccionar técnico —"}</option>
-                  {techs.map((t) => (
-                    <option key={t.id} value={t.correo_tecnico}>
-                      {t.nombre_tecnico} · {t.sucursal} · {t.correo_tecnico}
-                    </option>
-                  ))}
-                  <option value="__manual__">Escribir manualmente…</option>
-                </select>
-
-                <label>Folio de SAI</label>
-                <input value={form.folio_sai} onChange={onChange("folio_sai")} />
-
-                <select value={form.initial_status} onChange={onChange("initial_status")}>
-                  <option value="">— Estado inicial —</option>
-                  <option value="New Product">Equipo Nuevo</option>
-                  <option value="Refurbished">Equipo Remanufacturado</option>
-                </select>
-
-                <label>Comentarios adicionales</label>
-                <input value={form.comments} onChange={onChange("comments")} style={{ minHeight: 150 }} />
+              <div className="create-order__assembly">
+                <div className="create-order__field">
+                  <label htmlFor="create-order-support">Operador de soporte</label>
+                  <select
+                    id="create-order-support"
+                    value={form.tech_support}
+                    onChange={onChange("tech_support")}
+                    disabled={loadingTechs || !!techsError}
+                  >
+                    <option value="">{loadingTechs ? "Cargando técnicos…" : "— seleccionar técnico —"}</option>
+                    {techs.map((t) => (
+                      <option key={t.id} value={t.correo_tecnico}>
+                        {t.nombre_tecnico} · {t.sucursal} · {t.correo_tecnico}
+                      </option>
+                    ))}
+                    <option value="__manual__">Escribir manualmente…</option>
+                  </select>
+                </div>
+                <div className="create-order__field">
+                  <label htmlFor="create-order-folio">Folio de SAI</label>
+                  <input id="create-order-folio" value={form.folio_sai} onChange={onChange("folio_sai")} />
+                </div>
+                <div className="create-order__field create-order__status">
+                  <select aria-label="Estado inicial" value={form.initial_status} onChange={onChange("initial_status")}>
+                    <option value="">— Estado inicial —</option>
+                    <option value="New Product">Equipo Nuevo</option>
+                    <option value="Refurbished">Equipo Remanufacturado</option>
+                  </select>
+                </div>
+                <div className="create-order__field">
+                  <label htmlFor="create-order-comments">Comentarios adicionales</label>
+                  <input id="create-order-comments" value={form.comments} onChange={onChange("comments")} />
+                </div>
               </div>
 
             )}
 
             {/* toggle */}
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <div className="create-order__secondary-actions">
 
               <button
                 type="button"
@@ -543,13 +570,13 @@ export default function CreateWorkOrderFromTemplate() {
               }
             </div>
 
-            {IS_TEST && <p role="status">{TEST_EXTERNAL_ADMIN_MESSAGE}</p>}
+            {IS_TEST && <p role="status" className="create-order__notice">{TEST_EXTERNAL_ADMIN_MESSAGE}</p>}
             {techsError && <div className="badge fail" style={{ marginTop: 6 }}>Error: {techsError}</div>}
 
           </div>
-        </div>
+        </section>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        <div className="create-order__actions">
           <button className='btn--ok' type="submit" disabled={isLoading || !published.some(t => t.id === Number(form.template_id))}>
             {isLoading ? "Creando…" : "Crear orden de trabajo"}
           </button>
@@ -574,8 +601,8 @@ export default function CreateWorkOrderFromTemplate() {
           </button>
         </div>
       </form>
-      <Dialog open={openDialogNewTec} onClose={handleCloseDialogNewTec} keepMounted>
-        <div style={{ padding: 20, minWidth: 320 }}>
+      <Dialog open={openDialogNewTec} onClose={handleCloseDialogNewTec} keepMounted PaperProps={{ className: "create-order-dialog" }}>
+        <div className="create-order-dialog__content">
           <h2>Agregar técnico manualmente</h2>
           <p className="muted">Completa los datos para registrar un nuevo técnico y asignarlo.</p>
           <label style={{ fontWeight: 500 }}>Puesto</label>
@@ -683,8 +710,8 @@ export default function CreateWorkOrderFromTemplate() {
         </div>
       </Dialog>
 
-      <Dialog open={openDialogNewCustom} onClose={handleCloseDialogNewCustom} keepMounted>
-        <div style={{ padding: 20, minWidth: 400 }}>
+      <Dialog open={openDialogNewCustom} onClose={handleCloseDialogNewCustom} keepMounted PaperProps={{ className: "create-order-dialog" }}>
+        <div className="create-order-dialog__content">
           <h3>Customizaciones</h3>
           <p className="muted" style={{ marginTop: -6 }}>
             Selecciona, agrega o elimina opciones personalizadas.
@@ -769,7 +796,7 @@ export default function CreateWorkOrderFromTemplate() {
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+            <div className="create-order-dialog__actions">
               <button
                 className="btn--clone"
                 onClick={() => setNewCustomState(prev => !prev)}>
